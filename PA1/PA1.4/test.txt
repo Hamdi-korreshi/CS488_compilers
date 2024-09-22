@@ -4,3 +4,5 @@ learn C
 read the C tutorial
 do PA1
 learn C
+write docs
+read the C tutorial
