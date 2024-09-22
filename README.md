@@ -6,4 +6,4 @@ PA1 is a "simple" topological sort, mainly to test if you have the mettle to try
 Some resoucres:
 https://www.geeksforgeeks.org/topological-sorting/ 
 How you should view it:
-https://assets.leetcode.com/users/images/63bd7ad6-403c-42f1-b8bb-2ea41e42af9a_1613794080.8115625.png
+![top sort implemented from graph to a linked list](https://assets.leetcode.com/users/images/63bd7ad6-403c-42f1-b8bb-2ea41e42af9a_1613794080.8115625.png)
