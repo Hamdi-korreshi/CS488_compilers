@@ -1,4 +1,5 @@
-class StringList {
+-- redefine attribute error
+lass StringList {
     car: String;
     cdr: StringList;
 
