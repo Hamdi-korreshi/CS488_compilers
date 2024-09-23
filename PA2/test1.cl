@@ -65,10 +65,10 @@ class Main inherits IO {
     mylist : StringList;
     print_list(l: StringList): Object {
         if not (self.isNil()) then {
-            out_string(l.car);
+            out_string(l.car());
             out_string("\n");
-            if not (l.cdr = null) then {
-                print_list(l.cdr);  -- Recursively print the rest of the list
+            if not (isvoid l.cdr()) then {
+                print_list(l.cdr());  -- Recursively print the rest of the list
             } else {
                 self;  -- This 'self' here does nothing and can be removed
             } fi;
@@ -81,7 +81,7 @@ class Main inherits IO {
 
     main(): Object {
         {
-            mylist <- new StringList().init("5", nul).cons("4").cons("3").cons("2").cons("1");
+            mylist <- (new StringList ).init("5",mylist).cons("4").cons("3").cons("2").cons("1");
             mylist.print_list(mylist);
             while not mylist.isNil() loop {
                 mylist.print_list(mylist);  -- Print the current list
