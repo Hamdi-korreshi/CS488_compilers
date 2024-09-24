@@ -1,12 +1,12 @@
 
-rs related to parameter-less method main in class Main: always line 0
-    Inheritance cycle: always line 0
-    Other inheritance type problem: inherited type identifier location
-    self or SELF_TYPE used in wrong place: self (resp. SELF_TYPE) identifier (resp. type) location
-    Redefining a feature: (second) feature location
-    Redefining a formal or class: (second) identifier location
-    Other attribute problems: attribute location
-    Redefining a method and changing types: (second) type location
+rs related to parameter-less method main in class Main: always line 0 NOT PART OF IT
+    Inheritance cycle: always line 0 NOT PART OF IT
+    Other inheritance type problem: inherited type identifier location COMPLETED bug16
+    self or SELF_TYPE used in wrong place: self (resp. SELF_TYPE) identifier (resp. type) location COMPLETED bug3
+    Redefining a feature: (second) feature location COMPLETED bug17
+    Redefining a formal or class: (second) identifier location CREATED
+    Other attribute problems: attribute location CREATED
+    Redefining a method and changing types: (second) type location 
     Other problems with redefining a method: method location
     Method body type does not conform: method name identifier location
     Attribute initializer does not conform: attribute name identifier location

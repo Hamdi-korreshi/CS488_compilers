@@ -1,5 +1,5 @@
 -- redefine attribute error
-lass StringList {
+class StringList {
     car: String;
     cdr: StringList;
 
@@ -11,7 +11,7 @@ lass StringList {
         }
     };
 
-    isNil(): Bool {cdr = null};
+    isNil(): Bool {{isvoid cdr;}};
 
     cons(new_head: String) : StringList {
         (new StringList).init(new_head,self)
