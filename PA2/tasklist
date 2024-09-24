@@ -1,23 +1,23 @@
 
-rs related to parameter-less method main in class Main: always line 0 NOT PART OF IT
-    Inheritance cycle: always line 0 NOT PART OF IT
-    Other inheritance type problem: inherited type identifier location COMPLETED bug16
-    self or SELF_TYPE used in wrong place: self (resp. SELF_TYPE) identifier (resp. type) location COMPLETED bug3
-    Redefining a feature: (second) feature location COMPLETED bug17
-    Redefining a formal or class: (second) identifier location CREATED
-    Other attribute problems: attribute location CREATED
-    Redefining a method and changing types: (second) type location 
-    Other problems with redefining a method: method location
-    Method body type does not conform: method name identifier location
-    Attribute initializer does not conform: attribute name identifier location
+rs related to parameter-less method main in class Main: always line 0 {NOT PART OF IT}
+Inheritance cycle: always line 0 {NOT PART OF IT}
+Other inheritance type problem: inherited type identifier location {COMPLETED bug16}
+self or SELF_TYPE used in wrong place: self (resp. SELF_TYPE) identifier (resp. type) location {COMPLETED bug3}
+Redefining a feature: (second) feature location {COMPLETED bug17}
+Redefining a formal or class: (second) identifier location CREATED
+Other attribute problems: attribute location CREATED
+Redefining a method and changing types: (second) type location {CREATED}
+Other problems with redefining a method: method location {COMPLETED bug19}
+Method body type does not conform: method name identifier location {CREATED}
+Attribute initializer does not conform: attribute name identifier location {CREATED}
 
-    Errors with types of arguments to relational/arithmetic operations: location of relational/arithmetic operation expression
-    Errors with types of while / if subexpression(s): location of (enclosing) while or if expression (not the location of the conditional expression)
-    Errors with case expression (e.g., lub): location of case expression
-    Errors with conformance in let: location of let expression (not location of initializer)
-    Errors in blocks: location of (beginning of) block expression
-    Errors in actual arguments: location of method invocation expression (not the location of any particular actual argument)
-    Assignment does not conform: assignment expression location (not right-hand-side location)
-    Unknown identifier: location of identifier
-    Unknown method: location of method name identifier
-    Unknown type: location of type 
+Errors with types of arguments to relational/arithmetic operations: location of relational/arithmetic operation expression
+Errors with types of while / if subexpression(s): location of (enclosing) while or if expression (not the location of the conditional expression)
+Errors with case expression (e.g., lub): location of case expression
+Errors with conformance in let: location of let expression (not location of initializer)
+Errors in blocks: location of (beginning of) block expression
+Errors in actual arguments: location of method invocation expression (not the location of any particular actual argument)
+Assignment does not conform: assignment expression location (not right-hand-side location)
+Unknown identifier: location of identifier
+Unknown method: location of method name identifier
+Unknown type: location of type 

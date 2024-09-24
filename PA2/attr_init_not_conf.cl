@@ -1,7 +1,5 @@
-class MyClass {
-    my_method(x: Int, x: String) : Int {
-        42
-    };
+class Animal {
+    age: Int <- "23";
 };
 
 class Main inherits IO {
@@ -12,4 +10,3 @@ class Main inherits IO {
         }
     };
 };
-

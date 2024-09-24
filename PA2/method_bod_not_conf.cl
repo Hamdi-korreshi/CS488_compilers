@@ -1,7 +1,8 @@
-class MyClass {
-    my_attribute : Jack;
+class Animal {
+    speak() : Int {  
+        "Bark"  
+    };
 };
-
 
 class Main inherits IO {
 
