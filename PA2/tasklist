@@ -1,4 +1,3 @@
-
 rs related to parameter-less method main in class Main: always line 0 {NOT PART OF IT}
 Inheritance cycle: always line 0 {NOT PART OF IT}
 Other inheritance type problem: inherited type identifier location {COMPLETED bug16}
