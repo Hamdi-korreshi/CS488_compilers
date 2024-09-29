@@ -1,4 +1,4 @@
-(* Hamdi Korreshi and Tomasz Bruahcnatez
+(* Hamdi Korreshi and Tomasz Brauntsch
   PA4 Semantic Analyzer Checkpoint *)
 type cool_prog = cool_class list
 and loc = string
@@ -136,6 +136,8 @@ let main () = begin
             fprintf fout "%s\n" eloc ;
             match ekind with
             | Integer(ival) -> fprintf fout "integer\n%s\n" ival
+            | String(ival) -> fprintf fout "string\n %s \n" ival
+            | Bool(ival) -> fprintf fout "bool\n %s \n" ival
           in
           
           fprintf fout "class_map\n%d\n" (List.length all_classes) ;
