@@ -17,6 +17,112 @@ and exp_kind =
 
 open Printf
 
+let check_return_type ast all_classes =
+  List.iter (fun ((cloc, cname), inherits, features) ->
+    match List.rev features with
+    | [] -> ()  (* No features in the class, nothing to check *)
+    | last_feature :: _ ->
+        let feature_type = match last_feature with
+          | Attribute (_, (ftloc, ftype), _) -> ftype
+          | Method (_, _, (mtloc, mtype), _) -> mtype
+        in
+        if not (List.mem feature_type all_classes) then (
+          Printf.printf "ERROR: %s: Type-Check: Type %s in the last feature of class %s is not defined in all_classes\n" cloc feature_type cname;
+          exit 1
+        )
+  ) ast
+
+let check_method_main ast =
+  List.iter (fun ((cloc, cname), inherits, features) ->
+      List.iter (fun feature ->
+          match feature with
+          | Method ((mloc, mname), formals, mtype, mbody) when mname = "main" ->
+              if List.length formals > 0 then (
+                Printf.printf "ERROR: 0: Type-Check: class Main method main with 0 parameters not found\n";
+                exit 1
+              )
+          | _ -> ()
+        ) features
+    ) ast
+
+let check_dup_param ast =
+  List.iter (fun ((cloc, cname), inherits, features) ->
+    List.iter (fun feature ->
+        match feature with
+        | Method ((mloc, mname), formals, mtype, mbody) ->
+            let seen_formals = Hashtbl.create 32 in
+            List.iter (fun ((floc, fname), ftype) ->
+                if Hashtbl.mem seen_formals fname then (
+                  Printf.printf "ERROR: %s: Type-Check: Duplicate formal %s in method %s of class %s\n" floc fname mname cname;
+                  exit 1
+                ) else
+                  Hashtbl.add seen_formals fname floc
+              ) formals
+        | _ -> ()
+      ) features
+  ) ast
+(*works for classes rn, maybe features*)
+let re_def ast =
+  let seen_classes = Hashtbl.create 32 in
+  List.iter (fun ((cloc, cname), inherits, features) ->
+      match Hashtbl.find_opt seen_classes cname with
+      | Some first_loc -> 
+          Printf.printf "ERROR: %s: Type-Check: Redefining class %s\n" cloc cname;
+          exit 1
+      | None ->
+          Hashtbl.add seen_classes cname cloc
+    ) ast
+
+let attr_name_self ast =
+  List.iter (fun ((cloc, cname), inherits, features) ->
+      List.iter (fun feature ->
+          match feature with
+          | Attribute ((floc, fname), ftype, _) ->
+              if fname = "self" then (
+                printf "ERROR: %s: Type-Check: Attribute named 'self' in class %s\n" floc cname;
+                exit 1
+              )
+          | Method _ -> ()
+        ) features
+    ) ast
+
+(*redefine attr needs to be fixed more robust*)
+let re_def_feat ast = 
+  List.iter (fun ((cloc, cname), inherits, features) ->
+      let seen_attributes = Hashtbl.create 32 in
+      List.iter (fun feature ->
+          match feature with
+          | Attribute ((floc, fname), ftype, _) ->
+              begin
+                match Hashtbl.find_opt seen_attributes fname with
+                | Some first_loc -> 
+                    Printf.printf "ERROR: %s: Type-Check: Redefining attribute %s in class %s\n" floc fname cname;
+                    exit 1
+                | None ->
+                    Hashtbl.add seen_attributes fname floc
+              end
+          | Method _ -> ()
+        ) features
+    ) ast
+
+let re_def_attr ast = 
+  List.iter (fun ((cloc, cname), inherits, features) ->
+    let seen_attributes = Hashtbl.create 32 in
+    List.iter (fun feature ->
+        match feature with
+        | Attribute ((floc, fname), ftype, _) ->
+            begin
+              match Hashtbl.find_opt seen_attributes fname with
+              | Some first_loc -> 
+                  Printf.printf "ERROR: %s: Type-Check: Duplicate attribute %s in class %s\n" floc fname cname;
+                  exit 1
+              | None ->
+                  Hashtbl.add seen_attributes fname floc
+            end
+        | Method _ -> ()
+      ) features
+  ) ast
+
 let main () = begin
   printf "start main \n";
   (*deserialzing the CL-AST file*)
@@ -95,6 +201,15 @@ let main () = begin
           | "Bool" -> (* Fixme: do all of the others*)
               let ival = read () in
               String(ival)
+          | "plus" ->
+              let ival = read() in
+              String(ival)
+          | "new" -> (*have to chage this*)
+            let ival = read() in
+            String(ival)
+          | "identifier" ->
+            let ival = read() in
+            String(ival)
           | x -> (* Fixme: do all of the others*)
             failwith ("expression kind unhandled: " ^ x)
           in
@@ -103,9 +218,17 @@ let main () = begin
           let ast = read_cool_program () in
           close_in fin ;
           printf "CL-AST de-serizlized, %d classes\n" (List.length ast);
-          let base_classes = ["Int"; "string"; "Bool"; "IO"; "object" ] in
+          let base_classes = ["Int"; "string"; "Bool"; "IO"; "Object" ] in
           let user_classes = List.map (fun ((_, cname),_,_) -> cname) ast in
           let all_classes = base_classes @ user_classes in
+          (* this is for redefining a class name*)
+          re_def ast;
+          re_def_feat ast;
+          attr_name_self ast;
+          re_def ast;
+          check_method_main ast;
+          check_return_type ast all_classes;
+          check_dup_param ast;
           (* THEME IN PA4 -- you should make internal data structures to hold helper information so that you can do the checks more easily *)
           (*Look for Inheritance from Int
           Look for Inheritance from Undeclared class *)
@@ -166,6 +289,10 @@ let main () = begin
           
           fprintf fout "%d\n" (List.length attributes);
           fprintf fout "%d\n" (List.length attributes);
+          if not (List.mem "Main" all_classes) then begin
+            printf "ERROR: 0: Type-Check: class Main not found\n";
+            exit 1;
+          end;
           List.iter (fun attr -> match attr with
             | Attribute((_,aname),(_,atype),None) ->
             fprintf fout "no_initializer\n%s\n%s\n" aname atype
