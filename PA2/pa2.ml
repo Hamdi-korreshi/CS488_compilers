@@ -14,7 +14,6 @@ and exp_kind =
   | Integer of string (* doesn't need to be an Int until the next PA *)
   | Bool of string
   | String of string
-
 open Printf
 
 let check_return_type ast all_classes =
@@ -123,6 +122,50 @@ let re_def_attr ast =
       ) features
   ) ast
 
+
+let rec print_id (loc, name) =
+  Printf.printf "ID (location: %s, name: %s)\n" loc name
+
+let print_cool_type (loc, tname) =
+  Printf.printf "Cool_Type (location: %s, type: %s)\n" loc tname
+
+let rec print_exp (loc, exp_kind) =
+  Printf.printf "Expression (location: %s)\n" loc;
+  match exp_kind with
+  | Integer value -> Printf.printf "  Integer: %s\n" value
+  | Bool value -> Printf.printf "  Bool: %s\n" value
+  | String value -> Printf.printf "  String: %s\n" value
+
+let print_formal ((loc, fname), (ftloc, ftype)) =
+  Printf.printf "Formal (name: %s, type: %s)\n" fname ftype
+
+let rec print_feature feature =
+  match feature with
+  | Attribute (id, cool_type, exp_opt) ->
+      print_id id;
+      print_cool_type cool_type;
+      (match exp_opt with
+      | Some exp -> print_exp exp
+      | None -> Printf.printf "  No Initialization Expression\n")
+  | Method (id, formals, cool_type, body) ->
+      print_id id;
+      List.iter print_formal formals;
+      print_cool_type cool_type;
+      print_exp body
+
+
+let rec print_class ((loc, cname), parent_opt, features) =
+  (* if inherits then run print_feature on inherits then continue with the regular print_feature  *)
+  Printf.printf "Class (name: %s, location: %s)\n" cname loc;
+  (match parent_opt with
+  | Some (ploc, pname) -> Printf.printf "  Inherits from: %s\n" pname
+  | None -> Printf.printf "  No Inheritance\n");
+  List.iter print_feature features
+
+let print_ast ast =
+  Printf.printf "AST:\n";
+  List.iter print_class ast
+
 let main () = begin
   printf "start main \n";
   (*deserialzing the CL-AST file*)
@@ -161,6 +204,8 @@ let main () = begin
           | "inherits" ->
             let super = read_id () in
             Some(super)
+            (* features =  inherited class features*)
+            (* features PLUS= current class features*)
           | x -> failwith ("cannot happen: " ^ x)
           in
           let features = read_list read_feature in 
@@ -222,7 +267,10 @@ let main () = begin
           let user_classes = List.map (fun ((_, cname),_,_) -> cname) ast in
           let all_classes = base_classes @ user_classes in
           (* this is for redefining a class name*)
+          
           re_def ast;
+
+
           re_def_feat ast;
           attr_name_self ast;
           re_def ast;
@@ -245,14 +293,14 @@ let main () = begin
               exit 1
             end ;
           ) ast ;
-          
+          print_ast ast;
           (* DONE WITH ERROR CHECKING *)
           
           (* Now we emit the CL-TYPE File *)
           
           (* For PA4_C_ -- we just do the class map *)
           
-          let cname = (Filename.chop_extension fname) ^ ".cl-type" in 
+          let cname = (Filename.chop_extension fname) ^ ".cl-test" in 
           let fout = open_out cname in
           
           let rec output_exp (eloc, ekind) = 
