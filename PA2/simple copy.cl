@@ -13,8 +13,6 @@ class Bruh2 {
 
     teehee(x:String): Int {3};
 };
-
-class Main inherits IO {
-    bruh: String <- "huh";
+class Main{
     main() : Object {3};
 };

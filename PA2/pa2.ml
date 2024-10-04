@@ -1,5 +1,8 @@
 (* Hamdi Korreshi and Tomasz Brauntsch
-  PA4 Semantic Analyzer Checkpoint *)
+  PA2 Semantic Analyzer Checkpoint *)
+module StringMap = Map.Make(String)
+module StringSet = Set.Make(String)
+
 type cool_prog = cool_class list
 and loc = string
 and id = loc * string
@@ -122,6 +125,74 @@ let re_def_attr ast =
       ) features
   ) ast
 
+  let print_feature feature =
+    match feature with
+    | Attribute ((_, fname), (_, ftype), _) ->
+        Printf.printf "    Attribute: %s of type %s\n" fname ftype
+    | Method ((_, mname), formals, (_, mtype), _) ->
+        Printf.printf "    Method: %s returning %s\n" mname mtype
+  
+  let print_map map =
+    StringMap.iter (fun (cname : string) ((loc, cname), parent_opt, features) ->
+      Printf.printf "Key: %s\n" cname;
+      Printf.printf "Location: %s\n" loc;
+      (match parent_opt with
+      | Some (_, parent_name) -> Printf.printf "Inherits from: %s\n" parent_name
+      | None -> Printf.printf "No parent (root class)\n");
+      Printf.printf "Features (%d):\n" (List.length features);
+      List.iter print_feature features;
+      Printf.printf "--------------------------------------\n"
+    ) map
+    let add_base_classes map =
+      let base_classes = [
+        (("0", "Object"), None, []);
+        (("0", "Int"), None, []);
+        (("0", "String"), None, []);
+        (("0", "Bool"), None, []);
+        (("0", "IO"), None, [])
+      ] in
+      List.fold_left (fun acc_map ((loc, cname), parent_opt, features) ->
+        StringMap.add cname ((loc, cname), parent_opt, features) acc_map
+      ) map base_classes
+    
+    let build_class_map ast =
+      let initial_map = StringMap.empty in
+      let map_with_bases = add_base_classes initial_map in
+      List.fold_left (fun map ((loc, cname), parent_opt, features) ->
+        Printf.printf "Adding class: %s\n" cname;
+        StringMap.add cname ((loc, cname), parent_opt, features) map
+      ) map_with_bases ast
+    
+let rec topo_sort_helper class_map visited sorted cname =
+  if StringSet.mem cname !visited then sorted
+  else begin
+    visited := StringSet.add cname !visited;
+    let class_info =
+      try
+        StringMap.find cname class_map
+      with Not_found ->
+        Printf.printf "Error: Class %s not found in map\n" cname;
+        exit 1
+    in
+    let ((loc, cname), parent_opt, _) = class_info in
+    let sorted = match parent_opt with
+      | Some (_, pname) ->
+          topo_sort_helper class_map visited sorted pname
+      | None -> sorted
+    in
+    cname :: sorted
+  end
+
+let topo_sort ast =
+  let class_map = build_class_map ast in
+  let visited = ref StringSet.empty in
+  let sorted = ref [] in
+  let sorted_keys = List.sort String.compare (StringMap.fold (fun key _ acc -> key :: acc) class_map []) in
+  List.iter (fun cname ->
+    sorted := topo_sort_helper class_map visited !sorted cname
+  ) sorted_keys;
+  List.rev !sorted
+
 
 let rec print_id (loc, name) =
   Printf.printf "ID (location: %s, name: %s)\n" loc name
@@ -153,6 +224,8 @@ let rec print_feature feature =
       print_cool_type cool_type;
       print_exp body
 
+let print_sorted_classes sorted_classes =
+  List.iter (fun cname -> Printf.printf "%s\n" cname) sorted_classes
 
 let rec print_class ((loc, cname), parent_opt, features) =
   (* if inherits then run print_feature on inherits then continue with the regular print_feature  *)
@@ -267,10 +340,7 @@ let main () = begin
           let user_classes = List.map (fun ((_, cname),_,_) -> cname) ast in
           let all_classes = base_classes @ user_classes in
           (* this is for redefining a class name*)
-          
           re_def ast;
-
-
           re_def_feat ast;
           attr_name_self ast;
           re_def ast;
@@ -292,7 +362,7 @@ let main () = begin
               printf "ERROR: %s: Type-Check: inheriting from undefined class %s\n" iloc iname;
               exit 1
             end ;
-          ) ast ;
+          ) ast;
           print_ast ast;
           (* DONE WITH ERROR CHECKING *)
           
@@ -315,8 +385,12 @@ let main () = begin
           List.iter (fun cname ->
           
           (* name of class, # attrs, each attr=feature in turn *)
+          printf "entering the topo\n";
+          let sorted_classes = topo_sort ast in
+          print_sorted_classes sorted_classes;
           fprintf fout "%s\n" cname;
           let attributes =
+            
             (*
             (1) construct a mapping from child to parent
               (1) use topsort to find the right order of traversal
@@ -336,7 +410,7 @@ let main () = begin
           in
           
           fprintf fout "%d\n" (List.length attributes);
-          fprintf fout "%d\n" (List.length attributes);
+          (* fprintf fout "%d\n" (List.length attributes); *)
           if not (List.mem "Main" all_classes) then begin
             printf "ERROR: 0: Type-Check: class Main not found\n";
             exit 1;
