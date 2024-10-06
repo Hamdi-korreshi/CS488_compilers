@@ -20,3 +20,9 @@ arth:
 	$(OCAMLC) -o $(TARGET) $(SRC)
 	./cool --parse arth.cl
 	./$(TARGET) arth.cl-ast
+checker:
+	$(OCAMLC) -o $(TARGET) $(SRC)
+	./cool --parse $(CURRFILE).cl
+	./cool --class-map $(CURRFILE).cl
+	./$(TARGET) $(CURRFILE).cl-ast
+	diff -u  $(CURRFILE).cl-ast-type $(CURRFILE).cl-ast-test

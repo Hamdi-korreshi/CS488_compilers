@@ -1,0 +1,41 @@
+1d0
+< ERROR: 2: Type-Check: String does not conform to Int in initialized attribute
+Difference found for testcase/attr_init_not_conf.cl
+Failed to run ./main on case.cl-ast
+1d0
+< ERROR: 17: Type-Check: MyClass does not conform to MyChildClass in static dispatch
+Difference found for testcase/class-disconform-static-dispatch.cl
+Failed to run ./main on cycle.cl-ast
+Failed to run ./main on inherit_int.cl-ast
+Failed to run ./main on mainmissing.cl-ast
+ERROR: 10: Parser: syntax error near Animal
+Failed to run ./main on other_attr.cl-ast
+Failed to run ./main on other_inheritance_problem.cl-ast
+Failed to run ./main on redef_attr.cl-ast
+1d0
+< ERROR: 8: Type-Check: class Dog redefines method speak and changes return type (from String to Int)
+Difference found for testcase/redef_method_class.cl
+Failed to run ./main on self_err.cl-ast
+1d0
+< ERROR: 5: Type-Check: comparison between Int and String
+Difference found for testcase/string_int.cl
+1d0
+< bruh
+\ No newline at end of file
+Difference found for testcase/substring.cl
+1d0
+< ERROR: 7: Type-Check: arithmetic on Int String instead of Ints
+Difference found for testcase/test12.cl
+1d0
+< ERROR: 9: Type-Check: conditional has type Int instead of Bool
+Difference found for testcase/test13.cl
+1d0
+< ERROR: 5: Type-Check: initializer type Int does not conform to type String
+Difference found for testcase/test15.cl
+Failed to run ./main on test17.cl-ast
+1d0
+< ERROR: 5: Type-Check: String does not conform to Int in assignment
+Difference found for testcase/test18.cl
+1d0
+< ERROR: 12: Type-Check: wrong number of actual arguments (1 vs. 0)
+Difference found for testcase/wrongnumberargs.cl

@@ -1,0 +1,6 @@
+read_list of 3
+read_list of 1
+read_list of 1
+read_list of 1
+read_list of 0
+ERROR: 5: Type-Check: class A redefined

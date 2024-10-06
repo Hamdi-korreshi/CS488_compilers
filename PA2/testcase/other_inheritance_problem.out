@@ -1,0 +1,1 @@
+ERROR: 2: Type-Check: class MyClass has method my_method with duplicate formal parameter named x

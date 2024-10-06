@@ -20,6 +20,7 @@ and exp_kind =
   | Minus of exp * exp
   | Times of exp * exp
   | Divide of exp * exp
+  | Let of exp * exp * exp * (exp option)
 open Printf
 
 type graph = {
@@ -120,38 +121,38 @@ let child_loop map child min_heap =
   ) (map, min_heap) child
   
 let rec while_loop (map : graph) final min_heap count =
-  Printf.printf "Entered while_loop with count: %d\n" count;
+  (* Printf.printf "Entered while_loop with count: %d\n" count; *)
   if not (check_empty min_heap) then (
-    Printf.printf "Min heap is not empty, proceeding...\n";
+    (* Printf.printf "Min heap is not empty, proceeding...\n"; *)
     let sorted = sort_queue min_heap in
-    Printf.printf "Sorted min heap: ";
-    List.iter (Printf.printf "%s ") sorted.front;
-    Printf.printf "\n";
+    (* Printf.printf "Sorted min heap: "; *)
+    (* List.iter (Printf.printf "%s ") sorted.front; *)
+    (* Printf.printf "\n"; *)
 
     let curr, min_heap = match deque sorted with
       | Some (curr, new_heap) ->
-          Printf.printf "Dequeued: %s\n" curr;
+          (* Printf.printf "Dequeued: %s\n" curr; *)
           curr, new_heap
       | None -> failwith "Queue is empty"
     in
 
     let final = final @ [curr] in
-    Printf.printf "Updated final list: [%s]\n" (String.concat ", " final);
+    (* Printf.printf "Updated final list: [%s]\n" (String.concat ", " final); *)
 
-    printf "curr: %s\n" curr;
+    (* printf "curr: %s\n" curr; *)
     (* print_maps map; *)
     let value = StringMap.find curr map.deps_map in
-    Printf.printf "Dependencies of %s: [%s]\n" curr (String.concat ", " value);
+    (* Printf.printf "Dependencies of %s: [%s]\n" curr (String.concat ", " value); *)
 
     let map, min_heap = child_loop map value min_heap in
-    Printf.printf "Finished child_loop for %s\n" curr;
+    (* Printf.printf "Finished child_loop for %s\n" curr; *)
     while_loop map final min_heap (count + 1)
   ) else if count < StringMap.cardinal map.in_deg then (
     Printf.printf "Cycle detected in inheritance graph. Processed count: %d, Total classes: %d\n"
       count (StringMap.cardinal map.in_deg);
     exit 1
   ) else (
-    Printf.printf "Topological sort completed successfully.\n";
+    (* Printf.printf "Topological sort completed successfully.\n"; *)
     final
   )
 
@@ -274,17 +275,46 @@ let check_return_type ast all_classes =
   ) ast
 
 let check_method_main ast =
+  let main_class_found = ref false in
+  let main_method_found = ref false in
+
   List.iter (fun ((cloc, cname), inherits, features) ->
+    if cname = "Main" then (
+      main_class_found := true;
+      
       List.iter (fun feature ->
-          match feature with
-          | Method ((mloc, mname), formals, mtype, mbody) when mname = "main" ->
-              if List.length formals > 0 then (
-                Printf.printf "ERROR: 0: Type-Check: class Main method main with 0 parameters not found\n";
+        match feature with
+        | Method ((mloc, mname), formals, mtype, mbody) when mname = "main" -> 
+            main_method_found := true;
+
+            if List.length formals > 0 then (
+              Printf.printf "ERROR: 0: Type-Check: class Main method main with 0 parameters not found\n";
+              exit 1
+            );
+
+            let seen_formals = Hashtbl.create 32 in
+            List.iter (fun ((floc, fname), ftype) ->
+              if Hashtbl.mem seen_formals fname then (
+                Printf.printf "ERROR: %s: Type-Check: Duplicate formal parameter %s in method main\n" floc fname;
                 exit 1
-              )
-          | _ -> ()
-        ) features
-    ) ast
+              ) else
+                Hashtbl.add seen_formals fname floc
+            ) formals
+        | _ -> ()
+      ) features
+    )
+  ) ast;
+
+  if not !main_class_found then (
+    Printf.printf "ERROR: 0: Type-Check: class Main not found\n";
+    exit 1
+  );
+
+  if not !main_method_found then (
+    Printf.printf "ERROR: 0: Type-Check: class Main method main not found\n";
+    exit 1
+  )
+
 
 let check_dup_param ast =
   List.iter (fun ((cloc, cname), inherits, features) ->
@@ -320,7 +350,7 @@ let attr_name_self ast =
           match feature with
           | Attribute ((floc, fname), ftype, _) ->
               if fname = "self" then (
-                printf "ERROR: %s: Type-Check: Attribute named 'self' in class %s\n" floc cname;
+                printf "ERROR: %s: Type-Check: class %s has an attribute named self\n" floc cname;
                 exit 1
               )
           | Method _ -> ()
@@ -397,6 +427,18 @@ let rec print_exp (loc, exp_kind) =
     Printf.printf "plus\n";
     print_exp (loc1, t1);
     print_exp (loc2, t2)
+  | Minus((loc1, t1), (loc2, t2)) ->
+    Printf.printf "minus\n";
+    print_exp (loc1, t1);
+    print_exp (loc2, t2)
+  | Times((loc1, t1), (loc2, t2)) ->
+    Printf.printf "times\n";
+    print_exp (loc1, t1);
+    print_exp (loc2, t2)
+  | Divide((loc1, t1), (loc2, t2)) ->
+    Printf.printf "divide\n";
+    print_exp (loc1, t1);
+    print_exp (loc2, t2)
 
 let print_formal ((loc, fname), (ftloc, ftype)) =
   Printf.printf "Formal (name: %s, type: %s)\n" fname ftype
@@ -432,7 +474,7 @@ let main () = begin
 
   let read_list worker =
     let k = int_of_string ( read ()) in
-    printf "read_list of %d\n" k;
+    (* printf "read_list of %d\n" k; *)
     let lst = range k in
     List.map (fun _ -> worker ()) lst
   in
@@ -495,6 +537,19 @@ let main () = begin
           | "Bool" | "true" | "false" -> 
               let ival = read () in
               Bool(ival)
+          | "block" ->
+              let ival = read () in
+              Integer(ival)
+          | "let" ->
+              let iloc = read () in
+              let init = read () in
+              (
+                match (init) with
+                | "let_binding_no_init" ->
+                  let attr = read () in
+                  let value  = read () in
+
+              )
           | "plus" -> (* might have to change all of these*)
               let ival = read_exp() in
               let xval = read_exp() in (
@@ -565,7 +620,7 @@ let main () = begin
             | None -> ()
             | Some (iloc, iname) ->
             if iname = "Int" || iname = "Bool" || iname = "String" then begin
-              printf "ERROR: %s : Type-Check: inheriting from forbidden class %s\n" iloc iname;
+              printf "ERROR: %s: Type-Check: class %s inherits from %s\n" iloc cname iname;
             exit 1
             end ;
             if not (List.mem iname all_classes) then begin
@@ -605,8 +660,8 @@ let main () = begin
             compare cname1 cname2
           ) updated_classes in
           let last_classes = List.sort compare sorted_classes in
-          print_ast last_ast;
-          print_sorted_classes last_classes;
+          (* print_ast last_ast; *)
+          (* print_sorted_classes last_classes; *)
           fprintf fout "class_map\n%d\n" (List.length all_classes) ;
           List.iter (fun cname ->
           (* name of class, # attrs, each attr=feature in turn *)

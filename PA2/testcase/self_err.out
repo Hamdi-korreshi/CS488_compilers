@@ -1,0 +1,1 @@
+ERROR: 4: Type-Check: SELF_TYPE(MyClass) does not conform to Int in method static
