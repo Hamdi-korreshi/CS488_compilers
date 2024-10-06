@@ -1,7 +1,6 @@
 (* Hamdi Korreshi and Tomasz Brauntsch
   PA2 Semantic Analyzer Checkpoint *)
 module StringMap = Map.Make(String)
-module StringSet = Set.Make(String)
 
 type cool_prog = cool_class list
 and loc = string
@@ -395,8 +394,9 @@ let rec print_exp (loc, exp_kind) =
   | String value -> Printf.printf "  String: %s\n" value
   | Plus((loc1, t1), (loc2, t2)) ->
     Printf.printf "plus\n";
-    print_exp (loc1, t1);  (* Print first expression *)
-    print_exp (loc2, t2)   (* Print second expression *)
+    print_exp (loc1, t1);
+    print_exp (loc2, t2)
+
 let print_formal ((loc, fname), (ftloc, ftype)) =
   Printf.printf "Formal (name: %s, type: %s)\n" fname ftype
 
@@ -569,10 +569,10 @@ let main () = begin
             | Integer(ival) -> fprintf fout "integer\n%s\n" ival
             | String(ival) -> fprintf fout "string\n%s\n" ival
             | Bool(ival) -> fprintf fout "bool\n%s\n" ival
-            | Plus((loc1,t1), (loc2,t2)) -> fprintf fout "plus\n%s\n%s\n" loc1 loc2
-            | Times((loc1,_), (loc2,_)) -> fprintf fout "times\n%s\n%s\n" loc1 loc2
-            | Divide((loc1,_), (loc2,_)) -> fprintf fout "divide\n%s\n%s\n" loc1 loc2
-            | Minus((loc1,_), (loc2,_)) -> fprintf fout "minus\n%s\n%s\n" loc1 loc2
+            | Plus(ival, xval) -> fprintf fout "plus\n"; output_exp(ival); output_exp(xval)
+            | Times(ival, xval) -> fprintf fout "times\n"; output_exp(ival); output_exp(xval)
+            | Divide(ival, xval) -> fprintf fout "divide\n"; output_exp(ival); output_exp(xval)
+            | Minus(ival, xval) -> fprintf fout "minus\n"; output_exp(ival); output_exp(xval)
           in
           (* print_ast ast; *)
           (* printf "entering the topo\n"; *)
