@@ -1,5 +1,5 @@
 class A {
-    x : Int <- 5-3;
+    x : Int <- 5-true;
 };
 
 class Main inherits IO {

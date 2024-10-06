@@ -14,8 +14,7 @@ minus
 integer
 5
 2
-integer
-3
+true
 5
 Main
 inherits

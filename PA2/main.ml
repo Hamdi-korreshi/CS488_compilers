@@ -106,10 +106,8 @@ let child_loop map child min_heap =
     (* Printf.printf "Processing node: %s\n" node; *)
     let new_deg = StringMap.find node map.in_deg in
     (* Printf.printf "Current in-degree of node %s: %d\n" node new_deg; *)
-    
     let updated_deg = StringMap.add node (new_deg - 1) map.in_deg in
     (* Printf.printf "Updated in-degree of node %s: %d\n" node (new_deg - 1); *)
-    
     let updated_map = { map with in_deg = updated_deg } in
     let min_heap = if StringMap.find node updated_map.in_deg = 0 then (
       (* Printf.printf "Node %s has 0 in-degree now, adding to min_heap\n" node; *)
@@ -260,20 +258,6 @@ let propagate_features ast sorted_classes =
         ((loc, cname), None, features)
   ) sorted_classes
 
-let base_class_order = ["Object"; "IO"; "Int"; "Bool"; "String"]
-
-let sort_classes_by_dependencies updated_classes =
-  let base_classes, user_classes = List.partition (fun cname ->
-    List.mem cname base_class_order
-  ) (List.map (fun ((_, cname), _, _) -> cname) updated_classes) in
-  base_classes @ List.sort compare user_classes
-
-let process_classes ast =
-  let sorted_classes = topSort ast in
-  let updated_classes = propagate_features ast sorted_classes in
-  (* Now updated_classes will contain classes with inherited attributes and methods *)
-  print_ast updated_classes
-
 let check_return_type ast all_classes =
   List.iter (fun ((cloc, cname), inherits, features) ->
     match List.rev features with
@@ -386,6 +370,23 @@ let rec print_id (loc, name) =
 let print_cool_type (loc, tname) =
   Printf.printf "Cool_Type (location: %s, type: %s)\n" loc tname
 
+  let arth_error (ival, xval) =
+    let iloc = fst ival in
+    let itype = match snd ival with
+      | Integer _ -> "Int"
+      | Bool _ -> "Bool"
+      | String _ -> "String"
+      | _ -> "Other"
+    in
+    let xtype = match snd xval with
+      | Integer _ -> "Int"
+      | Bool _ -> "Bool"
+      | String _ -> "String"
+      | _ -> "Other"
+    in
+    Printf.printf "ERROR: %s: Type-Check: arithmetic on %s %s instead of Ints\n" iloc itype xtype;
+    exit 1
+  
 let rec print_exp (loc, exp_kind) =
   Printf.printf "Expression (location: %s)\n" loc;
   match exp_kind with
@@ -491,25 +492,43 @@ let main () = begin
           | "string" ->
               let ival = read () in 
               String(ival)
-          | "Bool" -> 
+          | "Bool" | "true" | "false" -> 
               let ival = read () in
-              String(ival)
+              Bool(ival)
           | "plus" -> (* might have to change all of these*)
               let ival = read_exp() in
-              let xval = read_exp() in
-              Plus(ival, xval)
+              let xval = read_exp() in (
+              match (snd ival, snd xval) with
+              | (Integer _, Integer _) ->
+                Plus(ival, xval)
+              | _ ->
+                arth_error (ival,xval) )
           | "minus" ->
               let ival = read_exp() in
-              let xval = read_exp() in
-              Minus(ival, xval)
+              let xval = read_exp() in (
+              match (snd ival, snd xval) with
+              | (Integer _, Integer _) ->
+                Minus(ival, xval)
+              | _ ->
+                arth_error (ival,xval) )
           | "times" -> 
               let ival = read_exp() in
               let xval = read_exp() in
-              Times(ival, xval)
+              (
+              match (snd ival, snd xval) with
+              | (Integer _, Integer _) ->
+                Times(ival, xval)
+              | _ ->
+                arth_error (ival,xval) )
           | "divide" -> 
               let ival = read_exp() in
               let xval = read_exp() in
-              Divide(ival, xval)
+              (
+              match (snd ival, snd xval) with
+              | (Integer _, Integer _) ->
+                Divide(ival, xval)
+              | _ ->
+                arth_error (ival,xval) )
           | "new" -> (*have to chage this*)
             let ival = read() in
             String(ival)
@@ -563,16 +582,20 @@ let main () = begin
           let cname = (Filename.chop_extension fname) ^ ".cl-test" in 
           let fout = open_out cname in
           
-          let rec output_exp (eloc, ekind) = 
+          let rec output_exp (eloc, ekind) =
             fprintf fout "%s\n" eloc ;
             match ekind with
             | Integer(ival) -> fprintf fout "integer\n%s\n" ival
             | String(ival) -> fprintf fout "string\n%s\n" ival
             | Bool(ival) -> fprintf fout "bool\n%s\n" ival
-            | Plus(ival, xval) -> fprintf fout "plus\n"; output_exp(ival); output_exp(xval)
-            | Times(ival, xval) -> fprintf fout "times\n"; output_exp(ival); output_exp(xval)
-            | Divide(ival, xval) -> fprintf fout "divide\n"; output_exp(ival); output_exp(xval)
-            | Minus(ival, xval) -> fprintf fout "minus\n"; output_exp(ival); output_exp(xval)
+            | Plus(ival, xval) ->
+              fprintf fout "plus\n"; output_exp(ival); output_exp(xval)
+            | Times(ival, xval) ->
+              fprintf fout "times\n"; output_exp(ival); output_exp(xval)
+            | Divide(ival, xval) ->
+              fprintf fout "divide\n"; output_exp(ival); output_exp(xval)
+            | Minus(ival, xval) ->
+              fprintf fout "minus\n"; output_exp(ival); output_exp(xval)
           in
           (* print_ast ast; *)
           (* printf "entering the topo\n"; *)
