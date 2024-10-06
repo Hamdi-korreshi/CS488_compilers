@@ -2,7 +2,7 @@
 OCAMLC = ocamlc
 
 TARGET = test
-SRC = pa2.ml
+SRC = main.ml
 SHELL := /bin/bash
 
 all:
@@ -16,3 +16,7 @@ simple:
 	$(OCAMLC) -o $(TARGET) $(SRC)
 	./cool --parse simple.cl
 	./$(TARGET) simple.cl-ast
+arth:
+	$(OCAMLC) -o $(TARGET) $(SRC)
+	./cool --parse arth.cl
+	./$(TARGET) arth.cl-ast
