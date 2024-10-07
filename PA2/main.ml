@@ -26,6 +26,16 @@ and exp_kind =
   | Block of exp list
   | Identifier of id
   | Case of exp * case list
+  | If of exp * exp * exp
+  | While of exp * exp
+  | Isvoid of exp
+  | Assign of id * exp
+  | Dynamic_Dispatch of exp * id * exp list
+  | Static_Dispatch of exp * id * exp list
+  | Self_Dispatch of id * exp list
+  | LT of exp * exp
+  | LE of exp * exp
+  | EQ of exp * exp
 open Printf
 
 type graph = {
@@ -405,23 +415,39 @@ let rec print_id (loc, name) =
 let print_cool_type (loc, tname) =
   Printf.printf "Cool_Type (location: %s, type: %s)\n" loc tname
 
-  let arth_error (ival, xval) =
-    let iloc = fst ival in
-    let itype = match snd ival with
-      | Integer _ -> "Int"
-      | Bool _ -> "Bool"
-      | String _ -> "String"
-      | _ -> "Other"
-    in
-    let xtype = match snd xval with
-      | Integer _ -> "Int"
-      | Bool _ -> "Bool"
-      | String _ -> "String"
-      | _ -> "Other"
-    in
-    Printf.printf "ERROR: %s: Type-Check: arithmetic on %s %s instead of Ints\n" iloc itype xtype;
-    exit 1
+let arth_error (ival, xval) =
+  let iloc = fst ival in
+  let itype = match snd ival with
+    | Integer _ -> "Int"
+    | Bool _ -> "Bool"
+    | String _ -> "String"
+    | _ -> "Other"
+  in
+  let xtype = match snd xval with
+    | Integer _ -> "Int"
+    | Bool _ -> "Bool"
+    | String _ -> "String"
+    | _ -> "Other"
+  in
+  Printf.printf "ERROR: %s: Type-Check: arithmetic on %s %s instead of Ints\n" iloc itype xtype;
+  exit 1
 
+let bool_error (ival, xval) =
+  let iloc = fst ival in
+  let itype = match snd ival with
+    | Integer _ -> "Int"
+    | Bool _ -> "Bool"
+    | String _ -> "String"
+    | _ -> "Other"
+  in
+  let xtype = match snd xval with
+    | Integer _ -> "Int"
+    | Bool _ -> "Bool"
+    | String _ -> "String"
+    | _ -> "Other"
+  in
+  Printf.printf "ERROR: %s: Type-Check: comparison between %s and %s\n" iloc itype xtype;
+  exit 1
 let rec print_exp (loc, exp_kind) =
   Printf.printf "Expression (location: %s)\n" loc;
   match exp_kind with
@@ -447,6 +473,18 @@ let rec print_exp (loc, exp_kind) =
   | Block ival ->
       printf "block\n";
       List.iter print_exp ival;
+  | Assign (var,rhs_exp) ->
+    print_id var;
+    print_exp rhs_exp;
+  | Isvoid void -> 
+    print_exp void;
+  | If (if_exp,then_exp,else_exp) ->
+    print_exp if_exp;
+    print_exp then_exp;
+    print_exp else_exp;
+  | While (loop,pool) ->
+    print_exp loop; 
+    print_exp pool;
   | Let(bindings, let_body) ->
     printf "let\n";
     List.iter (fun ((vloc,vname), (typeloc,typename), init_exps) ->
@@ -474,6 +512,46 @@ let rec print_exp (loc, exp_kind) =
   | New ((loc_ival, ival_name)) ->
       Printf.printf "new\n";
       Printf.printf "  New Object: %s\n" ival_name
+  | Dynamic_Dispatch (e,metho,args) ->
+    printf "Dynamic Dispatch:\n";
+    printf "  Exp : ";
+    print_exp e;
+    printf "\n";
+    printf "  Id : ";
+    print_id metho;
+    printf "\n";
+    printf "  Args :\n";
+    List.iter print_exp args
+  | Static_Dispatch (e,metho,args) ->
+    printf "Static Dispatch:\n";
+    printf "  Exp : ";
+    print_exp e;
+    printf "\n";
+    printf "  Id : ";
+    print_id metho;
+    printf "\n";
+    printf "  Args :\n";
+    List.iter print_exp args
+  | Self_Dispatch (metho,args) ->
+    printf "Self Dispatch:\n";
+    printf "  Id : ";
+    print_id metho;
+    printf "\n";
+    printf "  Args :\n";
+    List.iter print_exp args
+  | LT ((loc1, t1), (loc2, t2)) ->
+    Printf.printf "LT\n";
+    print_exp (loc1, t1);
+    print_exp (loc2, t2)
+  | LE ((loc1, t1), (loc2, t2)) ->
+    Printf.printf "LE\n";
+    print_exp (loc1, t1);
+    print_exp (loc2, t2)
+  | EQ ((loc1, t1), (loc2, t2)) ->
+      Printf.printf "EQ\n";
+      print_exp (loc1, t1);
+      print_exp (loc2, t2)
+
 
 let print_formal ((loc, fname), (ftloc, ftype)) =
   Printf.printf "Formal (name: %s, type: %s)\n" fname ftype
@@ -576,16 +654,68 @@ let main () = begin
           | "Bool" | "true" | "false" -> 
               let ival = read () in
               Bool(ival)
+                    | "lt" ->
+            (* Get the type of the datatype then push into bool_error *)
+            let ival = read_exp() in
+            let xval = read_exp() in 
+            (
+              match (snd ival, snd xval) with
+              | (Integer _, Integer _) ->
+                LT(ival, xval)
+              | (String _, String _) ->
+                LT(ival, xval)
+              | _ ->
+                bool_error (ival, xval)  )
+          | "le" ->
+            (* Get the type of the datatype then push into bool_error *)
+            let ival = read_exp() in
+            let xval = read_exp() in 
+            (
+              match (snd ival, snd xval) with
+              | (Integer _, Integer _) ->
+                LE(ival, xval)
+              | (String _, String _) ->
+                LE(ival, xval)
+              | _ ->
+                bool_error (ival, xval)  )
+          | "eq" ->
+            (* Get the type of the datatype then push into bool_error *)
+            let ival = read_exp() in
+            let xval = read_exp() in 
+            (
+              match (snd ival, snd xval) with
+              | (Integer _, Integer _) ->
+                EQ(ival, xval)
+              | (String _, String _) ->
+                EQ(ival, xval)
+              | _ ->
+                bool_error (ival, xval)  )
+          | "assign" ->
+            let var = read_id () in 
+            let rhs_exp = read_exp () in 
+            Assign(var,rhs_exp)
+          | "isvoid" -> 
+            let void = read_exp () in 
+            Isvoid(void)
+          | "if" ->
+            let if_exp = read_exp () in 
+            let then_exp = read_exp () in 
+            let else_exp = read_exp () in 
+            If(if_exp,then_exp,else_exp)
+          | "while" ->
+            let loop = read_exp () in 
+            let pool = read_exp () in 
+            While(loop,pool)
           | "block" ->
-              let amount_to_read = int_of_string(read ()) in
-              let rec read_block n acc =
-                if n <= 0 then List.rev acc
-                else (
-                  let expr = read_exp () in 
-                  read_block (n-1) (expr :: acc)
-                ) in 
-              let exp_list = read_block amount_to_read [] in
-              Block(exp_list)
+            let amount_to_read = int_of_string(read ()) in
+            let rec read_block n acc =
+              if n <= 0 then List.rev acc
+              else (
+                let expr = read_exp () in 
+                read_block (n-1) (expr :: acc)
+              ) in 
+            let exp_list = read_block amount_to_read [] in
+            Block(exp_list)
           | "case" ->
             let test_exp = read_exp () in 
             let read_case () = 
@@ -596,6 +726,20 @@ let main () = begin
             in 
             let case_list = read_list read_case in
             Case(test_exp,case_list)
+          | "dynamic_dispatch" ->
+            let e = read_exp () in
+            let metho = read_id () in 
+            let args = read_list read_exp in 
+            Dynamic_Dispatch(e,metho,args)
+          | "static_dispatch" ->
+            let e = read_exp () in
+            let metho = read_id () in 
+            let args = read_list read_exp in 
+            Static_Dispatch(e,metho,args)
+          | "self_dispatch" ->
+            let metho = read_id () in 
+            let args = read_list read_exp in 
+            Self_Dispatch(metho,args)
           | "let" ->
               let num_bindings = int_of_string (read ()) in
               let rec binding_list n acc =
@@ -654,9 +798,6 @@ let main () = begin
           | "new" -> (*have to chage this*)
             let ival = read_id() in
             New(ival)
-          | "self_dispatch" ->
-            let ival = read() in
-            String(ival)
           | "identifier" ->
             let ival = read_id () in
             Identifier(ival)
@@ -747,7 +888,26 @@ let main () = begin
               fprintf fout "identifier\n%s\n" name
             | New(ival) ->
               fprintf fout "new\n%s\n" (snd ival)
-            
+            | If (if_exp,then_exp,else_exp) ->
+              fprintf fout ""
+            | While (loop,pool) ->
+              fprintf fout ""
+            | Assign (var,rhs_exp) ->
+              fprintf fout ""
+            | Isvoid (void) ->
+              fprintf fout ""
+            | Dynamic_Dispatch(e,metho,args) -> 
+              fprintf fout ""
+            | Static_Dispatch(e,metho,args) -> 
+              fprintf fout ""
+            | Self_Dispatch(metho,args) -> 
+              fprintf fout ""
+            | LT(ival,xval) -> 
+              fprintf fout ""
+            | LE(ival,xval) -> 
+              fprintf fout ""
+            | EQ(ival,xval) -> 
+              fprintf fout ""
           in
           (* print_ast ast; *)
           (* printf "entering the topo\n"; *)

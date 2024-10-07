@@ -1,1 +1,1 @@
-6
+ERROR: 7: Type-Check: arithmetic on Other String instead of Ints

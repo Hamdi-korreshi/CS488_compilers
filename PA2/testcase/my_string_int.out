@@ -1,1 +1,1 @@
-5
+ERROR: 5: Type-Check: comparison between Int and String
