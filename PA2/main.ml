@@ -719,6 +719,35 @@ let main () = begin
               fprintf fout "divide\n"; output_exp(ival); output_exp(xval)
             | Minus(ival, xval) ->
               fprintf fout "minus\n"; output_exp(ival); output_exp(xval)
+              | Let(bindings, let_body) ->
+                fprintf fout "let\n";
+                List.iter (fun ((vloc, vname), (typeloc, typename), bExp) ->
+                  fprintf fout "%s %s\n" vname typename;
+                  (match bExp with
+                  | None -> fprintf fout "no_initializer\n"
+                  | Some init_exp -> output_exp init_exp
+                  )
+                ) bindings;
+                fprintf fout "in\n";
+                output_exp let_body
+            | Block(expr_list) ->
+              fprintf fout "block\n";
+              fprintf fout "%d\n" (List.length expr_list); 
+              List.iter output_exp expr_list
+            | Case(test_exp, case_list) ->
+              fprintf fout "case\n";
+              output_exp test_exp;
+              fprintf fout "%d\n" (List.length case_list);  
+              List.iter (fun ((vloc, vname), (typeloc, typename), case_exp) ->
+                fprintf fout "case_binding\n%s %s\n" vname typename;
+                output_exp case_exp
+              ) case_list
+            | Identifier(ival) ->
+              let (_, name) = ival in
+              fprintf fout "identifier\n%s\n" name
+            | New(ival) ->
+              fprintf fout "new\n%s\n" (snd ival)
+            
           in
           (* print_ast ast; *)
           (* printf "entering the topo\n"; *)
