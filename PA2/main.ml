@@ -124,7 +124,7 @@ let child_loop map child min_heap =
     ) in
     updated_map, min_heap
   ) (map, min_heap) child
-  
+
 let rec while_loop (map : graph) final min_heap count =
   (* Printf.printf "Entered while_loop with count: %d\n" count; *)
   if not (check_empty min_heap) then (
@@ -462,6 +462,15 @@ let rec print_exp (loc, exp_kind) =
       print_exp let_body
   | Identifier ival ->
     print_id ival
+  | Case (test_exp, case_list ) -> 
+    printf "First exp: ";
+    print_exp test_exp;
+    printf "\n";
+    List.iter (fun ((vloc,vname), (tloc, tname), rest_exp ) -> 
+      printf "  Case : %s : %s \n" vname tname;
+      printf "  Case_exp:\n";
+      print_exp rest_exp
+      ) case_list
   | New ((loc_ival, ival_name)) ->
       Printf.printf "new\n";
       Printf.printf "  New Object: %s\n" ival_name
@@ -579,9 +588,14 @@ let main () = begin
               Block(exp_list)
           | "case" ->
             let test_exp = read_exp () in 
-            
-            let rec read_case n acc = 
-
+            let read_case () = 
+              let case_var = read_id () in 
+              let case_type = read_id () in 
+              let case_exp = read_exp () in 
+              (case_var, case_type, case_exp)
+            in 
+            let case_list = read_list read_case in
+            Case(test_exp,case_list)
           | "let" ->
               let num_bindings = int_of_string (read ()) in
               let rec binding_list n acc =
