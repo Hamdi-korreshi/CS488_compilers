@@ -12,6 +12,7 @@ and feature =
   | Method of id * (formal list) * cool_type * exp
 and formal = id * cool_type
 and exp = loc * exp_kind
+and case = id * id * exp
 and exp_kind =
   | Integer of string (* doesn't need to be an Int until the next PA *)
   | Bool of string
@@ -20,7 +21,11 @@ and exp_kind =
   | Minus of exp * exp
   | Times of exp * exp
   | Divide of exp * exp
-  | Let of exp * exp * exp * (exp option)
+  | Let of (id * id * (exp option)) list * exp
+  | New of cool_type
+  | Block of exp list
+  | Identifier of id
+  | Case of exp * case list
 open Printf
 
 type graph = {
@@ -416,7 +421,7 @@ let print_cool_type (loc, tname) =
     in
     Printf.printf "ERROR: %s: Type-Check: arithmetic on %s %s instead of Ints\n" iloc itype xtype;
     exit 1
-  
+
 let rec print_exp (loc, exp_kind) =
   Printf.printf "Expression (location: %s)\n" loc;
   match exp_kind with
@@ -439,6 +444,27 @@ let rec print_exp (loc, exp_kind) =
     Printf.printf "divide\n";
     print_exp (loc1, t1);
     print_exp (loc2, t2)
+  | Block ival ->
+      printf "block\n";
+      List.iter print_exp ival;
+  | Let(bindings, let_body) ->
+    printf "let\n";
+    List.iter (fun ((vloc,vname), (typeloc,typename), init_exps) ->
+      printf " Bindings: %s: %s \n" vname typename;
+      (match init_exps with
+      | None -> printf " No init "
+      | Some init_exp ->
+        printf " Init:\n";
+        print_exp init_exp
+          )
+      ) bindings;
+      printf "in\n";
+      print_exp let_body
+  | Identifier ival ->
+    print_id ival
+  | New ((loc_ival, ival_name)) ->
+      Printf.printf "new\n";
+      Printf.printf "  New Object: %s\n" ival_name
 
 let print_formal ((loc, fname), (ftloc, ftype)) =
   Printf.printf "Formal (name: %s, type: %s)\n" fname ftype
@@ -497,7 +523,9 @@ let main () = begin
             Some(super)
             (* features =  inherited class features*)
             (* features PLUS= current class features*)
-          | x -> failwith ("cannot happen: " ^ x)
+          | x ->
+            print_id cname;
+            failwith ("cannot happen: " ^ x)
           in
           let features = read_list read_feature in 
           (cname, inherits, features)
@@ -519,7 +547,9 @@ let main () = begin
           let mtype = read_id () in
           let mbody = read_exp () in
           Method(mname, formals, mtype, mbody)
-        | x -> failwith ("cannot happen: " ^ x)
+        | x ->
+          printf "%s\n" fname;
+          failwith ("cannot happen: " ^ x)
 
       and read_formal () =
           let fname = read_id () in
@@ -538,18 +568,41 @@ let main () = begin
               let ival = read () in
               Bool(ival)
           | "block" ->
-              let ival = read () in
-              Integer(ival)
-          | "let" ->
-              let iloc = read () in
-              let init = read () in
-              (
-                match (init) with
-                | "let_binding_no_init" ->
-                  let attr = read () in
-                  let value  = read () in
+              let amount_to_read = int_of_string(read ()) in
+              let rec read_block n acc =
+                if n <= 0 then List.rev acc
+                else (
+                  let expr = read_exp () in 
+                  read_block (n-1) (expr :: acc)
+                ) in 
+              let exp_list = read_block amount_to_read [] in
+              Block(exp_list)
+          | "case" ->
+            let test_exp = read_exp () in 
+            
+            let rec read_case n acc = 
 
-              )
+          | "let" ->
+              let num_bindings = int_of_string (read ()) in
+              let rec binding_list n acc =
+                if n <= 0 then List.rev acc
+                else (
+                  let lbni = read () in 
+                  let let_var = read_id () in 
+                  let let_type = read_id () in 
+                  let binding = 
+                    match lbni with
+                    | "let_binding_no_init" -> (let_var, let_type, None)
+                    | "let_binding_init" ->
+                      let init_exp = read_exp () in 
+                      (let_var, let_type, Some init_exp)
+                    | _ -> failwith "binding failed, invalid let"
+                    in 
+                    binding_list (n-1) (binding :: acc)
+                ) in
+              let bindings = binding_list num_bindings [] in 
+              let let_body = read_exp () in
+              Let(bindings, let_body)
           | "plus" -> (* might have to change all of these*)
               let ival = read_exp() in
               let xval = read_exp() in (
@@ -585,15 +638,16 @@ let main () = begin
               | _ ->
                 arth_error (ival,xval) )
           | "new" -> (*have to chage this*)
-            let ival = read() in
-            String(ival)
+            let ival = read_id() in
+            New(ival)
           | "self_dispatch" ->
             let ival = read() in
             String(ival)
           | "identifier" ->
-            let ival = read() in
-            String(ival)
+            let ival = read_id () in
+            Identifier(ival)
           | x -> (* Fixme: do all of the others*)
+            printf "%s\n" eloc;
             failwith ("expression kind unhandled: " ^ x)
           in
           (eloc, ekind)

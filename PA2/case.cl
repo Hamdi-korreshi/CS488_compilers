@@ -1,6 +1,6 @@
 class Test {
   case_on_uninitialized(): Int {
-    let x: Test <- new Test in 
+    let x: Int <- 3 in 
     {
       case x of
         y: Test => 0;
@@ -11,7 +11,7 @@ class Test {
 };
 
 class Main inherits IO {
-
+  y : String;
     main(): Object {
         {
             out_string("bruh");

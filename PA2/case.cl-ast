@@ -50,7 +50,12 @@ Main
 inherits
 13
 IO
-1
+2
+attribute_no_init
+14
+y
+14
+String
 method
 15
 main
