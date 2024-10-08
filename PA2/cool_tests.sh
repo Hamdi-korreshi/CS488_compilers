@@ -7,44 +7,50 @@ if [ ! -d "$dir" ]; then
   exit 1
 fi
 
-# Compile the OCaml file (main.ml)
 ocamlc -o main main.ml
 if [ $? -ne 0 ]; then
   echo "Failed to compile main.ml"
   exit 1
 fi
 
-# Loop over all .cl files in the testcase directory
-for file in "$dir"/*.cl; do
-  filename="${file%.cl}"  # Remove the extension
-  base_filename=$(basename "$filename")  # Get the base filename without the directory
+failed_files=()
 
-  # Step 1: Run ./cool --parse to generate .cl-ast
+for file in "$dir"/*.cl; do
+  filename="${file%.cl}"
+  base_filename=$(basename "$filename")
+
   ./cool --parse "$file"
   if [ $? -ne 0 ]; then
     echo "Failed to parse $file"
     continue
   fi
 
-  # Step 2: Run ./cool and generate .out file
   ./cool "$file" > "$dir/${base_filename}.out"
   if [ $? -ne 0 ]; then
     echo "Failed to run ./cool on $file"
     continue
   fi
 
-  # Step 3: Run the OCaml program on the generated .cl-ast file
   ./main "$dir/${base_filename}.cl-ast" > "$dir/my_${base_filename}.out"
   if [ $? -ne 0 ]; then
     echo "Failed to run ./main on ${base_filename}.cl-ast"
     continue
   fi
 
-  # Step 4: Compare the outputs using diff
   diff "$dir/${base_filename}.out" "$dir/my_${base_filename}.out"
   if [ $? -ne 0 ]; then
     echo "Difference found for $file"
+    failed_files+=("$file")
   else
     echo "No differences for $file"
   fi
 done
+
+if [ ${#failed_files[@]} -ne 0 ]; then
+  echo -e "\nFiles with differences:"
+  for failed_file in "${failed_files[@]}"; do
+    echo "$failed_file"
+  done
+else
+  echo -e "\nAll files passed the diff check."
+fi

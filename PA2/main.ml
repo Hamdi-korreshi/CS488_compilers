@@ -36,6 +36,7 @@ and exp_kind =
   | LT of exp * exp
   | LE of exp * exp
   | EQ of exp * exp
+  | Negate of exp
 open Printf
 
 type graph = {
@@ -135,7 +136,14 @@ let child_loop map child min_heap =
     updated_map, min_heap
   ) (map, min_heap) child
 
-let rec while_loop (map : graph) final min_heap count =
+let base_classes = ["IO"; "Object"; "Int"; "Bool"; "String"]
+
+let rec find_cycle_path visited_map curr acc =
+  match StringMap.find_opt curr visited_map with
+  | Some parent when parent <> curr -> find_cycle_path visited_map parent (curr :: acc)
+  | _ -> acc
+
+let rec while_loop (map : graph) final min_heap count visited_map =
   (* Printf.printf "Entered while_loop with count: %d\n" count; *)
   if not (check_empty min_heap) then (
     (* Printf.printf "Min heap is not empty, proceeding...\n"; *)
@@ -159,12 +167,20 @@ let rec while_loop (map : graph) final min_heap count =
     let value = StringMap.find curr map.deps_map in
     (* Printf.printf "Dependencies of %s: [%s]\n" curr (String.concat ", " value); *)
 
+    let updated_visited_map = List.fold_left (fun acc child ->
+      if not (StringMap.mem child acc) then
+        StringMap.add child curr acc
+      else
+        acc
+    ) visited_map value in
+
     let map, min_heap = child_loop map value min_heap in
     (* Printf.printf "Finished child_loop for %s\n" curr; *)
-    while_loop map final min_heap (count + 1)
+    while_loop map final min_heap (count + 1) updated_visited_map 
   ) else if count < StringMap.cardinal map.in_deg then (
-    Printf.printf "Cycle detected in inheritance graph. Processed count: %d, Total classes: %d\n"
-      count (StringMap.cardinal map.in_deg);
+    let cycle_path = find_cycle_path visited_map (fst (StringMap.choose visited_map)) [] in
+    let cycle_string = String.concat " -> " cycle_path in
+    Printf.printf "ERROR: 0: Type-Check: inheritance cycle: %s\n" cycle_string;
     exit 1
   ) else (
     (* Printf.printf "Topological sort completed successfully.\n"; *)
@@ -219,7 +235,8 @@ let topSort ast =
   let graph = make_graph ast in
   let min_heap = find_zeros empty_q graph.in_deg in
   (* printf "looping\n"; *)
-  let sorted_classes = while_loop graph [] min_heap 0 in
+  let visited_map = StringMap.empty in
+  let sorted_classes = while_loop graph [] min_heap 0 visited_map in
   sorted_classes
 
 let print_sorted_classes sorted_classes =
@@ -452,7 +469,8 @@ let rec print_exp (loc, exp_kind) =
   Printf.printf "Expression (location: %s)\n" loc;
   match exp_kind with
   | Integer value -> Printf.printf "  Integer: %s\n" value
-  | Bool value -> Printf.printf "  Bool: %s\n" value
+  | Bool value -> 
+    Printf.printf "  Bool: %s\n" value
   | String value -> Printf.printf "  String: %s\n" value
   | Plus((loc1, t1), (loc2, t2)) ->
     Printf.printf "plus\n";
@@ -551,6 +569,9 @@ let rec print_exp (loc, exp_kind) =
       Printf.printf "EQ\n";
       print_exp (loc1, t1);
       print_exp (loc2, t2)
+  | Negate ((loc1, t1)) ->
+    Printf.printf "Negate\n";
+    print_exp (loc1, t1)
 
 
 let print_formal ((loc, fname), (ftloc, ftype)) =
@@ -654,7 +675,24 @@ let main () = begin
           | "Bool" | "true" | "false" -> 
               let ival = read () in
               Bool(ival)
-                    | "lt" ->
+          | "negate" ->
+            let ival = read_exp() in
+            (
+              match snd ival with
+              | (Integer _) ->
+                Negate(ival)
+              | _ ->
+                let iloc = fst ival in
+                let itype = match snd ival with
+                | Integer _ -> "Int"
+                | Bool _ -> "Bool"
+                | String _ -> "String"
+                | _ -> "Other"
+              in
+              Printf.printf "ERROR: %s: Type-Check: negate applied to type %s instead of Int\n" iloc itype;
+              exit 1
+              )
+          | "lt" ->
             (* Get the type of the datatype then push into bool_error *)
             let ival = read_exp() in
             let xval = read_exp() in 
@@ -851,7 +889,13 @@ let main () = begin
             match ekind with
             | Integer(ival) -> fprintf fout "integer\n%s\n" ival
             | String(ival) -> fprintf fout "string\n%s\n" ival
-            | Bool(ival) -> fprintf fout "bool\n%s\n" ival
+            | Bool(ival) ->  (
+              match ival with 
+              | "true" -> 
+                fprintf fout "bool\ntrue\n"
+              | "false" -> 
+                fprintf fout "bool\nfalse\n"
+              | _ ->  fprintf fout "")
             | Plus(ival, xval) ->
               fprintf fout "plus\n"; output_exp(ival); output_exp(xval)
             | Times(ival, xval) ->
@@ -907,6 +951,8 @@ let main () = begin
             | LE(ival,xval) -> 
               fprintf fout ""
             | EQ(ival,xval) -> 
+              fprintf fout ""
+            | Negate(ival,xval) -> 
               fprintf fout ""
           in
           (* print_ast ast; *)

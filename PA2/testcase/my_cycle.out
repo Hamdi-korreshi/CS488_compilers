@@ -1,1 +1,1 @@
-Cycle detected in inheritance graph. Processed count: 6, Total classes: 8
+ERROR: 0: Type-Check: inheritance cycle: A B 

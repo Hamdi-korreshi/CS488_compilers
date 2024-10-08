@@ -1,7 +1,7 @@
 # name of the compiler
 OCAMLC = ocamlc
 
-TARGET = test
+TARGET = main
 SRC = main.ml
 SHELL := /bin/bash
 
