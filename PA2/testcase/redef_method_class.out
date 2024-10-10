@@ -1,1 +1,0 @@
-ERROR: 8: Type-Check: class Dog redefines method speak and changes return type (from String to Int)

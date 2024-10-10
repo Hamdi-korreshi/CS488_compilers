@@ -1,6 +1,6 @@
 class MyClass {
     myfunc() : Int {
-        3
+      3
     };
 };
 

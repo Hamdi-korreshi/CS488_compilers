@@ -13,6 +13,6 @@ class Bruh2 {
 
     teehee(x:String): Int {3};
 };
-class Main{
+class Main inherits IO {
     main() : Object {3};
 };

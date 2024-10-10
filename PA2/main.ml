@@ -31,7 +31,7 @@ and exp_kind =
   | Isvoid of exp
   | Assign of id * exp
   | Dynamic_Dispatch of exp * id * exp list
-  | Static_Dispatch of exp * id * exp list
+  | Static_Dispatch of exp * cool_type *id * exp list
   | Self_Dispatch of id * exp list
   | LT of exp * exp
   | LE of exp * exp
@@ -118,32 +118,18 @@ let find_zeros min_heap map =
   ) map min_heap
 
 let child_loop map child min_heap =
-  (* Printf.printf "Starting child_loop with child list: [%s]\n" (String.concat ", " child); *)
   List.fold_left (fun (map, min_heap) node ->
-    (* Printf.printf "Processing node: %s\n" node; *)
     let new_deg = StringMap.find node map.in_deg in
-    (* Printf.printf "Current in-degree of node %s: %d\n" node new_deg; *)
-    let updated_deg = StringMap.add node (new_deg - 1) map.in_deg in
-    (* Printf.printf "Updated in-degree of node %s: %d\n" node (new_deg - 1); *)
-    let updated_map = { map with in_deg = updated_deg } in
-    let min_heap = if StringMap.find node updated_map.in_deg = 0 then (
-      (* Printf.printf "Node %s has 0 in-degree now, adding to min_heap\n" node; *)
-      append node min_heap
-    ) else (
-      (* Printf.printf "Node %s still has non-zero in-degree, skipping\n" node; *)
-      min_heap
-    ) in
-    updated_map, min_heap
+    let updated_deg = new_deg - 1 in
+    let updated_in_deg = StringMap.add node updated_deg map.in_deg in
+    let updated_map = { map with in_deg = updated_in_deg } in
+    let updated_min_heap = if updated_deg = 0 then append node min_heap else min_heap in
+    updated_map, updated_min_heap
   ) (map, min_heap) child
 
 let base_classes = ["IO"; "Object"; "Int"; "Bool"; "String"]
 
-let rec find_cycle_path visited_map curr acc =
-  match StringMap.find_opt curr visited_map with
-  | Some parent when parent <> curr -> find_cycle_path visited_map parent (curr :: acc)
-  | _ -> acc
-
-let rec while_loop (map : graph) final min_heap count visited_map =
+let rec while_loop (map : graph) final min_heap count  =
   (* Printf.printf "Entered while_loop with count: %d\n" count; *)
   if not (check_empty min_heap) then (
     (* Printf.printf "Min heap is not empty, proceeding...\n"; *)
@@ -167,96 +153,113 @@ let rec while_loop (map : graph) final min_heap count visited_map =
     let value = StringMap.find curr map.deps_map in
     (* Printf.printf "Dependencies of %s: [%s]\n" curr (String.concat ", " value); *)
 
-    let updated_visited_map = List.fold_left (fun acc child ->
-      if not (StringMap.mem child acc) then
-        StringMap.add child curr acc
-      else
-        acc
-    ) visited_map value in
 
     let map, min_heap = child_loop map value min_heap in
     (* Printf.printf "Finished child_loop for %s\n" curr; *)
-    while_loop map final min_heap (count + 1) updated_visited_map 
-  ) else if count < StringMap.cardinal map.in_deg then (
-    let cycle_path = find_cycle_path visited_map (fst (StringMap.choose visited_map)) [] in
-    let cycle_string = String.concat " -> " cycle_path in
-    Printf.printf "ERROR: 0: Type-Check: inheritance cycle: %s\n" cycle_string;
-    exit 1
+    while_loop map final min_heap (count + 1) 
   ) else (
     (* Printf.printf "Topological sort completed successfully.\n"; *)
+    (* print_maps map;
+    List.iter (fun cname -> Printf.printf "%s\n" cname) final; *)
     final
   )
 
-let make_graph ast =
-  let base_classes = [
-    ("0", "Object");
-    ("0", "IO");
-    ("0", "Int");
-    ("0", "Bool");
-    ("0", "String")
-  ] in
+  let base_classes = ["Object"; "IO"; "Int"; "Bool"; "String"]  (* Add other base classes as needed *)
 
-  (* Add base classes to the deps_map *)
-  let deps_map = List.fold_left (fun acc (_, cname) ->
-    StringMap.add cname [] acc
-  ) StringMap.empty base_classes in
-
-  (* Add user-defined classes to deps_map *)
-  let deps_map = List.fold_left (fun acc ((_, cname), inherits, _) ->
-    match inherits with
-    | Some (_, pname) -> 
-        let deps = match StringMap.find_opt cname acc with
-          | Some existing -> pname :: existing
-          | None -> [pname]
-        in
-        StringMap.add cname deps acc
-    | None -> 
-        StringMap.add cname [] acc (* Add class with no dependencies *)
-  ) deps_map ast in
-
-  (* Combine base classes and user-defined classes *)
-  let all_classes = List.map (fun (_, cname) -> cname) base_classes @ 
-                    List.map (fun ((_, cname), _, _) -> cname) ast in
-
-  (* Calculate the in-degree map *)
-  let in_deg = List.fold_left (fun acc cname ->
-    let count = List.fold_left (fun count ((_, child_name), inherits, _) ->
+  let make_graph ast =
+    (* Add base classes to the deps_map *)
+    let deps_map = List.fold_left (fun acc cname ->
+      StringMap.add cname [] acc  (* Base classes have no dependencies *)
+    ) StringMap.empty base_classes in
+  
+    (* Add user-defined classes to deps_map and in-degree map *)
+    let deps_map, in_deg = List.fold_left (fun (acc_map, acc_in_deg) ((_, cname), inherits, _) ->
       match inherits with
-      | Some (_, parent_name) -> if parent_name = cname then count + 1 else count
-      | None -> count
-    ) 0 ast in
-    StringMap.add cname count acc
-  ) StringMap.empty all_classes in
+      | Some (_, parent_name) ->
+          let deps = match StringMap.find_opt cname acc_map with
+            | Some existing -> parent_name :: existing
+            | None -> [parent_name]
+          in
+          let updated_map = StringMap.add cname deps acc_map in
+          let updated_in_deg = StringMap.update parent_name (function
+            | Some deg -> Some (deg + 1)
+            | None -> Some 1
+          ) acc_in_deg in
+          updated_map, updated_in_deg
+      | None ->
+          acc_map, acc_in_deg
+    ) (deps_map, StringMap.empty) ast in
+  
+    (* Initialize in-degrees of base classes to 0 *)
+    let in_deg = List.fold_left (fun acc cname ->
+      if StringMap.mem cname acc then acc
+      else StringMap.add cname 0 acc
+    ) in_deg base_classes in
+  
+    { deps_map; in_deg }
+  
 
-  { deps_map; in_deg }
+let rec dfs_cycle graph visited path curr =
+  if List.mem curr path then
+    let rec extract_cycle acc = function
+      | [] -> acc
+      | hd :: tl when hd = curr -> curr :: acc
+      | hd :: tl -> extract_cycle (hd :: acc) tl
+    in
+    let cycle_path = extract_cycle [] path in
+    printf "ERROR: 0: Type-Check: inheritance cycle: %s\n" (String.concat " " cycle_path);
+    exit 1
+  else if not (StringMap.mem curr visited) then
+    let visited = StringMap.add curr true visited in
+    let path = curr :: path in
+    let children = match StringMap.find_opt curr graph.deps_map with
+      | Some children -> children 
+      | None -> []
+    in 
+    List.iter (fun child -> dfs_cycle graph visited path child) children;
+    ()
+  
+
+let check_cycles graph =
+  let visited = StringMap.empty in
+  let path = [] in
+  StringMap.iter (fun node _ ->
+    if not (StringMap.mem node visited) then
+      dfs_cycle graph visited path node
+  ) graph.deps_map
 
 let topSort ast =
   (* printf "making graph\n"; *)
   let graph = make_graph ast in
   let min_heap = find_zeros empty_q graph.in_deg in
   (* printf "looping\n"; *)
-  let visited_map = StringMap.empty in
-  let sorted_classes = while_loop graph [] min_heap 0 visited_map in
+  print_maps graph;
+  let first = StringMap.min_binding graph.deps_map in
+  dfs_cycle graph StringMap.empty [] (fst first);
+  let sorted_classes = while_loop graph [] min_heap 0 in
   sorted_classes
 
 let print_sorted_classes sorted_classes =
   List.iter (fun cname -> Printf.printf "%s\n" cname) sorted_classes
 
-  let merge_features parent_features child_features =
-    let rec merge acc = function
-      | [] -> acc
-      | Attribute (id, typ, init) :: rest ->
-          if List.exists (function Attribute (id2, _, _) -> id = id2 | _ -> false) child_features then
-            merge acc rest
-          else
-            merge (Attribute (id, typ, init) :: acc) rest
-      | Method (id, formals, ret_typ, body) :: rest ->
-          if List.exists (function Method (id2, _, _, _) -> id = id2 | _ -> false) child_features then
-            merge acc rest
-          else
-            merge (Method (id, formals, ret_typ, body) :: acc) rest
-    in
-    merge child_features parent_features
+let merge_features parent_features child_features =
+  let rec merge acc = function
+    | [] -> acc
+    | Attribute (id, typ, init) :: rest ->
+        if List.exists (function Attribute (id2, _, _) -> id = id2 | _ -> false) child_features then
+          merge acc rest
+        else
+          merge (Attribute (id, typ, init) :: acc) rest
+    | Method (id, formals, ret_typ, body) :: rest ->
+        if List.exists (function Method (id2, _, _, _) -> id = id2 | _ -> false) child_features then
+          merge acc rest
+        else
+          merge (Method (id, formals, ret_typ, body) :: acc) rest
+  in
+  merge child_features parent_features
+  (* List.iter print_feature child_features;
+  let bruh =  in 
+  bruh *)
 
 let add_base_classes map =
   let base_classes = [
@@ -285,7 +288,7 @@ let propagate_features ast sorted_classes =
     match inherits with
     | Some (iloc, pname) -> (* Inherits from another class *)
         let (_, _, parent_features) = StringMap.find pname class_map in
-        let merged_features = merge_features parent_features features in
+        let merged_features = merge_features (List.rev parent_features) features in
         ((loc, cname), Some (iloc, pname), merged_features)
     | None -> (* No inheritance *)
         ((loc, cname), None, features)
@@ -313,7 +316,6 @@ let check_method_main ast =
   List.iter (fun ((cloc, cname), inherits, features) ->
     if cname = "Main" then (
       main_class_found := true;
-      
       List.iter (fun feature ->
         match feature with
         | Method ((mloc, mname), formals, mtype, mbody) when mname = "main" -> 
@@ -356,7 +358,7 @@ let check_dup_param ast =
             let seen_formals = Hashtbl.create 32 in
             List.iter (fun ((floc, fname), ftype) ->
                 if Hashtbl.mem seen_formals fname then (
-                  Printf.printf "ERROR: %s: Type-Check: Duplicate formal %s in method %s of class %s\n" floc fname mname cname;
+                  Printf.printf "ERROR: %s: Type-Check: class %s has method %s with duplicate formal parameter named %s\n" floc cname mname fname;
                   exit 1
                 ) else
                   Hashtbl.add seen_formals fname floc
@@ -438,16 +440,16 @@ let arth_error (ival, xval) =
     | Integer _ -> "Int"
     | Bool _ -> "Bool"
     | String _ -> "String"
-    | _ -> "Other"
+    | _ -> "Object"
   in
   let xtype = match snd xval with
     | Integer _ -> "Int"
     | Bool _ -> "Bool"
     | String _ -> "String"
-    | _ -> "Other"
+    | _ -> "Object"
   in
-  Printf.printf "ERROR: %s: Type-Check: arithmetic on %s %s instead of Ints\n" iloc itype xtype;
-  exit 1
+    Printf.printf "ERROR: %s: Type-Check: arithmetic on %s %s instead of Ints\n" iloc itype xtype;
+    exit 1
 
 let bool_error (ival, xval) =
   let iloc = fst ival in
@@ -455,16 +457,19 @@ let bool_error (ival, xval) =
     | Integer _ -> "Int"
     | Bool _ -> "Bool"
     | String _ -> "String"
-    | _ -> "Other"
+    | _ -> "Object"
   in
   let xtype = match snd xval with
     | Integer _ -> "Int"
     | Bool _ -> "Bool"
     | String _ -> "String"
-    | _ -> "Other"
+    | _ -> "Object"
   in
-  Printf.printf "ERROR: %s: Type-Check: comparison between %s and %s\n" iloc itype xtype;
-  exit 1
+  if itype = "Object" && xtype = "Object" then 
+    ()
+  else
+    Printf.printf "ERROR: %s: Type-Check: comparison between %s and %s\n" iloc itype xtype;
+    exit 1
 let rec print_exp (loc, exp_kind) =
   Printf.printf "Expression (location: %s)\n" loc;
   match exp_kind with
@@ -540,11 +545,13 @@ let rec print_exp (loc, exp_kind) =
     printf "\n";
     printf "  Args :\n";
     List.iter print_exp args
-  | Static_Dispatch (e,metho,args) ->
+  | Static_Dispatch (e,stat_type,metho,args) ->
     printf "Static Dispatch:\n";
     printf "  Exp : ";
     print_exp e;
     printf "\n";
+    printf "  Type : ";
+    print_cool_type stat_type;
     printf "  Id : ";
     print_id metho;
     printf "\n";
@@ -641,13 +648,13 @@ let main () = begin
       and read_feature () =
         match read() with
         | "attribute_no_init" ->
-        let fname = read_id () in
-        let ftype = read_id () in
-        Attribute (fname, ftype, None)
+          let fname = read_id () in
+          let ftype = read_id () in
+          Attribute (fname, ftype, None)
         | "attribute_init" ->
-            let fname = read_id () in
-            let ftype = read_id () in
-            let finit = read_exp () in
+          let fname = read_id () in
+          let ftype = read_id () in
+          let finit = read_exp () in
           Attribute(fname, ftype, (Some finit))
         | "method" ->
           let mname = read_id () in
@@ -672,9 +679,10 @@ let main () = begin
           | "string" ->
               let ival = read () in 
               String(ival)
-          | "Bool" | "true" | "false" -> 
-              let ival = read () in
-              Bool(ival)
+          | "true" ->
+              Bool("true")
+          | "false" ->
+              Bool("true")
           | "negate" ->
             let ival = read_exp() in
             (
@@ -687,10 +695,13 @@ let main () = begin
                 | Integer _ -> "Int"
                 | Bool _ -> "Bool"
                 | String _ -> "String"
-                | _ -> "Other"
+                | _ -> "Object"
               in
-              Printf.printf "ERROR: %s: Type-Check: negate applied to type %s instead of Int\n" iloc itype;
-              exit 1
+              if itype = "Object" then 
+                ()
+              else
+                Printf.printf "ERROR: %s: Type-Check: negate applied to type %s instead of Int\n" iloc itype;
+                exit 1
               )
           | "lt" ->
             (* Get the type of the datatype then push into bool_error *)
@@ -766,14 +777,18 @@ let main () = begin
             Case(test_exp,case_list)
           | "dynamic_dispatch" ->
             let e = read_exp () in
+            print_exp e;
             let metho = read_id () in 
+            print_id metho;
             let args = read_list read_exp in 
+            List.iter print_exp args;
             Dynamic_Dispatch(e,metho,args)
           | "static_dispatch" ->
             let e = read_exp () in
+            let t_static = read_id () in
             let metho = read_id () in 
             let args = read_list read_exp in 
-            Static_Dispatch(e,metho,args)
+            Static_Dispatch(e,t_static,metho,args)
           | "self_dispatch" ->
             let metho = read_id () in 
             let args = read_list read_exp in 
@@ -806,7 +821,8 @@ let main () = begin
               | (Integer _, Integer _) ->
                 Plus(ival, xval)
               | _ ->
-                arth_error (ival,xval) )
+                (* arth_error (ival,xval) ) *) 
+                Plus(ival, xval))
           | "minus" ->
               let ival = read_exp() in
               let xval = read_exp() in (
@@ -814,7 +830,8 @@ let main () = begin
               | (Integer _, Integer _) ->
                 Minus(ival, xval)
               | _ ->
-                arth_error (ival,xval) )
+                (* arth_error (ival,xval) ) *) 
+                Minus(ival, xval))
           | "times" -> 
               let ival = read_exp() in
               let xval = read_exp() in
@@ -823,7 +840,8 @@ let main () = begin
               | (Integer _, Integer _) ->
                 Times(ival, xval)
               | _ ->
-                arth_error (ival,xval) )
+                (* arth_error (ival,xval) ) *) 
+                Times(ival, xval) )
           | "divide" -> 
               let ival = read_exp() in
               let xval = read_exp() in
@@ -832,7 +850,8 @@ let main () = begin
               | (Integer _, Integer _) ->
                 Divide(ival, xval)
               | _ ->
-                arth_error (ival,xval) )
+                (* arth_error (ival,xval) ) *) 
+                Divide(ival, xval) )
           | "new" -> (*have to chage this*)
             let ival = read_id() in
             New(ival)
@@ -863,10 +882,14 @@ let main () = begin
           (*Look for Inheritance from Int
           Look for Inheritance from Undeclared class *)
           List.iter (fun ((cloc, cname), inherits, features) ->
+            match  cname with
+            | "String" | "Int" | "Bool" | "IO" -> 
+              printf "ERROR: %s: Type-Check: cannot redefine the class %s\n" cloc cname;
+            | x -> ();
             match inherits with
             | None -> ()
             | Some (iloc, iname) ->
-            if iname = "Int" || iname = "Bool" || iname = "String" then begin
+            if iname = "Int" || iname = "Bool" || iname = "String" || iname = "SELF_TYPE" then begin
               printf "ERROR: %s: Type-Check: class %s inherits from %s\n" iloc cname iname;
             exit 1
             end ;
@@ -875,15 +898,12 @@ let main () = begin
               exit 1
             end ;
           ) ast;
+          (* Type-check is supposed to be here*)
           (* DONE WITH ERROR CHECKING *)
-          
           (* Now we emit the CL-TYPE File *)
-          
           (* For PA4_C_ -- we just do the class map *)
-          
           let cname = (Filename.chop_extension fname) ^ ".cl-test" in 
           let fout = open_out cname in
-          
           let rec output_exp (eloc, ekind) =
             fprintf fout "%s\n" eloc ;
             match ekind with
@@ -931,7 +951,7 @@ let main () = begin
               let (_, name) = ival in
               fprintf fout "identifier\n%s\n" name
             | New(ival) ->
-              fprintf fout "new\n%s\n" (snd ival)
+              fprintf fout "new\n%s\n%s\n" (fst ival) (snd ival)
             | If (if_exp,then_exp,else_exp) ->
               fprintf fout ""
             | While (loop,pool) ->
@@ -942,7 +962,7 @@ let main () = begin
               fprintf fout ""
             | Dynamic_Dispatch(e,metho,args) -> 
               fprintf fout ""
-            | Static_Dispatch(e,metho,args) -> 
+            | Static_Dispatch(e,ftype,metho,args) -> 
               fprintf fout ""
             | Self_Dispatch(metho,args) -> 
               fprintf fout ""
@@ -955,7 +975,7 @@ let main () = begin
             | Negate(ival,xval) -> 
               fprintf fout ""
           in
-          (* print_ast ast; *)
+          print_ast ast;
           (* printf "entering the topo\n"; *)
           let sorted_classes = topSort ast in
           let updated_classes = propagate_features ast sorted_classes in
@@ -963,8 +983,8 @@ let main () = begin
             compare cname1 cname2
           ) updated_classes in
           let last_classes = List.sort compare sorted_classes in
-          (* print_ast last_ast; *)
-          (* print_sorted_classes last_classes; *)
+          print_ast last_ast;
+          print_sorted_classes last_classes;
           fprintf fout "class_map\n%d\n" (List.length all_classes) ;
           List.iter (fun cname ->
           (* name of class, # attrs, each attr=feature in turn *)

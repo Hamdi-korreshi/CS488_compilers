@@ -1,9 +1,9 @@
 class Main inherits IO {
 
     main(): Object {
-        {   
+        {
             
-            out_string("bruh");
+            out_string(3);
         }
     };
 };
