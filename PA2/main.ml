@@ -1,6 +1,108 @@
 (* Hamdi Korreshi and Tomasz Brauntsch
   PA2 Semantic Analyzer Checkpoint *)
+
+  (* TODO: Give this a look
+  * original_read_exp.ml has the previous structure of read_exp() 
+  * Only read_exp() was edited due to other areas just need modifications, e.g read_feature()
+  * Included struture and helper functions for (O)bject, (M)ethod, and (C)lass environments
+  * Refer to my discord msg from last night (10/10/2024) talking about what environment is responsible for
+  *)
+  
 module StringMap = Map.Make(String)
+
+
+type attribute = {
+  attr_name: string;
+  attr_type: string;
+}
+
+type _method = {
+  method_name: string;
+  return_type: string;
+  params: (string * string) list; (* list of (param_name, param_type) *)
+}
+
+type _class = {
+  class_name: string;
+  parent_class: string option;  (* Optional parent class for inheritance *)
+  attributes: attribute list;   (* List of attributes *)
+  methods: _method list;        (* List of methods *)
+}
+
+type class_env = _class StringMap.t
+
+(* Adding a new class *)
+let add_class (env: class_env) (cls: _class) : class_env =
+  StringMap.add cls.class_name cls env
+
+(* Looking up a class *)
+let lookup_class (env: class_env) (class_name: string) : _class option =
+  StringMap.find_opt class_name env
+
+
+
+(* Each class will have its own method environment *)
+type method_env = _method StringMap.t
+
+(* Adding a new method to a method environment *)
+let add_method (env: method_env) (meth: _method) : method_env =
+  StringMap.add meth.method_name meth env
+
+(* Looking up a method *)
+let lookup_method (env: method_env) (method_name: string) : _method option =
+  StringMap.find_opt method_name env
+
+
+
+type obj_env = string StringMap.t  (* Maps object names (identifiers) to their types *)
+
+(* Adding a new object (variable) to the object environment *)
+let add_object (env: obj_env) (obj_name: string) (obj_type: string) : obj_env =
+  StringMap.add obj_name obj_type env
+
+(* Looking up an object (variable) *)
+let lookup_object (env: obj_env) (obj_name: string) : string option =
+  StringMap.find_opt obj_name env
+
+(* Initialize a class environment with some built-in classes *)
+let initial_class_env : class_env =
+  let object_class = {
+    class_name = "Object";
+    parent_class = None;
+    attributes = [];
+    methods = [
+      {method_name = "abort"; return_type = "Object"; params = []};
+      {method_name = "type_name"; return_type = "String"; params = []};
+      {method_name = "copy"; return_type = "SELF_TYPE"; params = []};
+    ]
+  } in
+  let io_class = {
+    class_name = "IO";
+    parent_class = Some "Object";
+    attributes = [];
+    methods = [
+      {method_name = "out_string"; return_type = "SELF_TYPE"; params = [("x", "String")]};
+      {method_name = "in_string"; return_type = "String"; params = []};
+    ]
+  } in
+  StringMap.empty
+  |> StringMap.add "Object" object_class
+  |> StringMap.add "IO" io_class
+
+(* Adding classes, methods, and objects dynamically as you parse and type-check *)
+let new_class = {
+  class_name = "Example";
+  parent_class = Some "Object";
+  attributes = [{attr_name = "attr1"; attr_type = "Int"}];
+  methods = [{method_name = "example_method"; return_type = "Int"; params = [("x", "Int")]}];
+}
+
+let updated_class_env = add_class initial_class_env new_class
+
+(* In a method scope, we add objects to the obj_env *)
+let method_obj_env = add_object StringMap.empty "self" "Example"
+let method_obj_env = add_object method_obj_env "x" "Int"
+
 
 type cool_prog = cool_class list
 and loc = string
@@ -690,18 +792,7 @@ let main () = begin
               | (Integer _) ->
                 Negate(ival)
               | _ ->
-                let iloc = fst ival in
-                let itype = match snd ival with
-                | Integer _ -> "Int"
-                | Bool _ -> "Bool"
-                | String _ -> "String"
-                | _ -> "Object"
-              in
-              if itype = "Object" then 
-                ()
-              else
-                Printf.printf "ERROR: %s: Type-Check: negate applied to type %s instead of Int\n" iloc itype;
-                exit 1
+                Negate(ival)
               )
           | "lt" ->
             (* Get the type of the datatype then push into bool_error *)
@@ -714,7 +805,8 @@ let main () = begin
               | (String _, String _) ->
                 LT(ival, xval)
               | _ ->
-                bool_error (ival, xval)  )
+                (* bool_error *)
+                LT(ival, xval)  )
           | "le" ->
             (* Get the type of the datatype then push into bool_error *)
             let ival = read_exp() in
@@ -726,7 +818,8 @@ let main () = begin
               | (String _, String _) ->
                 LE(ival, xval)
               | _ ->
-                bool_error (ival, xval)  )
+                (* bool_error *)
+                LE(ival, xval)  )
           | "eq" ->
             (* Get the type of the datatype then push into bool_error *)
             let ival = read_exp() in
@@ -738,7 +831,8 @@ let main () = begin
               | (String _, String _) ->
                 EQ(ival, xval)
               | _ ->
-                bool_error (ival, xval)  )
+                (* bool_error *)
+                EQ(ival, xval)  )
           | "assign" ->
             let var = read_id () in 
             let rhs_exp = read_exp () in 
@@ -807,7 +901,7 @@ let main () = begin
                     | "let_binding_init" ->
                       let init_exp = read_exp () in 
                       (let_var, let_type, Some init_exp)
-                    | _ -> failwith "binding failed, invalid let"
+                    | _ -> (let_var, let_type, None) (* failwith "binding failed, invalid let" *)
                     in 
                     binding_list (n-1) (binding :: acc)
                 ) in
@@ -852,7 +946,7 @@ let main () = begin
               | _ ->
                 (* arth_error (ival,xval) ) *) 
                 Divide(ival, xval) )
-          | "new" -> (*have to chage this*)
+          | "new" -> (*have to change this*)
             let ival = read_id() in
             New(ival)
           | "identifier" ->
