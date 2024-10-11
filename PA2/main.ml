@@ -1,5 +1,5 @@
 (* Hamdi Korreshi and Tomasz Brauntsch
-  PA2 Semantic Analyzer FUll *)
+  PA2 Semantic Analyzer Checkpoint *)
 
   (* TODO: Give this a look
   * original_read_exp.ml has the previous structure of read_exp() 
@@ -10,20 +10,6 @@
   
 module StringMap = Map.Make(String)
 
-type static_type =  (*static type of cool expression*)
-  | Class of string
-  | SELF_TYPE of string
-
-let type_to_str t = match t with
-  | Class(x) -> x
-  | SELF_TYPE(x) -> "SELF_TYPE"
-
-let rec is_sub t1 t2 = 
-  match t1,t2 with 
-  | Class(x), Class(y) when x = y -> true
-  | Class(x), Class("Object") -> true 
-  | Class(x), Class(y) -> false (* treat later, check parent map *)
-  | _, _ -> false (*check the class notes*)
 
 type attribute = {
   attr_name: string;
@@ -53,6 +39,8 @@ let add_class (env: class_env) (cls: _class) : class_env =
 let lookup_class (env: class_env) (class_name: string) : _class option =
   StringMap.find_opt class_name env
 
+
+
 (* Each class will have its own method environment *)
 type method_env = _method StringMap.t
 
@@ -71,7 +59,6 @@ type obj_env = string StringMap.t  (* Maps object names (identifiers) to their t
 (* Adding a new object (variable) to the object environment *)
 let add_object (env: obj_env) (obj_name: string) (obj_type: string) : obj_env =
   StringMap.add obj_name obj_type env
-  (* some comment *)
 
 (* Looking up an object (variable) *)
 let lookup_object (env: obj_env) (obj_name: string) : string option =
@@ -95,12 +82,51 @@ let initial_class_env : class_env =
     attributes = [];
     methods = [
       {method_name = "out_string"; return_type = "SELF_TYPE"; params = [("x", "String")]};
+      {method_name = "out_int"; return_type = "SELF_TYPE"; params = [("x", "Int")]};
       {method_name = "in_string"; return_type = "String"; params = []};
+      {method_name = "in_int"; return_type = "Int"; params = []};
     ]
   } in
+  let int_class = {
+    (* default init is 0 / not void *)
+    class_name = "Int";
+    parent_class = None;
+    attributes = [];
+    methods = [];
+  } in
+  let string_class = {
+    (* default init is "" *)
+    class_name = "String";
+    parent_class = None;
+    attributes = [];
+    methods = [
+      {method_name = "length"; return_type = "Int"; params = []};  
+      {method_name = "concat"; return_type = "String"; params = [("s", "String")]};
+      {method_name = "substr"; return_type = "String"; params = [("i", "Int"); ("l", "Int")]};
+    ];
+  } in
+  let bool_class = {
+    (* default init is false / not void *)
+    class_name = "Bool";
+    parent_class = None;
+    attributes = [];
+    methods = [];
+  } in
+  (* let main_class = {
+    (* default init is false / not void *)
+    class_name = "Main";
+    parent_class = Some "Object";
+    attributes = [];
+    methods = [
+      {method_name = "main"; return_type = "Object"; params = []};
+    ];
+  } in *)
   StringMap.empty
   |> StringMap.add "Object" object_class
   |> StringMap.add "IO" io_class
+  |> StringMap.add "Int" int_class
+  |> StringMap.add "String" string_class
+  |> StringMap.add "Bool" bool_class
 
 (* Adding classes, methods, and objects dynamically as you parse and type-check *)
 let new_class = {
@@ -126,13 +152,7 @@ and feature =
   | Attribute of id * cool_type * (exp option)
   | Method of id * (formal list) * cool_type * exp
 and formal = id * cool_type
-and exp = 
-  {
-            loc:loc; 
-            exp_kind: exp_kind;
-    mutable static_type: static_type option; (*mutable means can change later on,
-    every exp has this mutable static type, will uncover using the typechecking*)
-  }
+and exp = loc * exp_kind
 and case = id * id * exp
 and exp_kind =
   | Integer of string (* doesn't need to be an Int until the next PA *)
@@ -975,11 +995,7 @@ let main () = begin
             printf "%s\n" eloc;
             failwith ("expression kind unhandled: " ^ x)
           in
-          {
-            loc = eloc;
-            exp_kind = ekind;
-            static_type = None;
-          }
+          (eloc, ekind)
           in
           let ast = read_cool_program () in
           close_in fin ;
@@ -1021,15 +1037,9 @@ let main () = begin
           (* For PA4_C_ -- we just do the class map *)
           let cname = (Filename.chop_extension fname) ^ ".cl-test" in 
           let fout = open_out cname in
-          let rec output_exp e = 
-            (* output the type for class map*)
-            fprintf fout "%s\n" e.loc ;
-            (match e.static_type with 
-            | None -> failwith "forgot to type with to typecheck"
-            | Some(Class(c)) -> fprintf fout "%s\n" c
-            | Some(SELF_TYPE(c)) -> failwith "SLEF_TYPE not fixed"
-            );
-            match e.exp_kind with
+          let rec output_exp (eloc, ekind) =
+            fprintf fout "%s\n" eloc ;
+            match ekind with
             | Integer(ival) -> fprintf fout "integer\n%s\n" ival
             | String(ival) -> fprintf fout "string\n%s\n" ival
             | Bool(ival) ->  (
