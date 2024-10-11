@@ -71,6 +71,7 @@ type obj_env = string StringMap.t  (* Maps object names (identifiers) to their t
 (* Adding a new object (variable) to the object environment *)
 let add_object (env: obj_env) (obj_name: string) (obj_type: string) : obj_env =
   StringMap.add obj_name obj_type env
+  (* some comment *)
 
 (* Looking up an object (variable) *)
 let lookup_object (env: obj_env) (obj_name: string) : string option =
