@@ -1,5 +1,5 @@
 (* Hamdi Korreshi and Tomasz Brauntsch
-  PA2 Semantic Analyzer Checkpoint *)
+  PA2 Semantic Analyzer FUll *)
 
   (* TODO: Give this a look
   * original_read_exp.ml has the previous structure of read_exp() 
@@ -10,6 +10,20 @@
   
 module StringMap = Map.Make(String)
 
+type static_type =  (*static type of cool expression*)
+  | Class of string
+  | SELF_TYPE of string
+
+let type_to_str t = match t with
+  | Class(x) -> x
+  | SELF_TYPE(x) -> "SELF_TYPE"
+
+let rec is_sub t1 t2 = 
+  match t1,t2 with 
+  | Class(x), Class(y) when x = y -> true
+  | Class(x), Class("Object") -> true 
+  | Class(x), Class(y) -> false (* treat later, check parent map *)
+  | _, _ -> false (*check the class notes*)
 
 type attribute = {
   attr_name: string;
@@ -38,8 +52,6 @@ let add_class (env: class_env) (cls: _class) : class_env =
 (* Looking up a class *)
 let lookup_class (env: class_env) (class_name: string) : _class option =
   StringMap.find_opt class_name env
-
-
 
 (* Each class will have its own method environment *)
 type method_env = _method StringMap.t
@@ -113,7 +125,13 @@ and feature =
   | Attribute of id * cool_type * (exp option)
   | Method of id * (formal list) * cool_type * exp
 and formal = id * cool_type
-and exp = loc * exp_kind
+and exp = 
+  {
+            loc:loc; 
+            exp_kind: exp_kind;
+    mutable static_type: static_type option; (*mutable means can change later on,
+    every exp has this mutable static type, will uncover using the typechecking*)
+  }
 and case = id * id * exp
 and exp_kind =
   | Integer of string (* doesn't need to be an Int until the next PA *)
@@ -956,7 +974,11 @@ let main () = begin
             printf "%s\n" eloc;
             failwith ("expression kind unhandled: " ^ x)
           in
-          (eloc, ekind)
+          {
+            loc = eloc;
+            exp_kind = ekind;
+            static_type = None;
+          }
           in
           let ast = read_cool_program () in
           close_in fin ;
@@ -998,9 +1020,15 @@ let main () = begin
           (* For PA4_C_ -- we just do the class map *)
           let cname = (Filename.chop_extension fname) ^ ".cl-test" in 
           let fout = open_out cname in
-          let rec output_exp (eloc, ekind) =
-            fprintf fout "%s\n" eloc ;
-            match ekind with
+          let rec output_exp e = 
+            (* output the type for class map*)
+            fprintf fout "%s\n" e.loc ;
+            (match e.static_type with 
+            | None -> failwith "forgot to type with to typecheck"
+            | Some(Class(c)) -> fprintf fout "%s\n" c
+            | Some(SELF_TYPE(c)) -> failwith "SLEF_TYPE not fixed"
+            );
+            match e.exp_kind with
             | Integer(ival) -> fprintf fout "integer\n%s\n" ival
             | String(ival) -> fprintf fout "string\n%s\n" ival
             | Bool(ival) ->  (
