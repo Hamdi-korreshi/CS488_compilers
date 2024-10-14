@@ -10,108 +10,131 @@
   
 module StringMap = Map.Make(String)
 
+<<<<<<< Updated upstream
+=======
+type static_type =  (*static type of cool expression*)
+  | Class of string (* "Int", or "Object" *)
+  | SELF_TYPE of string (* SELF_TYPE *)
 
-type attribute = {
-  attr_name: string;
-  attr_type: string;
-}
+let type_to_str t = match t with
+  | Class(x) -> x
+  | SELF_TYPE(x) -> "SELF_TYPE"
 
-type _method = {
-  method_name: string;
-  return_type: string;
-  params: (string * string) list; (* list of (param_name, param_type) *)
-}
+let rec is_subtype t1 t2 = 
+  match t1,t2 with 
+  | Class(x), Class(y) when x = y -> true
+  | Class(x), Class("Object") -> true 
+  | Class(x), Class(y) -> false (* treat later, check parent map *)
+  | _, _ -> false (*check the class notes*)
+>>>>>>> Stashed changes
 
-type _class = {
-  class_name: string;
-  parent_class: string option;  (* Optional parent class for inheritance *)
-  attributes: attribute list;   (* List of attributes *)
-  methods: _method list;        (* List of methods *)
-}
+  type obj_env = (string, static_type) Hashtbl.t  (* Maps object names (identifiers) to their types *)
+  let empty_object_env () = Hashtbl.create 255
+  
+  type attribute = {
+    attr_name: string;
+    attr_type: string;
+  }
+  
+  type method_ = {
+    method_name: string;
+    return_type: string;
+    params: (string * string) list; (* list of (param_name, param_type) *)
+  }
+  
+  type class_ = {
+    class_name: string;
+    parent_class: string option;  (* Optional parent class for inheritance *)
+    attributes: obj_env;   (* List of attributes *)
+  }
 
-type class_env = _class StringMap.t
+type class_env = class_ StringMap.t
 
 (* Adding a new class *)
-let add_class (env: class_env) (cls: _class) : class_env =
+let add_class (env: class_env) (cls: class_) : class_env =
   StringMap.add cls.class_name cls env
 
 (* Looking up a class *)
-let lookup_class (env: class_env) (class_name: string) : _class option =
+let lookup_class (env: class_env) (class_name: string) : class_ option =
   StringMap.find_opt class_name env
 
 
+<<<<<<< Updated upstream
 
+=======
+>>>>>>> Stashed changes
 (* Each class will have its own method environment *)
-type method_env = _method StringMap.t
+type method_env = method_ StringMap.t
 
 (* Adding a new method to a method environment *)
-let add_method (env: method_env) (meth: _method) : method_env =
-  StringMap.add meth.method_name meth env
+let add_method (env: method_env) (classname: string) (meth: method_) : method_env =
+  StringMap.add classname meth env
 
 (* Looking up a method *)
-let lookup_method (env: method_env) (method_name: string) : _method option =
+let lookup_method (env: method_env) (method_name: string) : method_ option =
   StringMap.find_opt method_name env
 
 
-
-type obj_env = string StringMap.t  (* Maps object names (identifiers) to their types *)
-
 (* Adding a new object (variable) to the object environment *)
-let add_object (env: obj_env) (obj_name: string) (obj_type: string) : obj_env =
-  StringMap.add obj_name obj_type env
+let add_object (env: obj_env) (obj_name: string) (obj_type: static_type) : obj_env =
+  Hashtbl.add env obj_name obj_type;
+  env
 
 (* Looking up an object (variable) *)
-let lookup_object (env: obj_env) (obj_name: string) : string option =
-  StringMap.find_opt obj_name env
+let lookup_object (env: obj_env) (obj_name: string) : static_type option =
+  Hashtbl.find_opt env obj_name
+
 
 (* Initialize a class environment with some built-in classes *)
+
+let initial_method_env : method_env =
+  let env = StringMap.empty in
+  (* Manually add methods for Object class *)
+  let env = add_method env "Object" {method_name = "abort"; return_type = "Object"; params = []} in
+  let env = add_method env "Object" {method_name = "type_name"; return_type = "String"; params = []} in
+  let env = add_method env "Object" {method_name = "copy"; return_type = "SELF_TYPE"; params = []} in
+  (* Manually add methods for IO class *)
+  let env = add_method env "IO" {method_name = "out_string"; return_type = "SELF_TYPE"; params = [("x", "String")]} in
+  let env = add_method env "IO" {method_name = "out_int"; return_type = "SELF_TYPE"; params = [("x", "Int")]} in
+  let env = add_method env "IO" {method_name = "in_string"; return_type = "String"; params = []} in
+  let env = add_method env "IO" {method_name = "in_int"; return_type = "Int"; params = []} in
+  (* Manually add methods for String class *)
+  let env = add_method env "String" {method_name = "length"; return_type = "Int"; params = []} in
+  let env = add_method env "String" {method_name = "concat"; return_type = "String"; params = [("s", "String")]} in
+  let env = add_method env "String" {method_name = "substr"; return_type = "String"; params = [("i", "Int"); ("l", "Int")]} in
+  env  (* Returns env *)
+
+
 let initial_class_env : class_env =
   let object_class = {
     class_name = "Object";
     parent_class = None;
-    attributes = [];
-    methods = [
-      {method_name = "abort"; return_type = "Object"; params = []};
-      {method_name = "type_name"; return_type = "String"; params = []};
-      {method_name = "copy"; return_type = "SELF_TYPE"; params = []};
-    ]
+    attributes = empty_object_env();
   } in
   let io_class = {
     class_name = "IO";
     parent_class = Some "Object";
-    attributes = [];
-    methods = [
-      {method_name = "out_string"; return_type = "SELF_TYPE"; params = [("x", "String")]};
-      {method_name = "out_int"; return_type = "SELF_TYPE"; params = [("x", "Int")]};
-      {method_name = "in_string"; return_type = "String"; params = []};
-      {method_name = "in_int"; return_type = "Int"; params = []};
-    ]
+    attributes = empty_object_env();
   } in
   let int_class = {
     (* default init is 0 / not void *)
     class_name = "Int";
     parent_class = None;
-    attributes = [];
-    methods = [];
+    attributes = empty_object_env();
+    (* methods = []; *)
   } in
   let string_class = {
     (* default init is "" *)
     class_name = "String";
     parent_class = None;
-    attributes = [];
-    methods = [
-      {method_name = "length"; return_type = "Int"; params = []};  
-      {method_name = "concat"; return_type = "String"; params = [("s", "String")]};
-      {method_name = "substr"; return_type = "String"; params = [("i", "Int"); ("l", "Int")]};
-    ];
+    attributes = empty_object_env();
   } in
   let bool_class = {
     (* default init is false / not void *)
     class_name = "Bool";
     parent_class = None;
-    attributes = [];
-    methods = [];
-  } in
+    attributes = empty_object_env();
+  } in 
   (* let main_class = {
     (* default init is false / not void *)
     class_name = "Main";
@@ -127,21 +150,36 @@ let initial_class_env : class_env =
   |> StringMap.add "Int" int_class
   |> StringMap.add "String" string_class
   |> StringMap.add "Bool" bool_class
-
+  
 (* Adding classes, methods, and objects dynamically as you parse and type-check *)
 let new_class = {
   class_name = "Example";
   parent_class = Some "Object";
-  attributes = [{attr_name = "attr1"; attr_type = "Int"}];
-  methods = [{method_name = "example_method"; return_type = "Int"; params = [("x", "Int")]}];
+  attributes = add_object (empty_object_env()) "attr1" (Class "Int");
+  (* attributes = [{attr_name = "attr1"; attr_type = "Int"}]; *)
+  (* methods = [{method_name = "example_method"; return_type = "Int"; params = [("x", "Int")]}]; *)
 }
 
 let updated_class_env = add_class initial_class_env new_class
 
 (* In a method scope, we add objects to the obj_env *)
-let method_obj_env = add_object StringMap.empty "self" "Example"
-let method_obj_env = add_object method_obj_env "x" "Int"
+let newObj : obj_env = empty_object_env ()
+let method_obj_env = add_object newObj "self" (Class "Int")
+let method_obj_env = add_object method_obj_env "x" (Class "Int")
 
+(* Print details of a single method *)
+let print_method m =
+  Printf.printf "Method: %s\nReturn Type: %s\nParameters:\n"
+    m.method_name m.return_type;
+  List.iter (fun (pname, ptype) -> Printf.printf "  %s: %s\n" pname ptype) m.params
+
+(* Print all methods in the method map *)
+let print_methods_map map =
+  StringMap.iter (fun key value ->
+    Printf.printf "Key: %s\n" key;
+    print_method value;
+    Printf.printf "\n"
+  ) map
 
 type cool_prog = cool_class list
 and loc = string
@@ -611,29 +649,29 @@ let bool_error (ival, xval) =
   else
     Printf.printf "ERROR: %s: Type-Check: comparison between %s and %s\n" iloc itype xtype;
     exit 1
-let rec print_exp (loc, exp_kind) =
-  Printf.printf "Expression (location: %s)\n" loc;
-  match exp_kind with
+let rec print_exp e =
+  Printf.printf "Expression (location: %s)\n" e.loc;
+  match e.exp_kind with
   | Integer value -> Printf.printf "  Integer: %s\n" value
   | Bool value -> 
     Printf.printf "  Bool: %s\n" value
   | String value -> Printf.printf "  String: %s\n" value
-  | Plus((loc1, t1), (loc2, t2)) ->
+  | Plus(val1,val2) ->
     Printf.printf "plus\n";
-    print_exp (loc1, t1);
-    print_exp (loc2, t2)
-  | Minus((loc1, t1), (loc2, t2)) ->
+    print_exp val1;
+    print_exp val2
+  | Minus(val1,val2) ->
     Printf.printf "minus\n";
-    print_exp (loc1, t1);
-    print_exp (loc2, t2)
-  | Times((loc1, t1), (loc2, t2)) ->
+    print_exp val1;
+    print_exp val2
+  | Times(val1,val2) ->
     Printf.printf "times\n";
-    print_exp (loc1, t1);
-    print_exp (loc2, t2)
-  | Divide((loc1, t1), (loc2, t2)) ->
+    print_exp val1;
+    print_exp val2
+  | Divide(val1,val2) ->
     Printf.printf "divide\n";
-    print_exp (loc1, t1);
-    print_exp (loc2, t2)
+    print_exp val1;
+    print_exp val2
   | Block ival ->
       printf "block\n";
       List.iter print_exp ival;
@@ -705,21 +743,21 @@ let rec print_exp (loc, exp_kind) =
     printf "\n";
     printf "  Args :\n";
     List.iter print_exp args
-  | LT ((loc1, t1), (loc2, t2)) ->
+  | LT (val1, val2) ->
     Printf.printf "LT\n";
-    print_exp (loc1, t1);
-    print_exp (loc2, t2)
-  | LE ((loc1, t1), (loc2, t2)) ->
+    print_exp val1;
+    print_exp val2
+  | LE (val1, val2) ->
     Printf.printf "LE\n";
-    print_exp (loc1, t1);
-    print_exp (loc2, t2)
-  | EQ ((loc1, t1), (loc2, t2)) ->
+    print_exp val1;
+    print_exp val2
+  | EQ (val1, val2) ->
       Printf.printf "EQ\n";
-      print_exp (loc1, t1);
-      print_exp (loc2, t2)
-  | Negate ((loc1, t1)) ->
+      print_exp val1;
+      print_exp val2
+  | Negate (val1) ->
     Printf.printf "Negate\n";
-    print_exp (loc1, t1)
+    print_exp val1
 
 
 let print_formal ((loc, fname), (ftloc, ftype)) =
@@ -826,52 +864,22 @@ let main () = begin
               Bool("true")
           | "negate" ->
             let ival = read_exp() in
-            (
-              match snd ival with
-              | (Integer _) ->
-                Negate(ival)
-              | _ ->
-                Negate(ival)
-              )
+            Negate(ival)
           | "lt" ->
             (* Get the type of the datatype then push into bool_error *)
             let ival = read_exp() in
             let xval = read_exp() in 
-            (
-              match (snd ival, snd xval) with
-              | (Integer _, Integer _) ->
-                LT(ival, xval)
-              | (String _, String _) ->
-                LT(ival, xval)
-              | _ ->
-                (* bool_error *)
-                LT(ival, xval)  )
+            LT(ival,xval)
           | "le" ->
             (* Get the type of the datatype then push into bool_error *)
             let ival = read_exp() in
             let xval = read_exp() in 
-            (
-              match (snd ival, snd xval) with
-              | (Integer _, Integer _) ->
-                LE(ival, xval)
-              | (String _, String _) ->
-                LE(ival, xval)
-              | _ ->
-                (* bool_error *)
-                LE(ival, xval)  )
+            LE(ival,xval)
           | "eq" ->
             (* Get the type of the datatype then push into bool_error *)
             let ival = read_exp() in
             let xval = read_exp() in 
-            (
-              match (snd ival, snd xval) with
-              | (Integer _, Integer _) ->
-                EQ(ival, xval)
-              | (String _, String _) ->
-                EQ(ival, xval)
-              | _ ->
-                (* bool_error *)
-                EQ(ival, xval)  )
+            EQ(ival,xval)
           | "assign" ->
             let var = read_id () in 
             let rhs_exp = read_exp () in 
@@ -949,42 +957,20 @@ let main () = begin
               Let(bindings, let_body)
           | "plus" -> (* might have to change all of these*)
               let ival = read_exp() in
-              let xval = read_exp() in (
-              match (snd ival, snd xval) with
-              | (Integer _, Integer _) ->
-                Plus(ival, xval)
-              | _ ->
-                (* arth_error (ival,xval) ) *) 
-                Plus(ival, xval))
+              let xval = read_exp() in
+              Plus(ival,xval)
           | "minus" ->
               let ival = read_exp() in
-              let xval = read_exp() in (
-              match (snd ival, snd xval) with
-              | (Integer _, Integer _) ->
-                Minus(ival, xval)
-              | _ ->
-                (* arth_error (ival,xval) ) *) 
-                Minus(ival, xval))
+              let xval = read_exp() in
+              Minus(ival,xval)
           | "times" -> 
               let ival = read_exp() in
               let xval = read_exp() in
-              (
-              match (snd ival, snd xval) with
-              | (Integer _, Integer _) ->
-                Times(ival, xval)
-              | _ ->
-                (* arth_error (ival,xval) ) *) 
-                Times(ival, xval) )
+              Times(ival,xval)
           | "divide" -> 
               let ival = read_exp() in
               let xval = read_exp() in
-              (
-              match (snd ival, snd xval) with
-              | (Integer _, Integer _) ->
-                Divide(ival, xval)
-              | _ ->
-                (* arth_error (ival,xval) ) *) 
-                Divide(ival, xval) )
+              Divide(ival,xval)
           | "new" -> (*have to change this*)
             let ival = read_id() in
             New(ival)
@@ -1011,6 +997,8 @@ let main () = begin
           check_method_main ast;
           check_return_type ast all_classes;
           check_dup_param ast;
+
+
           (* THEME IN PA4 -- you should make internal data structures to hold helper information so that you can do the checks more easily *)
           (*Look for Inheritance from Int
           Look for Inheritance from Undeclared class *)
@@ -1033,6 +1021,83 @@ let main () = begin
           ) ast;
           (* Type-check is supposed to be here*)
           (* DONE WITH ERROR CHECKING *)
+
+          (* This is the time to do experession typecjhking. This is the heart of PA4. *)
+          (* We want to iterate over every lcass
+            then over every featres
+              then typecheck the expression in that feature.
+            We implement out rexpression typechking procedure by 
+            reading the typing rules from the CRM or the class notes  
+
+            Every "line" i na typing rule corresponds to a line in your
+            typechecing code.
+          *)
+          let rec typecheck (o : obj_env)  (m : method_env) (c : class_env) (* FIXME: M C *) (exp : exp) : static_type =
+            (* O,M,C e0 : t0)  in the typecheck, make a recursive call *)
+            let static_type = match exp.exp_kind with
+              | Integer(i) -> (Class "Int")
+              | Plus (e1, e2) -> 
+                let t1 = typecheck o m c e1 in
+                if t1 <> (Class "Int") then begin
+                  printf "ERROR: %s: Type-Check: arithmetic on %s %s instead of Ints\n" exp.loc (type_to_str t1); 
+                  exit 1;
+                end ; 
+                let t2 = typecheck o m c e2 in
+                if t2 <> (Class "Int") then begin
+                  printf "ERROR: %s: Type-Check: Adding %s instead of Int\n" exp.loc (type_to_str t2); 
+                  exit 1;
+                end ;
+                (Class "Int");
+
+              | Identifier(vloc, vname) -> 
+                if Hashtbl.mem o vname then (* mem = membership check = returns a boolean *)
+                  Hashtbl.find o vname (* Does the actual lookup *)
+                else begin
+                  printf "ERROR: %s: Type-Check: undeclared variable %s\n" vloc vname; 
+                  exit 1;
+                end
+
+              | Let(bind_list, let_body) ->
+                match bind_list with
+                | [] -> 
+                  let letbodyType = typecheck o m c let_body in
+                  letbodyType
+                | ((vloc, vname), (typeloc, typename), bExp) :: tail ->
+                o = add_object o vname (Class typename); (* FIXME: SELF_TYPE? *)
+                (* We typecheck the let body with the bound variable added
+                to the object environment
+                 *)
+                let body_type = typecheck o m c let_body in 
+                Hashtbl.remove o vname;
+                body_type
+            in
+
+            exp.static_type <- Some(static_type); (* recall: Noen => gaven't done it yet, so Some means "we did it"*)
+            static_type 
+          in
+
+          
+          (* Now we iterate over every class and typecheck all the features *)
+          List.iter (fun ((cloc,cname), inherits, features) ->
+            List.iter (fun feat ->
+              match feat with
+              | Attribute((nameloc,name), (dtloc, declared_type), Some(init_exp)) -> (* x : Int <- 5 + 3 *) 
+              let o = empty_object_env () in (* This is wrong *)
+              (* Want to add features even inherits, into the object environent before typechecking  *)
+              let init_type = typecheck o initial_method_env updated_class_env init_exp in
+              if is_subtype init_type (Class declared_type) then
+                ()
+              else begin
+                printf "ERROR: %s: Type-Check: %s does not conform to %s in initialized attribute\n" nameloc (type_to_str init_type) declared_type;
+                exit 1;
+              end
+              (* | Method -> ()  FIX ME  *)
+              | _ -> () (* Include  other options *)
+              ) features;
+          ) ast;
+
+          (* print_methods_map initial_method_env; *)
+
           (* Now we emit the CL-TYPE File *)
           (* For PA4_C_ -- we just do the class map *)
           let cname = (Filename.chop_extension fname) ^ ".cl-test" in 
@@ -1105,7 +1170,7 @@ let main () = begin
               fprintf fout ""
             | EQ(ival,xval) -> 
               fprintf fout ""
-            | Negate(ival,xval) -> 
+            | Negate(ival) -> 
               fprintf fout ""
           in
           print_ast ast;
