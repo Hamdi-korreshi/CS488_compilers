@@ -1,0 +1,44 @@
+ocamlc -o test ../PA2/main.ml
+./cool --parse badoverridebuiltin.cl
+./cool --class-map badoverridebuiltin.cl
+ERROR: 5: Type-Check: class Child redefines method f and changes return type (from Int to String)
+./test badoverridebuiltin.cl-ast
+ocamlc -o test ../PA2/main.ml
+./cool --parse cycle.cl
+./cool --class-map cycle.cl
+ERROR: 0: Type-Check: inheritance cycle: One Two 
+./test cycle.cl-ast
+ocamlc -o test ../PA2/main.ml
+./cool --parse objectcheck.cl
+./cool --class-map objectcheck.cl
+./test objectcheck.cl-ast
+ocamlc -o test ../PA2/main.ml
+./cool --parse redefobj.cl
+./cool --class-map redefobj.cl
+ERROR: 5: Type-Check: class B redefines attribute x
+./test redefobj.cl-ast
+ocamlc -o test ../PA2/main.ml
+./cool --parse rettypedne.cl
+./cool --class-map rettypedne.cl
+ERROR: 11: Type-Check: class Main has attribute x with unknown type Somerettype
+./test rettypedne.cl-ast
+ocamlc -o test ../PA2/main.ml
+./cool --parse selfinformparam.cl
+./cool --class-map selfinformparam.cl
+ERROR: 2: Type-Check: class A has method myfunc with formal parameter named self
+./test selfinformparam.cl-ast
+ocamlc -o test ../PA2/main.ml
+./cool --parse selftypeparam.cl
+./cool --class-map selftypeparam.cl
+ERROR: 2: Type-Check: class A has method myfunc with formal parameter of unknown type B
+./test selftypeparam.cl-ast
+ocamlc -o test ../PA2/main.ml
+./cool --parse selftyperedef.cl
+./cool --class-map selftyperedef.cl
+ERROR: 1: Type-Check: class named SELF_TYPE
+./test selftyperedef.cl-ast
+ocamlc -o test ../PA2/main.ml
+./cool --parse sigchange.cl
+./cool --class-map sigchange.cl
+ERROR: 8: Type-Check: class B redefines method myfunc and changes return type (from Int to String)
+./test sigchange.cl-ast
