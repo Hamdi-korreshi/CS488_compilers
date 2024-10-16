@@ -1024,8 +1024,8 @@ let main () = begin
             (* output the type for class map*)
             fprintf fout "%s\n" e.loc ;
             (match e.static_type with 
-            | None -> failwith "forgot to type with to typecheck"
-            | Some(Class(c)) -> fprintf fout "%s\n" c
+            | None -> failwith "forgot to type with to typecheck";
+            | Some(Class(c)) -> fprintf fout "%s\n" c;
             | Some(SELF_TYPE(c)) -> failwith "SLEF_TYPE not fixed"
             );
             match e.exp_kind with

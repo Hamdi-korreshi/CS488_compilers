@@ -175,28 +175,8 @@ let print_ast ast =
 
 let base_classes = ["IO"; "Object"; "Int"; "Bool"; "String"]
 
-let rec dfs_cycle graph visited path curr =
-  if List.mem curr path then
-    let rec extract_cycle acc = function
-      | [] -> acc
-      | hd :: tl when hd = curr -> curr :: acc
-      | hd :: tl -> extract_cycle (hd :: acc) tl
-    in
-    let cycle_path = extract_cycle [] path in
-    printf "ERROR: 0: Type-Check: inheritance cycle: %s\n" (String.concat " " cycle_path);
-    exit 1
-  else if not (StringMap.mem curr visited) then
-    let visited = StringMap.add curr true visited in
-    let path = curr :: path in
-    let children = match StringMap.find_opt curr graph.deps_map with
-      | Some children -> children 
-      | None -> []
-    in 
-    List.iter (fun child -> dfs_cycle graph visited path child) children;
-    ()
-
-  let print_sorted_classes sorted_classes =
-    List.iter (fun cname -> Printf.printf "%s\n" cname) sorted_classes
+let print_sorted_classes sorted_classes =
+  List.iter (fun cname -> Printf.printf "%s\n" cname) sorted_classes
 
 let build_graph ast = 
   let graph = Hashtbl.create 32 in 
@@ -238,20 +218,50 @@ let append_and_sort_classes sorted_class_names =
   ) sorted_class_names base_classes in
   List.sort String.compare all_classes
 
+let rec dfs_cycle graph visited path curr =
+  if List.mem curr path then
+    let rec extract_cycle acc = function
+      | [] -> acc
+      | hd :: tl when hd = curr -> curr :: acc
+      | hd :: tl -> extract_cycle (hd :: acc) tl
+    in
+    let cycle_path = extract_cycle [] path in
+    printf "ERROR: 0: Type-Check: inheritance cycle: %s\n" (String.concat " " (List.rev cycle_path));
+    exit 1
+  else if not (Hashtbl.mem visited curr) then
+    Hashtbl.add visited curr true;
+    let path = curr :: path in
+    let children = match Hashtbl.find_opt graph curr with
+      | Some children -> children
+      | None -> []
+    in
+    List.iter (fun child -> dfs_cycle graph visited path child) children;
+    ()
+
+let check_cycles graph =
+  let visited = Hashtbl.create 10 in
+  let path = [] in
+  Hashtbl.iter (fun node _ ->
+    if not (Hashtbl.mem visited node) then
+      dfs_cycle graph visited path node
+  ) graph
+
+let rec extract_cycle acc curr = function
+  | [] -> acc  
+  | hd :: tl when hd = curr -> curr :: acc
+  | hd :: tl -> extract_cycle (hd :: acc) curr tl
+
 let topSort graph ast = 
   let visited = Hashtbl.create 10 in 
   let rec_stack = Hashtbl.create 10 in 
-  let result = ref [] in   
-  let rec visit node =
-    printf "%s\n" node;
-    if Hashtbl.mem rec_stack node then 
-      failwith ("Cycle detected " ^ node);
+  let result = ref [] in
+  let rec visit path node =
     if not (Hashtbl.mem visited node ) then (
       Hashtbl.add visited node true;
       Hashtbl.add rec_stack node true;
 
       let children = try Hashtbl.find graph node with Not_found -> [] in 
-      List.iter visit children;
+      List.iter (visit (node :: path)) children;
 
       Hashtbl.remove rec_stack node;
       result := node :: !result;
@@ -259,7 +269,7 @@ let topSort graph ast =
   in
   let nodes = Hashtbl.fold (fun node _ acc -> node :: acc) graph [] in 
   let sorted_nodes = List.sort String.compare nodes in 
-  List.iter (fun node -> if not (Hashtbl.mem visited node) then visit node) sorted_nodes;
+  List.iter (fun node -> if not (Hashtbl.mem visited node) then visit [] node) sorted_nodes;
   List.iter (fun node -> printf "%s -> " node) sorted_nodes;
   printf "ended \n";
   let topSorted = List.rev !result in
@@ -288,6 +298,7 @@ let mod_ast graph feat_table ast =
 
 let prep ast = 
   let (graph, feat_table) = build_graph ast in 
+  check_cycles graph;
   let new_ast, classes = mod_ast graph feat_table ast in
   print_ast new_ast;
   printf "Top sort done\n";
