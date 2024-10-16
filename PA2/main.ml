@@ -775,7 +775,7 @@ let main () = begin
           let fname = read_id () in
           let ftype = read_id () in
           let finit = read_exp () in
-          Attribute(fname, ftype, (Some finit))
+          Attribute(fname, ftype, finit)
         | "method" ->
           let mname = read_id () in
           let formals = read_list read_formal in
