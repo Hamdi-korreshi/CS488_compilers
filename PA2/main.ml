@@ -73,38 +73,6 @@ and exp_kind =
   | Not of exp
 open Printf
 
-type graph = {
-  deps_map : string list StringMap.t;
-  in_deg : int StringMap.t;
-}
-
-type 'a func_queue = { front: 'a list; back: 'a list}
-
-let empty_q = {
-  front = [];
-  back = [];
-}
-
-let append value que = {
-  que with back = value :: que.back
-}
-
-let check_empty = function
-  | { front = []; back = []} -> true
-  | _ -> false
-
-let deque = function 
-  | { front = []; back = []} -> None
-  | { front = x :: xs; back } -> Some (x, { front = xs; back = back })
-  | { front = []; back } ->
-      let front_rev = List.rev back in
-      Some (List.hd front_rev, { front = List.tl front_rev; back = [] })
-
-let sort_queue que =
-  let combined = que.front @ List.rev que.back in
-  let sorted = List.sort compare combined in
-  { front = sorted; back = [] }
-
 let extract_class_name ((_, cname), _, _) = cname
 
 let print_feature feature =
