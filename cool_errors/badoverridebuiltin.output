@@ -1,1 +1,0 @@
-ERROR: 5: Type-Check: class Child redefines method f and changes return type (from Int to String)
