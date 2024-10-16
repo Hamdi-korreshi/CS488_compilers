@@ -1094,7 +1094,7 @@ let main () = begin
               fprintf fout ""
             | EQ(ival,xval) -> 
               fprintf fout ""
-            | Negate(ival,xval) -> 
+            | Negate(ival) -> 
               fprintf fout ""
           in
           print_ast ast;
