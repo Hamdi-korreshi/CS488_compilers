@@ -25,96 +25,9 @@ let rec is_sub t1 t2 =
   | Class(x), Class(y) -> false (* treat later, check parent map *)
   | _, _ -> false (*check the class notes*)
 
-type attribute = {
-  attr_name: string;
-  attr_type: string;
-}
+type obj_env = (string, static_type) Hashtbl.t
 
-type _method = {
-  method_name: string;
-  return_type: string;
-  params: (string * string) list; (* list of (param_name, param_type) *)
-}
-
-type _class = {
-  class_name: string;
-  parent_class: string option;  (* Optional parent class for inheritance *)
-  attributes: attribute list;   (* List of attributes *)
-  methods: _method list;        (* List of methods *)
-}
-
-type class_env = _class StringMap.t
-
-(* Adding a new class *)
-let add_class (env: class_env) (cls: _class) : class_env =
-  StringMap.add cls.class_name cls env
-
-(* Looking up a class *)
-let lookup_class (env: class_env) (class_name: string) : _class option =
-  StringMap.find_opt class_name env
-
-(* Each class will have its own method environment *)
-type method_env = _method StringMap.t
-
-(* Adding a new method to a method environment *)
-let add_method (env: method_env) (meth: _method) : method_env =
-  StringMap.add meth.method_name meth env
-
-(* Looking up a method *)
-let lookup_method (env: method_env) (method_name: string) : _method option =
-  StringMap.find_opt method_name env
-
-
-
-type obj_env = string StringMap.t  (* Maps object names (identifiers) to their types *)
-
-(* Adding a new object (variable) to the object environment *)
-let add_object (env: obj_env) (obj_name: string) (obj_type: string) : obj_env =
-  StringMap.add obj_name obj_type env
-
-(* Looking up an object (variable) *)
-let lookup_object (env: obj_env) (obj_name: string) : string option =
-  StringMap.find_opt obj_name env
-
-(* Initialize a class environment with some built-in classes *)
-let initial_class_env : class_env =
-  let object_class = {
-    class_name = "Object";
-    parent_class = None;
-    attributes = [];
-    methods = [
-      {method_name = "abort"; return_type = "Object"; params = []};
-      {method_name = "type_name"; return_type = "String"; params = []};
-      {method_name = "copy"; return_type = "SELF_TYPE"; params = []};
-    ]
-  } in
-  let io_class = {
-    class_name = "IO";
-    parent_class = Some "Object";
-    attributes = [];
-    methods = [
-      {method_name = "out_string"; return_type = "SELF_TYPE"; params = [("x", "String")]};
-      {method_name = "in_string"; return_type = "String"; params = []};
-    ]
-  } in
-  StringMap.empty
-  |> StringMap.add "Object" object_class
-  |> StringMap.add "IO" io_class
-
-(* Adding classes, methods, and objects dynamically as you parse and type-check *)
-let new_class = {
-  class_name = "Example";
-  parent_class = Some "Object";
-  attributes = [{attr_name = "attr1"; attr_type = "Int"}];
-  methods = [{method_name = "example_method"; return_type = "Int"; params = [("x", "Int")]}];
-}
-
-let updated_class_env = add_class initial_class_env new_class
-
-(* In a method scope, we add objects to the obj_env *)
-let method_obj_env = add_object StringMap.empty "self" "Example"
-let method_obj_env = add_object method_obj_env "x" "Int"
-
+let empty_obj_env () = Hashtbl.create 255 
 
 type cool_prog = cool_class list
 and loc = string
@@ -900,6 +813,68 @@ let main () = begin
               printf "ERROR: %s: Type-Check: inheriting from undefined class %s\n" iloc iname;
               exit 1
             end ;
+          ) ast;
+
+          let rec typecheck (o: obj_env) (exp: exp) : static_type = 
+            let static_type = match exp.exp_kind with 
+            | Integer(i) -> (Class "Int")
+            | Plus(e1,e2) -> 
+              (*
+                O |- e1: int  [1]
+                O |- e2: int  [2]
+                -----------
+                O |- e1 + e2 : Int  [3]
+              Recal |- do typechecklet static_type = 
+              *)
+              (*[1]*)
+              let t1 = typecheck o e1 in 
+              if t1 <> (Class "Int") then begin
+                printf "ERROR: %s: Type-Check: arithmetic on %s instead of Ints\n" exp.loc (type_to_str t1);
+                exit 1;
+              end;
+              (* [2] *)
+              let t2 = typecheck o e1 in 
+              if t2 <> (Class "Int") then begin
+                printf "ERROR: %s: Type-Check: arithmetic on %s instead of Ints\n" exp.loc (type_to_str t1);
+                exit 1
+              end;
+              (* [3] *)
+              (Class "Int")
+            | Identifier((vloc,vname)) -> 
+              if Hashtbl.mem o vname then (*bool check in ocaml of finding the value*)
+                Hashtbl.find o vname
+              else begin
+                printf "ERROR: %s: Type-Check: undeclared var\n" vloc;
+                exit 1
+              end;
+            | Let(binding_list,let_body) -> 
+              (match binding_list with 
+              | [] -> 
+                typecheck o let_body;
+              | ((vloc, vname), (typeloc,typename), let_exp) :: tail -> (*need the tail otherwise it'll crash since let_body is a list you need to indivual
+                typecheck each expression *)
+                typecheck o let_body)
+            in
+            exp.static_type <- Some(static_type);
+            static_type
+          in
+          (*type check time*)
+          List.iter (fun ((cloc,cname), inherits, feats) ->
+            List.iter (fun feat -> 
+              match feat with 
+                | Attribute((nameloc,name),(dtloc,declared_type),Some(init_exp)) -> (* x: int <- 5 + 3*)
+                  let o = empty_obj_env () in
+                  let init_type = typecheck o init_exp in
+                  printf "%s init\n" (type_to_str init_type);
+                  if is_sub init_type (Class declared_type) then
+                    ()
+                  else begin
+                  printf "ERROR: %s: Type-Check: init for %s was %s not %s\n"
+                  nameloc name (type_to_str init_type) declared_type;
+                  exit 1
+                  end;
+                | _ -> () (*fix me*)
+                ) feats;
           ) ast;
           (* Type-check is supposed to be here*)
           (* DONE WITH ERROR CHECKING *)
