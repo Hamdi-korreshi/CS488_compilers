@@ -1,1 +1,0 @@
-ERROR: 8: Type-Check: class B redefines method myfunc and changes return type (from Int to String)

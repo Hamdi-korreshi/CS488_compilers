@@ -1,16 +1,14 @@
-class B inherits IO{
+class A inherits IO{
     a : Int;
 };
 
 class A  inherits IO {
-    a : String;
+    b : Int;
 };
 
 class Main inherits IO {
     main() : Object {
-        {
-        out_string("a");
-        3;
-        }
+        -- out_string("a")
+        3
     };
 };
