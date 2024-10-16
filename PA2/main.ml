@@ -590,116 +590,103 @@ let bool_error (ival, xval) =
   else
     Printf.printf "ERROR: %s: Type-Check: comparison between %s and %s\n" iloc itype xtype;
     exit 1
-let rec print_exp (loc, exp_kind) =
-  Printf.printf "Expression (location: %s)\n" loc;
-  match exp_kind with
-  | Integer value -> Printf.printf "  Integer: %s\n" value
-  | Bool value -> 
-    Printf.printf "  Bool: %s\n" value
-  | String value -> Printf.printf "  String: %s\n" value
-  | Plus((loc1, t1), (loc2, t2)) ->
-    Printf.printf "plus\n";
-    print_exp (loc1, t1);
-    print_exp (loc2, t2)
-  | Minus((loc1, t1), (loc2, t2)) ->
-    Printf.printf "minus\n";
-    print_exp (loc1, t1);
-    print_exp (loc2, t2)
-  | Times((loc1, t1), (loc2, t2)) ->
-    Printf.printf "times\n";
-    print_exp (loc1, t1);
-    print_exp (loc2, t2)
-  | Divide((loc1, t1), (loc2, t2)) ->
-    Printf.printf "divide\n";
-    print_exp (loc1, t1);
-    print_exp (loc2, t2)
-  | Block ival ->
-      printf "block\n";
-      List.iter print_exp ival;
-  | Assign (var,rhs_exp) ->
-    print_id var;
-    print_exp rhs_exp;
-  | Isvoid void -> 
-    print_exp void;
-  | If (if_exp,then_exp,else_exp) ->
-    print_exp if_exp;
-    print_exp then_exp;
-    print_exp else_exp;
-  | While (loop,pool) ->
-    print_exp loop; 
-    print_exp pool;
-  | Let(bindings, let_body) ->
-    printf "let\n";
-    List.iter (fun ((vloc,vname), (typeloc,typename), init_exps) ->
-      printf " Bindings: %s: %s \n" vname typename;
-      (match init_exps with
-      | None -> printf " No init "
-      | Some init_exp ->
-        printf " Init:\n";
-        print_exp init_exp
-          )
-      ) bindings;
-      printf "in\n";
-      print_exp let_body
-  | Identifier ival ->
-    print_id ival
-  | Case (test_exp, case_list ) -> 
-    printf "First exp: ";
-    print_exp test_exp;
-    printf "\n";
-    List.iter (fun ((vloc,vname), (tloc, tname), rest_exp ) -> 
-      printf "  Case : %s : %s \n" vname tname;
-      printf "  Case_exp:\n";
-      print_exp rest_exp
-      ) case_list
-  | New ((loc_ival, ival_name)) ->
-      Printf.printf "new\n";
-      Printf.printf "  New Object: %s\n" ival_name
-  | Dynamic_Dispatch (e,metho,args) ->
-    printf "Dynamic Dispatch:\n";
-    printf "  Exp : ";
-    print_exp e;
-    printf "\n";
-    printf "  Id : ";
-    print_id metho;
-    printf "\n";
-    printf "  Args :\n";
-    List.iter print_exp args
-  | Static_Dispatch (e,stat_type,metho,args) ->
-    printf "Static Dispatch:\n";
-    printf "  Exp : ";
-    print_exp e;
-    printf "\n";
-    printf "  Type : ";
-    print_cool_type stat_type;
-    printf "  Id : ";
-    print_id metho;
-    printf "\n";
-    printf "  Args :\n";
-    List.iter print_exp args
-  | Self_Dispatch (metho,args) ->
-    printf "Self Dispatch:\n";
-    printf "  Id : ";
-    print_id metho;
-    printf "\n";
-    printf "  Args :\n";
-    List.iter print_exp args
-  | LT ((loc1, t1), (loc2, t2)) ->
-    Printf.printf "LT\n";
-    print_exp (loc1, t1);
-    print_exp (loc2, t2)
-  | LE ((loc1, t1), (loc2, t2)) ->
-    Printf.printf "LE\n";
-    print_exp (loc1, t1);
-    print_exp (loc2, t2)
-  | EQ ((loc1, t1), (loc2, t2)) ->
-      Printf.printf "EQ\n";
-      print_exp (loc1, t1);
-      print_exp (loc2, t2)
-  | Negate ((loc1, t1)) ->
-    Printf.printf "Negate\n";
-    print_exp (loc1, t1)
-
+    let rec print_exp exp =
+      Printf.printf "Expression (location: %s)\n" exp.loc;
+      (match exp.static_type with
+       | None -> Printf.printf "Static type: None\n"
+       | Some(Class(c)) -> Printf.printf "Static type: Class %s\n" c
+       | Some(SELF_TYPE(c)) -> Printf.printf "Static type: SELF_TYPE %s\n" c);
+      
+      match exp.exp_kind with
+      | Integer value -> Printf.printf "  Integer: %s\n" value
+      | Bool value -> Printf.printf "  Bool: %s\n" value
+      | String value -> Printf.printf "  String: %s\n" value
+      | Plus(exp1, exp2) ->
+          Printf.printf "plus\n";
+          print_exp exp1;
+          print_exp exp2
+      | Minus(exp1, exp2) ->
+          Printf.printf "minus\n";
+          print_exp exp1;
+          print_exp exp2
+      | Times(exp1, exp2) ->
+          Printf.printf "times\n";
+          print_exp exp1;
+          print_exp exp2
+      | Divide(exp1, exp2) ->
+          Printf.printf "divide\n";
+          print_exp exp1;
+          print_exp exp2
+      | Block exp_list ->
+          Printf.printf "block\n";
+          List.iter print_exp exp_list
+      | Assign (var, rhs_exp) ->
+          print_id var;
+          print_exp rhs_exp
+      | Isvoid void_exp -> 
+          print_exp void_exp
+      | If (if_exp, then_exp, else_exp) ->
+          print_exp if_exp;
+          print_exp then_exp;
+          print_exp else_exp
+      | While (loop, pool) ->
+          print_exp loop; 
+          print_exp pool
+      | Let (bindings, let_body) ->
+          Printf.printf "let\n";
+          List.iter (fun ((vloc, vname), (typeloc, typename), init_exp) ->
+            Printf.printf " Bindings: %s: %s\n" vname typename;
+            (match init_exp with
+             | None -> Printf.printf " No init\n"
+             | Some init -> Printf.printf " Init:\n"; print_exp init)
+          ) bindings;
+          Printf.printf "in\n";
+          print_exp let_body
+      | Identifier ival ->
+          print_id ival
+      | Case (test_exp, case_list) ->
+          Printf.printf "First exp:\n";
+          print_exp test_exp;
+          List.iter (fun ((vloc, vname), (tloc, tname), rest_exp) ->
+            Printf.printf "  Case: %s: %s\n" vname tname;
+            print_exp rest_exp
+          ) case_list
+      | New ((loc_ival, ival_name)) ->
+          Printf.printf "new\n";
+          Printf.printf "  New Object: %s\n" ival_name
+      | Dynamic_Dispatch (e, metho, args) ->
+          Printf.printf "Dynamic Dispatch:\n";
+          print_exp e;
+          print_id metho;
+          Printf.printf "  Args:\n";
+          List.iter print_exp args
+      | Static_Dispatch (e, stat_type, metho, args) ->
+          Printf.printf "Static Dispatch:\n";
+          print_exp e;
+          print_cool_type stat_type;
+          print_id metho;
+          Printf.printf "  Args:\n";
+          List.iter print_exp args
+      | Self_Dispatch (metho, args) ->
+          Printf.printf "Self Dispatch:\n";
+          print_id metho;
+          Printf.printf "  Args:\n";
+          List.iter print_exp args
+      | LT (exp1, exp2) ->
+          Printf.printf "LT\n";
+          print_exp exp1;
+          print_exp exp2
+      | LE (exp1, exp2) ->
+          Printf.printf "LE\n";
+          print_exp exp1;
+          print_exp exp2
+      | EQ (exp1, exp2) ->
+          Printf.printf "EQ\n";
+          print_exp exp1;
+          print_exp exp2
+      | Negate exp1 ->
+          Printf.printf "Negate\n";
+          print_exp exp1    
 
 let print_formal ((loc, fname), (ftloc, ftype)) =
   Printf.printf "Formal (name: %s, type: %s)\n" fname ftype
@@ -713,10 +700,10 @@ let rec print_feature feature =
       | Some exp -> print_exp exp
       | None -> Printf.printf "  No Initialization Expression\n")
   | Method (id, formals, cool_type, body) ->
-      print_id id;
-      List.iter print_formal formals;
-      print_cool_type cool_type;
-      print_exp body
+    print_id id;
+    List.iter print_formal formals;
+    print_cool_type cool_type;
+    print_exp body
 
 let main () = begin
   (* printf "start main \n"; *)
@@ -775,7 +762,7 @@ let main () = begin
           let fname = read_id () in
           let ftype = read_id () in
           let finit = read_exp () in
-          Attribute(fname, ftype, finit)
+          Attribute(fname, ftype, (Some finit))
         | "method" ->
           let mname = read_id () in
           let formals = read_list read_formal in
@@ -805,52 +792,22 @@ let main () = begin
               Bool("true")
           | "negate" ->
             let ival = read_exp() in
-            (
-              match snd ival with
-              | (Integer _) ->
-                Negate(ival)
-              | _ ->
-                Negate(ival)
-              )
+            Negate(ival)
           | "lt" ->
             (* Get the type of the datatype then push into bool_error *)
             let ival = read_exp() in
-            let xval = read_exp() in 
-            (
-              match (snd ival, snd xval) with
-              | (Integer _, Integer _) ->
-                LT(ival, xval)
-              | (String _, String _) ->
-                LT(ival, xval)
-              | _ ->
-                (* bool_error *)
-                LT(ival, xval)  )
+            let xval = read_exp() in
+            LT(ival, xval)
           | "le" ->
             (* Get the type of the datatype then push into bool_error *)
             let ival = read_exp() in
             let xval = read_exp() in 
-            (
-              match (snd ival, snd xval) with
-              | (Integer _, Integer _) ->
-                LE(ival, xval)
-              | (String _, String _) ->
-                LE(ival, xval)
-              | _ ->
-                (* bool_error *)
-                LE(ival, xval)  )
+            LE(ival, xval)
           | "eq" ->
             (* Get the type of the datatype then push into bool_error *)
             let ival = read_exp() in
             let xval = read_exp() in 
-            (
-              match (snd ival, snd xval) with
-              | (Integer _, Integer _) ->
-                EQ(ival, xval)
-              | (String _, String _) ->
-                EQ(ival, xval)
-              | _ ->
-                (* bool_error *)
-                EQ(ival, xval)  )
+            EQ(ival, xval)
           | "assign" ->
             let var = read_id () in 
             let rhs_exp = read_exp () in 
@@ -889,11 +846,9 @@ let main () = begin
             Case(test_exp,case_list)
           | "dynamic_dispatch" ->
             let e = read_exp () in
-            print_exp e;
             let metho = read_id () in 
             print_id metho;
             let args = read_list read_exp in 
-            List.iter print_exp args;
             Dynamic_Dispatch(e,metho,args)
           | "static_dispatch" ->
             let e = read_exp () in
@@ -928,42 +883,20 @@ let main () = begin
               Let(bindings, let_body)
           | "plus" -> (* might have to change all of these*)
               let ival = read_exp() in
-              let xval = read_exp() in (
-              match (snd ival, snd xval) with
-              | (Integer _, Integer _) ->
-                Plus(ival, xval)
-              | _ ->
-                (* arth_error (ival,xval) ) *) 
-                Plus(ival, xval))
+              let xval = read_exp() in
+              Plus(ival, xval)
           | "minus" ->
               let ival = read_exp() in
-              let xval = read_exp() in (
-              match (snd ival, snd xval) with
-              | (Integer _, Integer _) ->
-                Minus(ival, xval)
-              | _ ->
-                (* arth_error (ival,xval) ) *) 
-                Minus(ival, xval))
+              let xval = read_exp() in
+              Minus(ival, xval)
           | "times" -> 
-              let ival = read_exp() in
-              let xval = read_exp() in
-              (
-              match (snd ival, snd xval) with
-              | (Integer _, Integer _) ->
-                Times(ival, xval)
-              | _ ->
-                (* arth_error (ival,xval) ) *) 
-                Times(ival, xval) )
+            let ival = read_exp() in
+            let xval = read_exp() in
+            Times(ival, xval)
           | "divide" -> 
-              let ival = read_exp() in
-              let xval = read_exp() in
-              (
-              match (snd ival, snd xval) with
-              | (Integer _, Integer _) ->
-                Divide(ival, xval)
-              | _ ->
-                (* arth_error (ival,xval) ) *) 
-                Divide(ival, xval) )
+            let ival = read_exp() in
+            let xval = read_exp() in
+            Divide(ival, xval)
           | "new" -> (*have to change this*)
             let ival = read_id() in
             New(ival)
@@ -1094,7 +1027,7 @@ let main () = begin
               fprintf fout ""
             | EQ(ival,xval) -> 
               fprintf fout ""
-            | Negate(ival,xval) -> 
+            | Negate(xval) -> 
               fprintf fout ""
           in
           print_ast ast;
