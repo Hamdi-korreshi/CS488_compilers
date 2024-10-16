@@ -10,8 +10,6 @@
   
 module StringMap = Map.Make(String)
 
-<<<<<<< Updated upstream
-=======
 type static_type =  (*static type of cool expression*)
   | Class of string (* "Int", or "Object" *)
   | SELF_TYPE of string (* SELF_TYPE *)
@@ -26,7 +24,6 @@ let rec is_subtype t1 t2 =
   | Class(x), Class("Object") -> true 
   | Class(x), Class(y) -> false (* treat later, check parent map *)
   | _, _ -> false (*check the class notes*)
->>>>>>> Stashed changes
 
   type obj_env = (string, static_type) Hashtbl.t  (* Maps object names (identifiers) to their types *)
   let empty_object_env () = Hashtbl.create 255
@@ -58,11 +55,6 @@ let add_class (env: class_env) (cls: class_) : class_env =
 let lookup_class (env: class_env) (class_name: string) : class_ option =
   StringMap.find_opt class_name env
 
-
-<<<<<<< Updated upstream
-
-=======
->>>>>>> Stashed changes
 (* Each class will have its own method environment *)
 type method_env = method_ StringMap.t
 
@@ -190,7 +182,13 @@ and feature =
   | Attribute of id * cool_type * (exp option)
   | Method of id * (formal list) * cool_type * exp
 and formal = id * cool_type
-and exp = loc * exp_kind
+and exp = 
+  {
+            loc:loc; 
+            exp_kind: exp_kind;
+    mutable static_type: static_type option; (*mutable means can change later on,
+    every exp has this mutable static type, will uncover using the typechecking*)
+  }
 and case = id * id * exp
 and exp_kind =
   | Integer of string (* doesn't need to be an Int until the next PA *)
@@ -834,7 +832,7 @@ let main () = begin
           let fname = read_id () in
           let ftype = read_id () in
           let finit = read_exp () in
-          Attribute(fname, ftype, (Some finit))
+          Attribute(fname, ftype, finit)
         | "method" ->
           let mname = read_id () in
           let formals = read_list read_formal in
@@ -981,7 +979,7 @@ let main () = begin
             printf "%s\n" eloc;
             failwith ("expression kind unhandled: " ^ x)
           in
-          (eloc, ekind)
+          (eloc, ekind, None)
           in
           let ast = read_cool_program () in
           close_in fin ;
