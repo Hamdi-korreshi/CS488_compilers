@@ -25,9 +25,11 @@ let rec is_sub t1 t2 =
   | Class(x), Class(y) -> false (* treat later, check parent map *)
   | _, _ -> false (*check the class notes*)
 
-type obj_env = (string, static_type) Hashtbl.t
+type obj_env = (static_type * string, static_type) Hashtbl.t (* use the first static_type to keep track of this stuff, fuck the scopes for now*)
+type metho_env = (static_type *string, (static_type list) * string ) Hashtbl.t
+type class_local = (string * string *string, bool) Hashtbl.t
 
-let empty_obj_env () = Hashtbl.create 255 
+let empty_env () = Hashtbl.create 255 
 
 type cool_prog = cool_class list
 and loc = string
@@ -762,6 +764,11 @@ let main () = begin
           check_method_main ast;
           check_return_type ast all_classes;
           check_dup_param ast;
+          print_ast ast;
+          printf "entering the topo\n";
+          let last_ast,sorted_classes = prep ast in
+          print_ast last_ast;
+          print_sorted_classes sorted_classes;
           (* THEME IN PA4 -- you should make internal data structures to hold helper information so that you can do the checks more easily *)
           (*Look for Inheritance from Int
           Look for Inheritance from Undeclared class *)
@@ -782,6 +789,20 @@ let main () = begin
               exit 1
             end ;
           ) ast;
+          let rec get_formal_types form_list class_name metho_name =
+            match form_list with 
+            | [] -> []
+            | ((funcloc,funcname),(functypeloc,functypename)) :: tail ->
+              if funcname = "self" then (
+                printf "ERROR: %s: Type-Check: class %s has method %s with formal parameter name self\n" funcloc class_name metho_name;
+                exit 1
+              );
+              if functypename = "SELF_TYPE" then (
+                printf "ERROR: %s: Type-Check: class %s has method %s with formal parameter of unknown type SELF_TYPE\n" funcloc class_name metho_name;
+                exit 1
+              );
+              (Class functypename) :: get_formal_types tail class_name metho_name
+          in
 
           let rec typecheck (o: obj_env) (exp: exp) : static_type = 
             let static_type = match exp.exp_kind with 
@@ -826,13 +847,14 @@ let main () = begin
             exp.static_type <- Some(static_type);
             static_type
           in
+          let obj_global: obj_env = empty_env () in 
+          let metho_global: metho_env = empty_env () in
           (*type check time*)
           List.iter (fun ((cloc,cname), inherits, feats) ->
-            List.iter (fun feat -> 
-              match feat with 
+            List.iter (fun feat ->
+              match feat with
                 | Attribute((nameloc,name),(dtloc,declared_type),Some(init_exp)) -> (* x: int <- 5 + 3*)
-                  let o = empty_obj_env () in
-                  let init_type = typecheck o init_exp in
+                  let init_type = typecheck obj_global init_exp in
                   printf "%s init\n" (type_to_str init_type);
                   if is_sub init_type (Class declared_type) then
                     ()
@@ -954,13 +976,7 @@ let main () = begin
               | Not(ival) -> 
                 fprintf fout "not\n"; output_exp(ival)
           in
-          print_ast ast;
           (* printf "entering the topo\n"; *)
-          print_ast ast;
-          printf "entering the topo\n";
-          let last_ast,sorted_classes = prep ast in
-          print_ast last_ast;
-          print_sorted_classes sorted_classes;
           fprintf fout "class_map\n%d\n" (List.length all_classes) ;
           List.iter (fun cname ->
           (* name of class, # attrs, each attr=feature in turn *)
