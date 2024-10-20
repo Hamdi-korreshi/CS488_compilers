@@ -17,7 +17,7 @@ let type_to_str t = match t with
   | Class(x) -> x
   | SELF_TYPE(x) -> "SELF_TYPE"
 
-let rec is_sub t1 t2 = 
+let rec is_sub inherit_table t1 t2 = 
   let class1 = 
     match t1 with 
       | Class(x) -> (Class x)
@@ -32,7 +32,8 @@ let rec is_sub t1 t2 =
   | Class(x), Class(y) when x = y -> true
   | Class(x), Class(y) when x <> y ->
     (* recursive calls *)
-    is_sub x y
+    let parent1 = Hashtbl.find inherit_table x in
+    is_sub inherit_table (Class parent1) (Class y)
   | Class(x), Class("Object") -> true 
   | Class("Object"), Class(y) when x = y -> true
   | Class(x), Class(y) -> false (* treat later, check parent map *)
@@ -42,6 +43,23 @@ let rec is_sub t1 t2 =
 let type_to_norm t =
   match t with 
     | SELF_TYPE(c) | Class(c) -> (Class c)
+
+let find_parent inherit_table cname = 
+  if Hashtbl.mem inherit_table cname then 
+    Hashtbl.find inherit_table cname
+  else (
+    Printf.printf "Missed adding class %s\n" cname;
+    exit 1 )
+
+let rec lub inherit_table t1 t2 = 
+  let class1 = type_to_norm t1 in 
+  let class2 = type_to_norm t2 in
+  if is_sub inherit_table t1 t2 then 
+    class2
+  else  (
+    let parent2 = find_parent inherit_table (type_to_str class2) in 
+    lub inherit_table class1 (Class parent2)
+  );
 
 type obj_env = (static_type * string, static_type) Hashtbl.t (* use the first static_type to keep track of this stuff, fuck the scopes for now*)
 type metho_env = (static_type *string, (static_type list) * string ) Hashtbl.t (* used to keep track of classes with method names and their formallist typees with return types*)
