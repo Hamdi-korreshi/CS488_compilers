@@ -7,7 +7,6 @@
   * Included struture and helper functions for (O)bject, (M)ethod, and (C)lass environments
   * Refer to my discord msg from last night (10/10/2024) talking about what environment is responsible for
   *)
-  
 module StringMap = Map.Make(String)
 
 type static_type =  (*static type of cool expression*)
@@ -19,17 +18,37 @@ let type_to_str t = match t with
   | SELF_TYPE(x) -> "SELF_TYPE"
 
 let rec is_sub t1 t2 = 
-  match t1,t2 with 
+  let class1 = 
+    match t1 with 
+      | Class(x) -> (Class x)
+      | SELF_TYPE(x) -> (Class x)
+    in
+  let class2 = 
+    match t2 with
+    | Class(x) -> (Class x)
+    | SELF_TYPE(x) -> (Class x)
+  in
+  match class1,class2 with 
   | Class(x), Class(y) when x = y -> true
+  | Class(x), Class(y) when x <> y ->
+    (* recursive calls *)
+    is_sub x y
   | Class(x), Class("Object") -> true 
+  | Class("Object"), Class(y) when x = y -> true
   | Class(x), Class(y) -> false (* treat later, check parent map *)
   | _, _ -> false (*check the class notes*)
 
-type obj_env = (static_type * string, static_type) Hashtbl.t (* use the first static_type to keep track of this stuff, fuck the scopes for now*)
-type metho_env = (static_type *string, (static_type list) * string ) Hashtbl.t
-type class_local = (string * string *string, bool) Hashtbl.t
+(* so I don't have to write this 400 times*)
+let type_to_norm t =
+  match t with 
+    | SELF_TYPE(c) | Class(c) -> (Class c)
 
-let empty_env () = Hashtbl.create 255 
+type obj_env = (static_type * string, static_type) Hashtbl.t (* use the first static_type to keep track of this stuff, fuck the scopes for now*)
+type metho_env = (static_type *string, (static_type list) * string ) Hashtbl.t (* used to keep track of classes with method names and their formallist typees with return types*)
+type local_env = (string * string *string, bool) Hashtbl.t (* used to keep track of classes and their feature name*)
+let empty_env () = Hashtbl.create 255
+(*tom you need to have this for the correct sub type thing and easier to do with the parent map*)
+type inherit_table = (string,string) Hashtbl.t
 
 type cool_prog = cool_class list
 and loc = string
@@ -769,6 +788,10 @@ let main () = begin
           let last_ast,sorted_classes = prep ast in
           print_ast last_ast;
           print_sorted_classes sorted_classes;
+          let obj_global: obj_env = empty_env () in
+          let metho_global: metho_env = empty_env () in
+          let class_local: local_env = empty_env () in
+          let inherit_tracker: inherit_table = empty_env () in
           (* THEME IN PA4 -- you should make internal data structures to hold helper information so that you can do the checks more easily *)
           (*Look for Inheritance from Int
           Look for Inheritance from Undeclared class *)
@@ -803,10 +826,38 @@ let main () = begin
               );
               (Class functypename) :: get_formal_types tail class_name metho_name
           in
+          let add_class cname = 
+            let _,_, feats = List.find ( fun ((_,cnamebruh),_,_) -> cnamebruh = cname) last_ast in
+            List.iter (fun feat ->
+                        match feat with
+                        | Attribute ((attr_loc, attr_name),(_,attr_type),_) -> 
+                          Hashtbl.add class_local (cname, "attr", attr_name) true;
 
-          let rec typecheck (o: obj_env) (exp: exp) : static_type = 
-            let static_type = match exp.exp_kind with 
+                          if attr_type = "SELF_TYPE" then 
+                            Hashtbl.add obj_global ((Class cname),attr_name) (SELF_TYPE cname)
+                          else
+                            Hashtbl.add obj_global ((Class cname), attr_name) (Class attr_type)
+                        | Method ((metho_loc,metho_name), forms, (metho_type_loc,metho_type), _) ->
+                          Hashtbl.add class_local (cname, "meth", metho_name) true;
+                          let form_type_list = get_formal_types forms cname metho_name in 
+                          Hashtbl.add metho_global ((Class cname), metho_name) (form_type_list, metho_type)
+                          ) feats;
+            Hashtbl.add obj_global ((Class cname),"self") (SELF_TYPE cname)
+          in
+          (*adding the class content*)
+          List.iter( fun ((cloc,cname),_,_)-> add_class cname) last_ast;
+          let rec typecheck (o: obj_env) (m: metho_env) (curr_class: static_type) (exp: exp) : static_type = 
+            let static_type = match exp.exp_kind with
+            (*handled the easy ones first *)
+            | Bool(x) ->
+              (match x with
+              | "true" -> (Class "Bool")
+              | "false" -> (Class "Bool")
+              | _ -> failwith "yeah bool is doing some wrong")
             | Integer(i) -> (Class "Int")
+            | String(i) -> (Class "String")
+            (*easy ones handled*)
+            (*arth ones handled*)
             | Plus(e1,e2) -> 
               (*
                 O |- e1: int  [1]
@@ -816,26 +867,164 @@ let main () = begin
               Recal |- do typechecklet static_type = 
               *)
               (*[1]*)
-              let t1 = typecheck o e1 in 
+              let t1 = typecheck o m curr_class e1 in 
               if t1 <> (Class "Int") then begin
                 printf "ERROR: %s: Type-Check: arithmetic on %s instead of Ints\n" exp.loc (type_to_str t1);
                 exit 1;
               end;
               (* [2] *)
-              let t2 = typecheck o e1 in 
+              let t2 = typecheck o m curr_class e2 in 
               if t2 <> (Class "Int") then begin
-                printf "ERROR: %s: Type-Check: arithmetic on %s instead of Ints\n" exp.loc (type_to_str t1);
+                printf "ERROR: %s: Type-Check: arithmetic on %s instead of Ints\n" exp.loc (type_to_str t2);
                 exit 1
               end;
               (* [3] *)
               (Class "Int")
-            | Identifier((vloc,vname)) -> 
-              if Hashtbl.mem o vname then (*bool check in ocaml of finding the value*)
-                Hashtbl.find o vname
-              else begin
-                printf "ERROR: %s: Type-Check: undeclared var\n" vloc;
+            | Minus(e1,e2) ->
+              (*Yeah just copy and past this stuff from plus for arth*)
+              let t1 = typecheck o m curr_class e1 in 
+              if t1 <> (Class "Int") then begin
+                printf "ERROR: %s: Type-Check: arithmetic on %s instead of Ints\n" exp.loc (type_to_str t1);
+                exit 1;
+              end;
+              let t2 = typecheck o m curr_class e2 in 
+              if t2 <> (Class "Int") then begin
+                printf "ERROR: %s: Type-Check: arithmetic on %s instead of Ints\n" exp.loc (type_to_str t2);
                 exit 1
               end;
+              (Class "Int")
+            | Times(e1,e2) ->
+              let t1 = typecheck o m curr_class e1 in 
+              if t1 <> (Class "Int") then begin
+                printf "ERROR: %s: Type-Check: arithmetic on %s instead of Ints\n" exp.loc (type_to_str t1);
+                exit 1;
+              end;
+              let t2 = typecheck o m curr_class e2 in 
+              if t2 <> (Class "Int") then begin
+                printf "ERROR: %s: Type-Check: arithmetic on %s instead of Ints\n" exp.loc (type_to_str t2);
+                exit 1
+              end;
+              (Class "Int")
+            | Divide(e1,e2) ->
+              let t1 = typecheck o m curr_class e1 in 
+              if t1 <> (Class "Int") then begin
+                printf "ERROR: %s: Type-Check: arithmetic on %s instead of Ints\n" exp.loc (type_to_str t1);
+                exit 1;
+              end;
+              let t2 = typecheck o m curr_class e2 in 
+              if t2 <> (Class "Int") then begin
+                printf "ERROR: %s: Type-Check: arithmetic on %s instead of Ints\n" exp.loc (type_to_str t2);
+                exit 1
+              end;
+              (Class "Int")
+            | EQ(e1,e2) ->
+              let t1 = typecheck o m curr_class e1 in 
+              let t2 = typecheck o m curr_class e2 in 
+              if t1 <> t2 then begin
+                printf "ERROR: %s: Type-Check: comparison between %s and %s\n" exp.loc (type_to_str t1) (type_to_str t2);
+                exit 1
+              end;
+              (Class "Bool")
+            | LE(e1,e2) ->
+              let t1 = typecheck o m curr_class e1 in 
+              if (type_to_norm t1) <> (Class "Int") then begin
+                printf "ERROR: %s: Type-Check: compare %s instead of Int\n" exp.loc (type_to_str t1);
+                exit 1;
+              end;
+              (* [2] *)
+              let t2 = typecheck o m curr_class e2 in 
+              if (type_to_norm t2) <> (Class "Int") then begin
+                printf "ERROR: %s: Type-Check: compare %s instead of Int\n" exp.loc (type_to_str t2);
+                exit 1
+              end;
+              (Class "Int")
+            | LT(e1,e2) -> 
+              let t1 = typecheck o m curr_class e1 in
+              if (type_to_norm t1) <> (Class "Int") then begin
+                printf "ERROR: %s: Type-Check: compare %s instead of Int\n" exp.loc (type_to_str t1);
+                exit 1;
+              end;
+              (* [2] *)
+              let t2 = typecheck o m curr_class e2 in 
+              if (type_to_norm t2) <> (Class "Int") then begin
+                printf "ERROR: %s: Type-Check: compare %s instead of Int\n" exp.loc (type_to_str t2);
+                exit 1
+              end;
+              (Class "Int")
+            | Isvoid(e) ->
+              typecheck o m curr_class e; (*just to make sure no problems arise*)
+              (Class "Bool")
+            | Negate(e) ->
+              let t1 = typecheck o m curr_class e in 
+              if t1 <> (Class "Int") then (
+                printf "ERROR: %s: Type-Check: negate %s instead of Int\n" exp.loc (type_to_str t1);
+                exit 1
+              );
+              (Class "Int")
+            | Not(e) ->
+              let t1 = typecheck o m curr_class e in 
+              if t1 <> (Class "Bool") then begin
+                printf "ERROR: %s: Type-Check: not %s instead of Bool\n" exp.loc (type_to_str t1);
+                exit 1
+              end;
+              (Class "Bool")
+            | Identifier((vloc,vname)) -> 
+              let normed = type_to_norm curr_class in
+              if Hashtbl.mem o (normed, vname) then (*bool check in ocaml of finding the value*)
+                Hashtbl.find o (normed, vname)
+              else begin
+                printf "ERROR: %s: Type-Check: unbound identifier %s\n" vloc vname;
+                exit 1
+              end;
+            | Assign(id1,e1) ->
+              if (snd id1) = "self" then (
+                printf "ERROR: %s: Type-Check: cannot assign to %s\n" (fst id1) (snd id1);
+                exit 1
+              );
+              let normed = type_to_norm curr_class in
+              let t1 = 
+                if Hashtbl.mem o (normed, (snd id1)) then
+                    Hashtbl.find o (normed, (snd id1))
+                else (
+                  printf "ERROR: %s: Type-Check: unbound indentifier %s\n" (fst id1) (snd id1);
+                  exit 1
+                )
+              in
+              let t2 = typecheck o m curr_class e1 in 
+              (*todo fix crawling up the tree for inherits*)
+              if is_sub t2 t1 then
+                t2
+              else (
+                printf "ERROR: %s: Type-Check: %s does not conform to %s in assignment\n" e1.loc (type_to_str t2) (type_to_str t1);
+                exit 1
+              )
+            | New((loc, name)) ->
+              if name = "SELF_TYPE" then 
+                (SELF_TYPE (type_to_str (type_to_norm curr_class)))
+              else
+                (Class name)
+            | While(loop,pool) ->
+              let type_loop = typecheck o m curr_class loop in 
+              (* just in case the body is wrong does not need to be used*)
+              let type_pool = typecheck o m curr_class loop in 
+              if type_loop <> (Class "Bool") then (
+                printf "ERROR: %s: Type-Check: predicate has tpye %s not Bool\n" exp.loc (type_to_str type_loop);
+                exit 1
+              );
+              (Class "Object")
+            | Block(exp_list) -> 
+              let exps_types = List.map (fun exp -> typecheck o m curr_class exp ) exp_list in
+              List.hd (List.rev exps_types) (* take the last of all exps similar to ocaml*)
+            | If(if_state,then_state,else_state) ->
+              let if_type = typecheck o m curr_class if_state in 
+              if if_type <> (Class "Bool") then begin 
+                printf "ERROR: %s: Type-Check: conditional has type %s instead of Bool\n" exp.loc (type_to_str if_type);
+                exit 1;
+              end;
+              let then_state = typecheck o m curr_class then_state in 
+              let else_state = typecheck o m curr_class else_state in
+              (*todo lub of the two types*)
+              (Class "LUB")
             | Let(binding_list,let_body) -> 
               (match binding_list with 
               | [] -> 
@@ -843,12 +1032,11 @@ let main () = begin
               | ((vloc, vname), (typeloc,typename), let_exp) :: tail -> (*need the tail otherwise it'll crash since let_body is a list you need to indivual
                 typecheck each expression *)
                 typecheck o let_body)
+            | _ -> (Class "Int")
             in
             exp.static_type <- Some(static_type);
             static_type
           in
-          let obj_global: obj_env = empty_env () in 
-          let metho_global: metho_env = empty_env () in
           (*type check time*)
           List.iter (fun ((cloc,cname), inherits, feats) ->
             List.iter (fun feat ->
