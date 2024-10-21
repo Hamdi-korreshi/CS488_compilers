@@ -17,17 +17,14 @@ let type_to_str t = match t with
   | Class(x) -> x
   | SELF_TYPE(x) -> "SELF_TYPE"
 
+(* so I don't have to write this 400 times*)
+let type_to_norm t =
+  match t with 
+    | SELF_TYPE(c) | Class(c) -> (Class c)
+
 let rec is_sub inherit_table t1 t2 = 
-  let class1 = 
-    match t1 with 
-      | Class(x) -> (Class x)
-      | SELF_TYPE(x) -> (Class x)
-    in
-  let class2 = 
-    match t2 with
-    | Class(x) -> (Class x)
-    | SELF_TYPE(x) -> (Class x)
-  in
+  let class1 = type_to_norm t1 in
+  let class2 = type_to_norm t1 in
   match class1,class2 with 
   | Class(x), Class(y) when x = y -> true
   | Class(x), Class(y) when x <> y ->
@@ -35,14 +32,11 @@ let rec is_sub inherit_table t1 t2 =
     let parent1 = Hashtbl.find inherit_table x in
     is_sub inherit_table (Class parent1) (Class y)
   | Class(x), Class("Object") -> true 
-  | Class("Object"), Class(y) when x = y -> true
+  | Class("Object"), Class(y) when y <> "Object" -> false
   | Class(x), Class(y) -> false (* treat later, check parent map *)
-  | _, _ -> false (*check the class notes*)
-
-(* so I don't have to write this 400 times*)
-let type_to_norm t =
-  match t with 
-    | SELF_TYPE(c) | Class(c) -> (Class c)
+  | x, y ->
+    Printf.printf "is_sub error going on\n";
+    exit 1
 
 let find_parent inherit_table cname = 
   if Hashtbl.mem inherit_table cname then 
@@ -59,7 +53,14 @@ let rec lub inherit_table t1 t2 =
   else  (
     let parent2 = find_parent inherit_table (type_to_str class2) in 
     lub inherit_table class1 (Class parent2)
-  );
+  )
+(* this is needed for sequences in *)
+let rec lub_sequence inherit_table head remainder = 
+  match remainder with 
+  | [] -> head 
+  | new_head :: tail -> 
+    let part_type = lub inherit_table head new_head in 
+    lub_sequence inherit_table part_type tail 
 
 type obj_env = (static_type * string, static_type) Hashtbl.t (* use the first static_type to keep track of this stuff, fuck the scopes for now*)
 type metho_env = (static_type *string, (static_type list) * string ) Hashtbl.t (* used to keep track of classes with method names and their formallist typees with return types*)
@@ -844,11 +845,26 @@ let main () = begin
               );
               (Class functypename) :: get_formal_types tail class_name metho_name
           in
+          (* need the inherits table later on *)
+          let add_inheritance cname pname =
+            (* Add the parent of cname to the inheritance table *)
+            if pname = "" then
+              Hashtbl.add inherit_tracker cname "Object" (* Default to Object if no parent *)
+            else
+              Hashtbl.add inherit_tracker cname pname
+          in
           let add_class cname = 
-            let _,_, feats = List.find ( fun ((_,cnamebruh),_,_) -> cnamebruh = cname) last_ast in
+            let _,parent, feats = List.find ( fun ((_,cnamebruh),_,_) -> cnamebruh = cname) last_ast in
+            (match parent with 
+              | Some (_, pname) -> add_inheritance cname pname
+              | None -> add_inheritance cname "" );
             List.iter (fun feat ->
                         match feat with
                         | Attribute ((attr_loc, attr_name),(_,attr_type),_) -> 
+                          if Hashtbl.mem class_local (cname, "attr", attr_name) then (
+                            printf "ERROR: %s: duplicate attribute %s in class %s\n" attr_loc attr_name cname;
+                            exit 1
+                          );
                           Hashtbl.add class_local (cname, "attr", attr_name) true;
 
                           if attr_type = "SELF_TYPE" then 
@@ -856,6 +872,10 @@ let main () = begin
                           else
                             Hashtbl.add obj_global ((Class cname), attr_name) (Class attr_type)
                         | Method ((metho_loc,metho_name), forms, (metho_type_loc,metho_type), _) ->
+                          if Hashtbl.mem class_local (cname, "meth", metho_name) then (
+                            printf "ERROR: %s: duplicate method %s in class %s\n" metho_loc metho_name cname;
+                            exit 1
+                          );
                           Hashtbl.add class_local (cname, "meth", metho_name) true;
                           let form_type_list = get_formal_types forms cname metho_name in 
                           Hashtbl.add metho_global ((Class cname), metho_name) (form_type_list, metho_type)
@@ -1010,7 +1030,7 @@ let main () = begin
               in
               let t2 = typecheck o m curr_class e1 in 
               (*todo fix crawling up the tree for inherits*)
-              if is_sub t2 t1 then
+              if is_sub inherit_tracker t2 t1 then
                 t2
               else (
                 printf "ERROR: %s: Type-Check: %s does not conform to %s in assignment\n" e1.loc (type_to_str t2) (type_to_str t1);
@@ -1024,7 +1044,7 @@ let main () = begin
             | While(loop,pool) ->
               let type_loop = typecheck o m curr_class loop in 
               (* just in case the body is wrong does not need to be used*)
-              let type_pool = typecheck o m curr_class loop in 
+              let type_pool = typecheck o m curr_class pool in 
               if type_loop <> (Class "Bool") then (
                 printf "ERROR: %s: Type-Check: predicate has tpye %s not Bool\n" exp.loc (type_to_str type_loop);
                 exit 1
@@ -1042,27 +1062,270 @@ let main () = begin
               let then_state = typecheck o m curr_class then_state in 
               let else_state = typecheck o m curr_class else_state in
               (*todo lub of the two types*)
-              (Class "LUB")
+              lub inherit_tracker then_state else_state;
             | Let(binding_list,let_body) -> 
               (match binding_list with 
               | [] -> 
-                typecheck o let_body;
+                typecheck o m curr_class let_body; (*same as the video for none*)
               | ((vloc, vname), (typeloc,typename), let_exp) :: tail -> (*need the tail otherwise it'll crash since let_body is a list you need to indivual
                 typecheck each expression *)
-                typecheck o let_body)
-            | _ -> (Class "Int")
+                if vname = "self" then (
+                  printf "ERROR: %s: Type-Check: binding self in a let is not allowed\n" vloc;
+                  exit 1;
+                );
+                (* need to check types if they exist in the let*)
+                if (List.mem typename sorted_classes) || typename = "SELF_TYPE" then
+                  ()
+                else (
+                  printf "ERROR: %s: Type-Check: unknown type %s\n" typeloc typename;
+                  exit 1;
+                );
+                (* needs two for more type checked expressions, the none is for declared*)
+                match let_exp with 
+                | None -> 
+                  let t0_prime =
+                    if typename = "SELF_TYPE" then
+                      (* idk why but you need the type string to mkae this work*)
+                      (SELF_TYPE (type_to_str (type_to_norm curr_class) ))
+                    else 
+                      (Class typename)
+                  in
+                  Hashtbl.add o ((type_to_norm curr_class), vname) t0_prime;
+                  let tail_exp = 
+                  {
+                    loc = exp.loc;
+                    exp_kind = Let(tail, let_body);
+                    static_type = exp.static_type;
+                  }
+                  in
+                  let t1 = typecheck o m curr_class tail_exp in 
+                  Hashtbl.remove o ((type_to_norm curr_class), vname);
+                  t1
+                | Some(exp_bruh) ->
+                  let t0_prime =
+                    if typename = "SELF_TYPE" then
+                      (* idk why but you need the type string to mkae this work*)
+                      (SELF_TYPE (type_to_str (type_to_norm curr_class) ))
+                    else 
+                      (Class typename)
+                  in
+                  let t1 = typecheck o m curr_class exp_bruh in 
+                  if is_sub inherit_tracker t1 t0_prime then (
+                    Hashtbl.add o ((type_to_norm curr_class), vname) t0_prime;
+                  let tail_exp = 
+                    {
+                    loc = exp.loc;
+                    exp_kind = Let(tail, let_body);
+                    static_type = exp.static_type;
+                  }
+                  in 
+                  let t2 = typecheck o m curr_class tail_exp in 
+                  Hashtbl.remove o ((type_to_norm curr_class), vname);
+                  t2)
+                  else (
+                    printf "ERROR: %s: Type-Check: initializer type %s does not conform to type %s\n" exp_bruh.loc (type_to_str t1) (type_to_str t0_prime);
+                    exit 1
+                  );)
+            | Case(exp1, case_list) ->
+              (*not as bad as let this time, only needs to check the dup branch case*)
+              let rec case_dup_check branch_list = 
+                (match branch_list with 
+                | [] -> ()
+                | (loc,name) :: tl ->
+                  if (List.exists (fun (elem_loc,elem_type) -> name = elem_type) tl ) then 
+                    (
+                      printf "ERROR: %s: Type-Check: case branch type is %s is bound twice\n" loc name;
+                      exit 1
+                    )
+                  else 
+                    case_dup_check tl)
+                in 
+                case_dup_check (List.map ( fun (_, (case_loc, case_type), _) -> (case_loc, case_type)) case_list);
+                let t1 = typecheck o m curr_class exp1 in 
+                let type_list = List.map (
+                  fun ( (_, x_iter), (t_loc,t_name), exp_iter) ->
+                    if t_name = "SELF_TYPE" then (
+                      printf "ERROR: %s: Type-Check: using SELF_TYPE as a case branch type is not allowed\n" t_loc;
+                      exit 1
+                    );
+                    if (List.mem t_name sorted_classes) then 
+                      Hashtbl.add o ((type_to_norm curr_class), x_iter) (Class t_name)
+                    else (
+                      printf "ERROR: %s: Type-Check: unknown type %s\n" t_loc t_name;
+                      exit 1
+                    );
+                    let t_prime = typecheck o m curr_class exp_iter in 
+                    Hashtbl.remove o ((type_to_norm curr_class), x_iter);
+                    t_prime
+                ) case_list
+              in 
+              (* LUB WONT WORK NEED THE SEQUENCE FOR IT*)
+              lub_sequence inherit_tracker (List.hd type_list)  (List.tl type_list)
+            (* HARD AF, ROPEMAXXING*)
+            | Dynamic_Dispatch(exp1, (func_loc,func_name), arg_list) ->
+              let t1 = typecheck o m curr_class exp1 in 
+              let arg_list_types = 
+                List.map (fun arg -> typecheck o m curr_class arg ) arg_list in 
+              let t1_prime = 
+                if t1 = (SELF_TYPE (type_to_str (type_to_norm curr_class))) then 
+                  (type_to_norm curr_class)
+                else 
+                  (type_to_norm t1)
+              in 
+              let arg_list_prime_types, ret_prime = 
+                if Hashtbl.mem m (t1_prime, func_name) then
+                  Hashtbl.find m (t1_prime, func_name)
+                else (
+                  printf "ERROR: %s: Type-Check: unknown method %s in dispatch on %s\n" func_loc func_name (type_to_str t1_prime);
+                  exit 1
+                )
+              in 
+              (*compare the types to actaul*)
+              if List.length arg_list_types <> List.length arg_list_prime_types then (
+                printf "ERROR: %s: Type-Check: wring number of actual arguments (%d vs. %d)\n" func_loc (List.length arg_list_types) (List.length arg_list_prime_types);
+                exit 1
+              );
+              let arg_counter = ref 0 in 
+              List.iter2 (fun iter_t iter_t_prime -> 
+                              arg_counter := !arg_counter + 1;
+                              if is_sub inherit_tracker iter_t iter_t_prime then 
+                                () 
+                              else begin
+                                let iter_t_String = 
+                                  match iter_t with
+                                  | Class(x)-> x 
+                                  | SELF_TYPE(x) -> "SELF_TYPE("^x^")"
+                                in 
+                                let iter_t_prime_String = 
+                                  match iter_t_prime with
+                                  | Class(x)-> x 
+                                  | SELF_TYPE(x) -> "SELF_TYPE("^x^")"
+                                in
+                                printf "ERROR: %s: Type-Check: argument #%d type %s does not conform to formal type %s\n" func_loc !arg_counter iter_t_String iter_t_prime_String;
+                                exit 1
+                              end
+                            ) arg_list_types arg_list_prime_types;
+              (*this is the tn plus 1 at the end of the type rule*)
+                if ret_prime = "SELF_TYPE" then
+                  t1
+                else 
+                  (Class ret_prime)
+            | Static_Dispatch(exp1, (typeloc,tpyename),(func_loc,func_name), arg_list) ->
+              let t1 = typecheck o m curr_class exp1 in 
+              let arg_list_types = 
+                List.map (fun arg -> typecheck o m curr_class arg ) arg_list in 
+              let other_t =  (Class tpyename) in
+              if is_sub inherit_tracker t1 other_t then 
+                ()
+              else begin
+                let iter_t_String = 
+                  match t1 with
+                  | Class(x)-> x 
+                  | SELF_TYPE(x) -> "SELF_TYPE("^x^")"
+                in 
+                let iter_t_prime_String = 
+                  match other_t with
+                  | Class(x)-> x 
+                  | SELF_TYPE(x) -> "SELF_TYPE("^x^")"
+                in
+                printf "ERROR: %s: Type-Check: %s does not conform to %s in static dispatch\n" func_loc iter_t_String iter_t_prime_String;
+                exit 1
+              end;
+              let arg_list_prime_types, ret_prime = 
+                if Hashtbl.mem m ((type_to_norm other_t), func_name) then
+                  Hashtbl.find m ((type_to_norm other_t), func_name)
+                else (
+                  printf "ERROR: %s: Type-Check: unknown method %s in dispatch on %s\n" func_loc func_name (type_to_str other_t);
+                  exit 1
+                )
+              in 
+              (*compare the types to actaul*)
+              if List.length arg_list_types <> List.length arg_list_prime_types then (
+                printf "ERROR: %s: Type-Check: wring number of actual arguments (%d vs. %d)\n" func_loc (List.length arg_list_types) (List.length arg_list_prime_types);
+                exit 1
+              );
+              (*last part same as dynamic dispatch*)
+              let arg_counter = ref 0 in 
+              List.iter2 (fun iter_t iter_t_prime -> 
+                              arg_counter := !arg_counter + 1;
+                              if is_sub inherit_tracker iter_t iter_t_prime then 
+                                () 
+                              else begin
+                                let iter_t_String = 
+                                  match iter_t with
+                                  | Class(x)-> x 
+                                  | SELF_TYPE(x) -> "SELF_TYPE("^x^")"
+                                in 
+                                let iter_t_prime_String = 
+                                  match iter_t_prime with
+                                  | Class(x)-> x 
+                                  | SELF_TYPE(x) -> "SELF_TYPE("^x^")"
+                                in
+                                printf "ERROR: %s: Type-Check: argument #%d type %s does not conform to formal type %s\n" func_loc !arg_counter iter_t_String iter_t_prime_String;
+                                exit 1
+                              end
+                            ) arg_list_types arg_list_prime_types;
+              (*this is the tn plus 1 at the end of the type rule*)
+                if ret_prime = "SELF_TYPE" then
+                  t1
+                else 
+                  (Class ret_prime)
+            | Self_Dispatch((func_loc,func_name), arg_list) ->
+              let arg_list_types = 
+                List.map (fun arg -> typecheck o m curr_class arg ) arg_list in 
+              let t0 = (SELF_TYPE (type_to_str (type_to_norm curr_class))) in 
+              (* i forgot we can use ' in ocaml :( *)
+              let t0' = (type_to_norm curr_class) in 
+              let arg_list_prime_types, ret_prime = 
+                if Hashtbl.mem m (t0', func_name) then
+                  Hashtbl.find m (t0', func_name)
+                else (
+                  printf "ERROR: %s: Type-Check: unknown method %s in dispatch on %s\n" func_loc func_name (type_to_str t0');
+                  exit 1
+                )
+              in 
+              (*compare the types to actaul*)
+              if List.length arg_list_types <> List.length arg_list_prime_types then (
+                printf "ERROR: %s: Type-Check: wring number of actual arguments (%d vs. %d)\n" func_loc (List.length arg_list_types) (List.length arg_list_prime_types);
+                exit 1
+              );
+              let arg_counter = ref 0 in 
+              List.iter2 (fun iter_t iter_t_prime -> 
+                              arg_counter := !arg_counter + 1;
+                              if is_sub inherit_tracker iter_t iter_t_prime then 
+                                () 
+                              else begin
+                                let iter_t_String = 
+                                  match iter_t with
+                                  | Class(x)-> x 
+                                  | SELF_TYPE(x) -> "SELF_TYPE("^x^")"
+                                in 
+                                let iter_t_prime_String = 
+                                  match iter_t_prime with
+                                  | Class(x)-> x 
+                                  | SELF_TYPE(x) -> "SELF_TYPE("^x^")"
+                                in
+                                printf "ERROR: %s: Type-Check: argument #%d type %s does not conform to formal type %s\n" func_loc !arg_counter iter_t_String iter_t_prime_String;
+                                exit 1
+                              end
+                            ) arg_list_types arg_list_prime_types;
+              (*this is the tn plus 1 at the end of the type rule*)
+                if ret_prime = "SELF_TYPE" then
+                  t0
+                else 
+                  (Class ret_prime)
             in
             exp.static_type <- Some(static_type);
             static_type
           in
-          (*type check time*)
+          (*type check time wes version was very bad and small*)
           List.iter (fun ((cloc,cname), inherits, feats) ->
             List.iter (fun feat ->
               match feat with
                 | Attribute((nameloc,name),(dtloc,declared_type),Some(init_exp)) -> (* x: int <- 5 + 3*)
-                  let init_type = typecheck obj_global init_exp in
+                  let init_type = typecheck obj_global metho_global (Class name) init_exp in
                   printf "%s init\n" (type_to_str init_type);
-                  if is_sub init_type (Class declared_type) then
+                  if is_sub inherit_tracker init_type (Class declared_type) then
                     ()
                   else begin
                   printf "ERROR: %s: Type-Check: init for %s was %s not %s\n"
@@ -1076,7 +1339,7 @@ let main () = begin
           (* DONE WITH ERROR CHECKING *)
           (* Now we emit the CL-TYPE File *)
           (* For PA4_C_ -- we just do the class map *)
-          let cname = (Filename.chop_extension fname) ^ ".cl-test" in 
+          let cname = (Filename.chop_extension fname) ^ ".cl-type" in 
           let fout = open_out cname in
           let rec output_exp e = 
             (* output the type for class map*)
