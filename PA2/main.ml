@@ -162,12 +162,25 @@ let rec collect_feats feat_table graph cname =
   let parent_class = 
     Hashtbl.fold (fun parent children acc -> 
       if List.mem cname children then Some parent else acc 
-  ) graph None
+    ) graph None
   in
   match parent_class with 
   | Some parent ->
     let pfeats = collect_feats feat_table graph parent in 
-    pfeats @ cfeats
+    List.fold_left (fun acc feat ->
+      match feat with
+      | Attribute (id, typ, _) ->
+        if List.exists (function Attribute (id2, _, _) -> id = id2 | _ -> false) acc then
+          acc
+        else
+          feat :: acc
+      | Method (id, formals, ret_typ, body) ->
+        let updated_acc = List.filter (function
+          | Method (id2, _, _, _) -> id <> id2
+          | _ -> true
+        ) acc in
+        feat :: updated_acc
+    ) pfeats cfeats
   | None -> cfeats
 
 let append_and_sort_classes sorted_class_names =
@@ -237,21 +250,15 @@ let topSort graph ast =
   (topSortedast, topSorted)
 
 let mod_ast graph feat_table ast = 
-  (* Get topologically sorted AST *)
-  let top_sorted_ast,sorted_classes = topSort graph ast in
+  let top_sorted_ast, sorted_classes = topSort graph ast in
   let new_ast = ref [] in 
-
-  (* Modify each class in the topologically sorted order *)
   let mod_class ((loc, cname), inherits, _features) = 
     let all_feats = collect_feats feat_table graph cname in 
     let new_class = ((loc, cname), inherits, all_feats) in 
     new_ast := new_class :: !new_ast
   in 
-
-  (* Directly iterate over the sorted AST entries and modify them *)
   List.iter mod_class top_sorted_ast;
   let all_sorted = append_and_sort_classes sorted_classes in
-
   (List.rev !new_ast, all_sorted)
 
 let prep ast = 
@@ -261,6 +268,7 @@ let prep ast =
   print_ast new_ast;
   printf "Top sort done\n";
   (new_ast, classes)
+
 let print_sorted_classes sorted_classes =
   List.iter (fun cname -> Printf.printf "%s\n" cname) sorted_classes
 
@@ -618,7 +626,7 @@ let main () = begin
             (* features =  inherited class features*)
             (* features PLUS= current class features*)
           | x ->
-            print_id cname;
+            (* print_id cname; *)
             failwith ("cannot happen: " ^ x)
           in
           let features = read_list read_feature in 
@@ -722,7 +730,7 @@ let main () = begin
           | "dynamic_dispatch" ->
             let e = read_exp () in
             let metho = read_id () in 
-            print_id metho;
+            (* print_id metho; *)
             let args = read_list read_exp in 
             Dynamic_Dispatch(e,metho,args)
           | "static_dispatch" ->
@@ -802,7 +810,7 @@ let main () = begin
           check_method_main ast;
           check_return_type ast all_classes;
           check_dup_param ast;
-          print_ast ast;
+          (* print_ast ast; *)
           printf "entering the topo\n";
           let last_ast,sorted_classes = prep ast in
           print_ast last_ast;
@@ -1320,26 +1328,83 @@ let main () = begin
           in
           (*type check time wes version was very bad and small*)
           List.iter (fun ((cloc,cname), inherits, feats) ->
+            (* attr-init, attr-no-init, and method rules go here*)
             List.iter (fun feat ->
               match feat with
                 | Attribute((nameloc,name),(dtloc,declared_type),Some(init_exp)) -> (* x: int <- 5 + 3*)
-                  let init_type = typecheck obj_global metho_global (Class name) init_exp in
-                  printf "%s init\n" (type_to_str init_type);
-                  if is_sub inherit_tracker init_type (Class declared_type) then
+                  let t0 = Hashtbl.find obj_global ((Class cname), name) in 
+                  let init_type = typecheck obj_global metho_global (Class cname) init_exp in
+                  let new_check = 
+                    (match init_exp.exp_kind with 
+                    | New(x) -> true
+                    | _ -> false )
+                  in
+                  if is_sub inherit_tracker init_type t0 && not (((type_to_norm init_type) = (type_to_norm t0) && ((type_to_str t0) = "SELF_TYPE") && (type_to_str init_type) <> "SELF_TYPE" ) && new_check) then
                     ()
                   else begin
-                  printf "ERROR: %s: Type-Check: init for %s was %s not %s\n"
-                  nameloc name (type_to_str init_type) declared_type;
+                    let iter_t_String = 
+                      match t0 with
+                      | Class(x)-> x 
+                      | SELF_TYPE(x) -> "SELF_TYPE("^x^")"
+                    in 
+                    let iter_t_prime_String = 
+                      match init_type with
+                      | Class(x)-> x 
+                      | SELF_TYPE(x) -> "SELF_TYPE("^x^")"
+                    in
+                    printf "ERROR: %s: Type-Check: %s does not conform to %s in initialized attribute\n" nameloc iter_t_String iter_t_prime_String;
+                    exit 1
+                  end;
+                | Attribute((nameloc,name),(dtloc,declared_type), None) ->
+                  if Hashtbl.mem obj_global ((Class cname), name) then
+                    ()
+                  else begin
+                  printf "ERROR: %s: Type-Check: attr no init\n" nameloc;
                   exit 1
                   end;
-                | _ -> () (*fix me*)
+                | Method((metho_loc,metho_name), forms, (metho_type_loc,metho_type), metho_bod) ->
+                  (*metho_type = t0 in the rule add these temp to typecheck the whole thing*)
+                  List.iter ( fun ((func_loc,func_name), (func_loc_type,func_name_type)) ->
+                    Hashtbl.add obj_global ((Class cname), func_name) (Class func_name_type)
+                  ) forms;
+                  let t0' = typecheck obj_global metho_global (Class cname) metho_bod in 
+                  List.iter ( fun ((func_loc,func_name), (func_loc_type,func_name_type)) ->
+                    Hashtbl.remove obj_global ((Class cname), func_name)
+                  ) forms;
+                  let t0 = 
+                    if metho_type = "SELF_TYPE" then 
+                      (SELF_TYPE cname)
+                    else
+                      (Class metho_type)
+                  in
+                  let new_check = 
+                    (match metho_bod.exp_kind with 
+                    | New(x) -> true
+                    | _ -> false )
+                  in
+                  if is_sub inherit_tracker t0' t0 && not (((type_to_norm t0') = (type_to_norm t0) && ((type_to_str t0) = "SELF_TYPE") && (type_to_str t0') <> "SELF_TYPE" ) && new_check) then
+                    ()
+                  else begin
+                    let iter_t_String = 
+                      match t0 with
+                      | Class(x)-> x 
+                      | SELF_TYPE(x) -> "SELF_TYPE("^x^")"
+                    in 
+                    let iter_t_prime_String = 
+                      match t0' with
+                      | Class(x)-> x 
+                      | SELF_TYPE(x) -> "SELF_TYPE("^x^")"
+                    in
+                    printf "ERROR: %s: Type-Check: %s does not conform to %s in method\n" metho_type_loc iter_t_String iter_t_prime_String;
+                    exit 1
+                  end;
                 ) feats;
           ) ast;
           (* Type-check is supposed to be here*)
           (* DONE WITH ERROR CHECKING *)
           (* Now we emit the CL-TYPE File *)
           (* For PA4_C_ -- we just do the class map *)
-          let cname = (Filename.chop_extension fname) ^ ".cl-type" in 
+          let cname = (Filename.chop_extension fname) ^ ".cl-test" in 
           let fout = open_out cname in
           let rec output_exp e = 
             (* output the type for class map*)
