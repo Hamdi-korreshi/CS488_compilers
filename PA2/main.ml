@@ -111,9 +111,152 @@ and exp_kind =
   | EQ of exp * exp
   | Negate of exp
   | Not of exp
+  | Internal of cool_type * string * string
 open Printf
 
 let extract_class_name ((_, cname), _, _) = cname
+
+let create_base_class = 
+  (*need the full the list for feature list*)
+  let base_int = ("0", "Int"), (Some ("0","Object")),
+  ((Attribute (("0", "self"), ("0", "SELF_TYPE"),
+    (Some {
+        loc = "0";
+        exp_kind = (Integer "0");
+        static_type = Some(Class "Int");
+     })
+     )) :: []
+  )
+  in
+  let base_bool = ("0", "Bool"), (Some ("0","Object")),
+  ((Attribute (("0", "self"), ("0", "SELF_TYPE"),
+    (Some {
+      loc = "0";
+      exp_kind = (String "");
+      static_type = Some(Class "String");
+     })
+     )) :: []
+  )
+  in
+  let base_string = ("0", "String"), (Some ("0","Object")),
+  ((Attribute (("0", "self"), ("0", "SELF_TYPE"),
+    (Some {
+        loc = "0" ;
+        exp_kind = (String "") ;
+        static_type = Some(Class "String") ;
+     })
+     )) ::
+     (Method (("0", "concat"), 
+     (("0", "s"), ("0", "String")) :: [], 
+     ("0", "String"), 
+     {
+       loc = "0";
+       exp_kind = Internal (("0", "String"), "String", "concat");
+       static_type = Some(Class "String");
+     }
+   )
+ ) ::
+ (Method (("0", "length"), 
+     [], 
+     ("0", "Int"), 
+     {
+       loc = "0";
+       exp_kind = Internal (("0", "Int"), "String", "length");
+       static_type = Some(Class "Int");
+     }
+   )
+ ) ::
+ (Method (("0", "substr"), 
+     (("0", "i"), ("0", "Int")) :: (("0", "l"), ("0", "Int")) :: [], 
+     ("0", "String"), 
+     {
+       loc = "0";
+       exp_kind = Internal (("0", "String"), "String", "substr");
+       static_type = Some(Class "String");
+     }
+   )
+    ) :: []
+  )
+  in
+  let base_io= ("0", "IO"), (Some ("0", "Object")),
+  (
+    (Method (("0", "in_int"),
+      [],  
+      ("0", "Int"),
+      {
+        loc = "0";
+        exp_kind = Internal (("0", "Int"), "IO", "in_int");
+        static_type = Some(Class "Int");
+      }
+    )
+    ) ::
+    (Method (("0", "in_string"),
+      [],  
+      ("0", "String"),
+      {
+        loc = "0";
+        exp_kind = Internal (("0", "String"), "IO", "in_string");
+        static_type = Some(Class "String");
+      }
+    )
+    ) ::
+    (Method (("0", "out_int"),
+      (("0", "x"), ("0", "Int")) :: [],  
+      ("0", "SELF_TYPE"),
+      {
+        loc = "0";
+        exp_kind = Internal (("0", "SELF_TYPE"), "IO", "out_int");
+        static_type = Some(SELF_TYPE "IO");
+      }
+    )
+    ) ::
+    (Method (("0", "out_string"),
+      (("0", "x"), ("0", "String")) :: [],  
+      ("0", "SELF_TYPE"),
+      {
+        loc = "0";
+        exp_kind = Internal (("0", "SELF_TYPE"), "IO", "out_string");
+        static_type = Some(SELF_TYPE "IO");
+      }
+    )
+    ) :: []
+  )
+  in
+  let base_obj = ("0", "Object"), (Some ("0", "")),
+  (
+    (Method (("0", "abort"),
+      [],  
+      ("0", "Object"),
+      {
+        loc = "0";
+        exp_kind = Internal (("0", "Object"), "Object", "abort");
+        static_type = Some(Class "Object");
+      }
+    )
+    ) ::
+    (Method (("0", "copy"),
+      [],  
+      ("0", "SELF_TYPE"),
+      {
+        loc = "0";
+        exp_kind = Internal (("0", "SELF_TYPE"), "Object", "copy");
+        static_type = Some(SELF_TYPE "Object");
+      }
+    )
+    ) ::
+    (Method (("0", "type_name"),
+      [],  
+      ("0", "String"),
+      {
+        loc = "0";
+        exp_kind = Internal (("0", "String"), "Object", "type_name");
+        static_type = Some(Class "String");
+      }
+    )
+    ) :: []
+  )
+  in
+  base_int :: base_bool :: base_string  :: base_io :: base_obj :: []
 
 let print_feature feature =
   match feature with
@@ -264,10 +407,14 @@ let mod_ast graph feat_table ast =
 let prep ast = 
   let (graph, feat_table) = build_graph ast in 
   check_cycles graph;
+  let new_ast = create_base_class @ ast in
+  (* 
+  toposort is giving me lots of problems, ill go bakc and fix this approach later for the winter 
   let new_ast, classes = mod_ast graph feat_table ast in
-  print_ast new_ast;
-  printf "Top sort done\n";
-  (new_ast, classes)
+  print_ast new_ast; *)
+  let classes = List.map (fun ((_, cname), _, _) -> cname) ast in
+  let sorted_classes = List.sort compare (base_classes @ classes) in
+  (new_ast, sorted_classes)
 
 let print_sorted_classes sorted_classes =
   List.iter (fun cname -> Printf.printf "%s\n" cname) sorted_classes
@@ -566,7 +713,10 @@ let bool_error (ival, xval) =
           print_exp exp2
       | Negate exp1 ->
           Printf.printf "Negate\n";
-          print_exp exp1    
+          print_exp exp1   
+      | Internal((typeLoc, typeName), className, methodName) -> 
+        Printf.printf "iInternal\n";
+        Printf.printf "%s.%s\n" className methodName 
 
 let print_formal ((loc, fname), (ftloc, ftype)) =
   Printf.printf "Formal (name: %s, type: %s)\n" fname ftype
@@ -799,7 +949,6 @@ let main () = begin
           let ast = read_cool_program () in
           close_in fin ;
           (* printf "CL-AST de-serizlized, %d classes\n" (List.length ast); *)
-          let base_classes = ["Int"; "String"; "Bool"; "IO"; "Object" ] in
           let user_classes = List.map (fun ((_, cname),_,_) -> cname) ast in
           let all_classes = base_classes @ user_classes in
           (* this is for redefining a class name*)
@@ -811,14 +960,21 @@ let main () = begin
           check_return_type ast all_classes;
           check_dup_param ast;
           (* print_ast ast; *)
-          printf "entering the topo\n";
+          (* printf "entering the topo\n"; *)
           let last_ast,sorted_classes = prep ast in
-          print_ast last_ast;
           print_sorted_classes sorted_classes;
+          (* print_ast last_ast; *)
           let obj_global: obj_env = empty_env () in
           let metho_global: metho_env = empty_env () in
           let class_local: local_env = empty_env () in
           let inherit_tracker: inherit_table = empty_env () in
+          (*fill in the inherit_tracker*)
+          List.iter (fun ((cloc, cname), inherits, features) ->
+            match inherits with
+            | None -> Hashtbl.add inherit_tracker cname "Object"
+            | Some((ploc, ptype)) -> 
+              Hashtbl.add inherit_tracker cname ptype;
+          ) last_ast;
           (* THEME IN PA4 -- you should make internal data structures to hold helper information so that you can do the checks more easily *)
           (*Look for Inheritance from Int
           Look for Inheritance from Undeclared class *)
@@ -854,18 +1010,32 @@ let main () = begin
               (Class functypename) :: get_formal_types tail class_name metho_name
           in
           (* need the inherits table later on *)
-          let add_inheritance cname pname =
-            (* Add the parent of cname to the inheritance table *)
+          let rec parent_adder pname cname =            
             if pname = "" then
-              Hashtbl.add inherit_tracker cname "Object" (* Default to Object if no parent *)
-            else
-              Hashtbl.add inherit_tracker cname pname
-          in
+               ()
+            else begin        
+               parent_adder (find_parent inherit_tracker pname) cname;                     
+               let _, _, feats = List.find( fun ((_,cnameInner),_,_) -> cnameInner = pname ) last_ast in 
+               List.iter (fun feat -> 
+                          match feat with
+                          | Attribute ((_, attrName), (_, attrType), _) when attrName <> "self" ->
+                            if attrType = "SELF_TYPE" then
+                               Hashtbl.add obj_global ((Class cname), attrName) (SELF_TYPE pname) 
+                            else
+                               Hashtbl.add obj_global ((Class cname), attrName) (Class attrType) 
+      
+                          | Method((_, metho_name), formals, (_, metho_type), _) ->
+                            let formalTypeList = get_formal_types formals pname metho_name in
+                            Hashtbl.add metho_global ((Class cname), metho_name) (formalTypeList, metho_type)
+                          | x -> ()
+                          ) feats ;        
+            end
+        in
           let add_class cname = 
             let _,parent, feats = List.find ( fun ((_,cnamebruh),_,_) -> cnamebruh = cname) last_ast in
             (match parent with 
-              | Some (_, pname) -> add_inheritance cname pname
-              | None -> add_inheritance cname "" );
+              | Some (_, pname) -> parent_adder pname cname 
+              | None -> parent_adder "" cname );
             List.iter (fun feat ->
                         match feat with
                         | Attribute ((attr_loc, attr_name),(_,attr_type),_) -> 
@@ -891,7 +1061,8 @@ let main () = begin
             Hashtbl.add obj_global ((Class cname),"self") (SELF_TYPE cname)
           in
           (*adding the class content*)
-          List.iter( fun ((cloc,cname),_,_)-> add_class cname) last_ast;
+          List.iter( fun ((cloc,cname),_,_)->
+            add_class cname) last_ast;
           let rec typecheck (o: obj_env) (m: metho_env) (curr_class: static_type) (exp: exp) : static_type = 
             let static_type = match exp.exp_kind with
             (*handled the easy ones first *)
@@ -1081,10 +1252,11 @@ let main () = begin
                   printf "ERROR: %s: Type-Check: binding self in a let is not allowed\n" vloc;
                   exit 1;
                 );
-                (* need to check types if they exist in the let*)
-                if (List.mem typename sorted_classes) || typename = "SELF_TYPE" then
+                (* need to check types if they exist in the prog*)
+                if (List.mem typename all_classes) || typename = "SELF_TYPE" then
                   ()
                 else (
+                  printf "%s\n" vname;
                   printf "ERROR: %s: Type-Check: unknown type %s\n" typeloc typename;
                   exit 1;
                 );
@@ -1156,7 +1328,7 @@ let main () = begin
                       printf "ERROR: %s: Type-Check: using SELF_TYPE as a case branch type is not allowed\n" t_loc;
                       exit 1
                     );
-                    if (List.mem t_name sorted_classes) then 
+                    if (List.mem t_name all_classes) then 
                       Hashtbl.add o ((type_to_norm curr_class), x_iter) (Class t_name)
                     else (
                       printf "ERROR: %s: Type-Check: unknown type %s\n" t_loc t_name;
@@ -1322,6 +1494,11 @@ let main () = begin
                   t0
                 else 
                   (Class ret_prime)
+            |Internal(_,_,_) -> 
+              ( match exp.static_type with
+                | Some(x) -> x
+                | _ -> failwith("Internal typechecking error")
+              ) 
             in
             exp.static_type <- Some(static_type);
             static_type
@@ -1412,7 +1589,7 @@ let main () = begin
             (match e.static_type with 
             | None -> failwith "forgot to type with to typecheck";
             | Some(Class(c)) -> fprintf fout "%s\n" c;
-            | Some(SELF_TYPE(c)) -> failwith "SLEF_TYPE not fixed"
+            | Some(SELF_TYPE(c)) -> fprintf fout "SELF_TYPE\n" 
             );
             let output_id bruh_val = 
               fprintf fout "%s\n%s\n" (fst bruh_val) (snd bruh_val) 
@@ -1437,11 +1614,17 @@ let main () = begin
                 fprintf fout "minus\n"; output_exp(ival); output_exp(xval)
               | Let(bindings, let_body) ->
                 fprintf fout "let\n";
-                List.iter (fun ((vloc, vname), (typeloc, typename), bExp) ->
-                  fprintf fout "%s %s\n" vname typename;
-                  (match bExp with
-                  | None -> fprintf fout "no_initializer\n"
-                  | Some init_exp -> output_exp init_exp
+                List.iter (fun (let_vare, var_type, last_exp) ->
+                  (match last_exp with
+                  | None -> 
+                    fprintf fout "let_binding_no_init\n";
+                    output_id let_vare;
+                    output_id var_type;
+                  | Some init_exp -> 
+                    fprintf fout "let_binding_init\n";
+                    output_id let_vare;
+                    output_id var_type;
+                    output_exp init_exp
                   )
                 ) bindings;
                 fprintf fout "in\n";
@@ -1454,8 +1637,9 @@ let main () = begin
                 fprintf fout "case\n";
                 output_exp test_exp;
                 fprintf fout "%d\n" (List.length case_list);  
-                List.iter (fun ((vloc, vname), (typeloc, typename), case_body) ->
-                  fprintf fout "%s\n%s\n%s\n%s\n" vloc vname typeloc typename;
+                List.iter (fun (var, var_type, case_body) ->
+                  output_id var;
+                  output_id var_type;
                   output_exp case_body
                 ) case_list
               | Identifier(ival) ->
@@ -1509,47 +1693,65 @@ let main () = begin
                 fprintf fout "negate\n"; output_exp(ival)
               | Not(ival) -> 
                 fprintf fout "not\n"; output_exp(ival)
+              | Internal((typeLoc, typeName), className, methodName) -> 
+                fprintf fout "internal\n";
+                fprintf fout "%s.%s\n" className methodName
           in
-          (* printf "entering the topo\n"; *)
-          fprintf fout "class_map\n%d\n" (List.length all_classes) ;
-          List.iter (fun cname ->
-          (* name of class, # attrs, each attr=feature in turn *)
-          fprintf fout "%s\n" cname;
-          
-          let attributes =
-            (*
-            (1) construct a mapping from child to parent
-              (1) use topsort to find the right order of traversal
-                ( or to detect inheritance cycles )
-              (2) recurly walk up that mapping until we hit object
-              (3) add in all of the attr we find
-              (4) while there -- look for all the attr override problems
-              *)
-          try
-            let _, inherits, features = List.find (fun ((_, cname2),__,_) -> cname = cname2) last_ast in
-            List.filter (fun feature -> match feature with
-            | Attribute _ -> true
-            | Method _ -> false
-            ) features
-            with Not_found ->(*bool/int/object *)
-              []
-          in
-          
-          fprintf fout "%d\n" (List.length attributes);
-          (* fprintf fout "%d\n" (List.length attributes); *)
-          if not (List.mem "Main" all_classes) then begin
-            printf "ERROR: 0: Type-Check: class Main not found\n";
-            exit 1;
-          end;
-          List.iter (fun attr -> match attr with
+          let rec output_attr class_name = 
+            if class_name = "" then 
+              ()
+            else (
+            output_attr (find_parent inherit_tracker class_name);
+            let attributes =
+              let _, inherits, features = List.find (fun ((_, cname2),__,_) -> class_name = cname2) last_ast in
+              List.filter (fun feature -> match feature with
+              | Attribute ((_,name),_,_)  
+                when name <> "self" -> true
+              | _ -> false
+              ) features
+            in
+            List.iter (fun attr -> match attr with
             | Attribute((_,aname),(_,atype),None) ->
             fprintf fout "no_initializer\n%s\n%s\n" aname atype
             | Attribute((_,aname),(_,atype),(Some init)) ->
             fprintf fout "initializer\n%s\n%s\n" aname atype ;
             output_exp init
             | Method _ -> failwith "method unexpected"
-            ) attributes;
-          ) sorted_classes; (* to do need to sort here *)
+            ) attributes );
+            in
+          (* printf "entering the topo\n"; *)
+          fprintf fout "class_map\n%d\n" (List.length all_classes) ;
+          List.iter (fun cname ->
+            let rec count_num_attr cname =
+              let rec accu acc_cname count =
+                if acc_cname = "" then
+                  count
+                else
+                  (* Find the class's features and count its attributes *)
+                  let attributes_count = 
+                    let _, _, features = List.find (fun ((_, cname2), _, _) -> cname2 = acc_cname) last_ast in
+                    List.fold_left (fun count feature ->
+                      match feature with
+                      | Attribute ((_, aname), _, _) when aname <> "self" -> count + 1
+                      | _ -> count
+                    ) 0 features
+                  in
+                  (* Recursively get attribute count from parent *)
+                  let parent_name = find_parent inherit_tracker acc_cname in
+                  accu parent_name (count + attributes_count)
+              in
+              accu cname 0  (* Start counting from the given class name with an initial count of 0 *)
+            in
+          (* name of class, # attrs, each attr=feature in turn *)
+          fprintf fout "%s\n" cname;
+          fprintf fout "%d\n" (count_num_attr cname);
+          output_attr cname;
+          ) sorted_classes;
+
+          (* not needed anymore: if not (List.mem "Main" all_classes) then begin
+            printf "ERROR: 0: Type-Check: class Main not found\n";
+            exit 1;
+          end; to do need to sort here *)
     close_out fout;
 end ;;
 main () ;;
