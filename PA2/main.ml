@@ -1591,7 +1591,7 @@ let main () = begin
             | Some(Class(c)) -> fprintf fout "%s\n" c;
             | Some(SELF_TYPE(c)) -> fprintf fout "SELF_TYPE\n" 
             );
-            let output_id bruh_val = 
+            let rec output_id bruh_val = 
               fprintf fout "%s\n%s\n" (fst bruh_val) (snd bruh_val) 
             in
             match e.exp_kind with
@@ -1603,7 +1603,7 @@ let main () = begin
                   fprintf fout "bool\ntrue\n"
                 | "false" -> 
                   fprintf fout "bool\nfalse\n"
-                | _ ->  fprintf fout "")
+                | _ ->  (fprintf fout ""))
               | Plus(ival, xval) ->
                 fprintf fout "plus\n"; output_exp(ival); output_exp(xval)
               | Times(ival, xval) ->
@@ -1627,8 +1627,6 @@ let main () = begin
                     output_exp init_exp
                   )
                 ) bindings;
-                fprintf fout "in\n";
-                output_exp let_body
               | Block(expr_list) ->
                 fprintf fout "block\n";
                 fprintf fout "%d\n" (List.length expr_list); 
@@ -1679,7 +1677,9 @@ let main () = begin
                 fprintf fout "%d\n" (List.length args) ;
                 List.iter output_exp args;
               | Self_Dispatch(metho,args) -> 
+                Printf.printf "Outputting self_dispatch for method %s\n" (snd metho);
                 fprintf fout "self_dispatch\n";
+                print_id metho;
                 output_id metho;
                 fprintf fout "%d\n" (List.length args) ;
                 List.iter output_exp args;
@@ -1693,9 +1693,9 @@ let main () = begin
                 fprintf fout "negate\n"; output_exp(ival)
               | Not(ival) -> 
                 fprintf fout "not\n"; output_exp(ival)
-              | Internal((typeLoc, typeName), className, methodName) -> 
+              | Internal((type_loc, typ_name), class_name, metho_name) -> 
                 fprintf fout "internal\n";
-                fprintf fout "%s.%s\n" className methodName
+                fprintf fout "%s.%s\n" class_name metho_name
           in
           let rec output_attr class_name = 
             if class_name = "" then 
