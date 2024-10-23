@@ -22,21 +22,19 @@ let type_to_norm t =
   match t with 
     | SELF_TYPE(c) | Class(c) -> (Class c)
 
-let rec is_sub inherit_table t1 t2 = 
-  let class1 = type_to_norm t1 in
-  let class2 = type_to_norm t1 in
-  match class1,class2 with 
-  | Class(x), Class(y) when x = y -> true
-  | Class(x), Class(y) when x <> y ->
-    (* recursive calls *)
-    let parent1 = Hashtbl.find inherit_table x in
-    is_sub inherit_table (Class parent1) (Class y)
-  | Class(x), Class("Object") -> true 
-  | Class("Object"), Class(y) when y <> "Object" -> false
-  | Class(x), Class(y) -> false (* treat later, check parent map *)
-  | x, y ->
-    Printf.printf "is_sub error going on\n";
-    exit 1
+let rec is_sub inheritTbl t1 t2 =
+    let class1 = type_to_norm t1 in
+    let class2 = type_to_norm t2 in
+    match class1, class2 with
+    | Class(x), Class("Object") -> true (* true means that it is a subtype *)
+    | Class("Object"), Class(y) when y <> "Object" -> false 
+    | Class(x), Class(y) when x = y -> true 
+    | Class(x), Class(y) when x <> y ->
+      let t1ParentClass = Hashtbl.find inheritTbl x in
+      is_sub inheritTbl (Class t1ParentClass) (Class y) 
+    | x, y -> 
+      Printf.printf "is_subtype error\n";
+      exit 1
 
 let find_parent inherit_table cname = 
   if Hashtbl.mem inherit_table cname then 
@@ -54,6 +52,7 @@ let rec lub inherit_table t1 t2 =
     let parent2 = find_parent inherit_table (type_to_str class2) in 
     lub inherit_table class1 (Class parent2)
   )
+
 (* this is needed for sequences in *)
 let rec lub_sequence inherit_table head remainder = 
   match remainder with 
@@ -962,7 +961,7 @@ let main () = begin
           (* print_ast ast; *)
           (* printf "entering the topo\n"; *)
           let last_ast,sorted_classes = prep ast in
-          print_sorted_classes sorted_classes;
+          (* print_sorted_classes sorted_classes; *)
           (* print_ast last_ast; *)
           let obj_global: obj_env = empty_env () in
           let metho_global: metho_env = empty_env () in
@@ -1039,6 +1038,17 @@ let main () = begin
             List.iter (fun feat ->
                         match feat with
                         | Attribute ((attr_loc, attr_name),(_,attr_type),_) -> 
+                          if (not (List.mem cname base_classes)) && attr_name = "self" then begin
+                            printf "ERROR: %s:  Type-Check: class %s has an attribute named self\n" attr_loc cname;
+                            exit 1 
+                         end
+                         ;
+                         
+                         if Hashtbl.mem obj_global ( (Class cname), attr_name) then begin
+                            printf "ERROR: %s: Type-Check: class %s redefines attribute %s\n" attr_loc cname attr_name;
+                            exit 1 
+                         end
+                         ;
                           if Hashtbl.mem class_local (cname, "attr", attr_name) then (
                             printf "ERROR: %s: duplicate attribute %s in class %s\n" attr_loc attr_name cname;
                             exit 1
@@ -1050,13 +1060,44 @@ let main () = begin
                           else
                             Hashtbl.add obj_global ((Class cname), attr_name) (Class attr_type)
                         | Method ((metho_loc,metho_name), forms, (metho_type_loc,metho_type), _) ->
+                          if not (List.mem metho_type all_classes) &&  metho_type <> "SELF_TYPE" then (
+                            printf "ERROR: %s: Type-Check: class %s has method %s with unknown return type %s\n" metho_type_loc cname metho_name metho_type; 
+                            exit 1
+                          );
                           if Hashtbl.mem class_local (cname, "meth", metho_name) then (
                             printf "ERROR: %s: duplicate method %s in class %s\n" metho_loc metho_name cname;
                             exit 1
                           );
                           Hashtbl.add class_local (cname, "meth", metho_name) true;
+                          let rec check_dup_formal listName =
+                            match listName with
+                            | [] -> ()
+                            | (loc, name) :: tl -> 
+                              if (List.exists (fun listElem -> (loc, name) = listElem) tl) then begin
+                                 printf "ERROR: %s: Type-Check: class %s has method %s with duplicate formal parameter named %s\n" loc cname metho_name name; 
+                                 exit 1
+                              end
+                              else
+                                 check_dup_formal tl
+                            in
+                            check_dup_formal ( List.map (fun ((fLoc, fName), _) -> (fLoc, fName)) forms )
+                            ;
                           let form_type_list = get_formal_types forms cname metho_name in 
-                          Hashtbl.add metho_global ((Class cname), metho_name) (form_type_list, metho_type)
+                          if Hashtbl.mem metho_global ( (Class cname), metho_name) then begin
+                              let argTypeList, retType = Hashtbl.find metho_global ( (Class cname), metho_name) in
+                              if argTypeList <> form_type_list then begin
+                                printf "ERROR: %s: Type-Check: class %s redefines method %s and changes number of formals\n" metho_loc cname metho_name;
+                                exit 1 
+                              end
+                              ;
+                              if retType <> metho_type then begin
+                                printf "ERROR: %s: Type-Check: class %s redefines method %s and changes return type\n" metho_loc cname metho_name;
+                                exit 1 
+                              end
+                          end
+                          ;
+                          
+                            Hashtbl.add metho_global ((Class cname), metho_name) (form_type_list, metho_type)
                           ) feats;
             Hashtbl.add obj_global ((Class cname),"self") (SELF_TYPE cname)
           in
@@ -1092,7 +1133,7 @@ let main () = begin
               (* [2] *)
               let t2 = typecheck o m curr_class e2 in 
               if t2 <> (Class "Int") then begin
-                printf "ERROR: %s: Type-Check: arithmetic on %s instead of Ints\n" exp.loc (type_to_str t2);
+                printf "ERROR: %s: Type-Check: arithmetic on Int %s instead of Ints\n" exp.loc (type_to_str t2);
                 exit 1
               end;
               (* [3] *)
@@ -1106,7 +1147,7 @@ let main () = begin
               end;
               let t2 = typecheck o m curr_class e2 in 
               if t2 <> (Class "Int") then begin
-                printf "ERROR: %s: Type-Check: arithmetic on %s instead of Ints\n" exp.loc (type_to_str t2);
+                printf "ERROR: %s: Type-Check: arithmetic on Int %s instead of Ints\n" exp.loc (type_to_str t2);
                 exit 1
               end;
               (Class "Int")
@@ -1118,7 +1159,7 @@ let main () = begin
               end;
               let t2 = typecheck o m curr_class e2 in 
               if t2 <> (Class "Int") then begin
-                printf "ERROR: %s: Type-Check: arithmetic on %s instead of Ints\n" exp.loc (type_to_str t2);
+                printf "ERROR: %s: Type-Check: arithmetic on Int %s instead of Ints\n" exp.loc (type_to_str t2);
                 exit 1
               end;
               (Class "Int")
@@ -1130,17 +1171,29 @@ let main () = begin
               end;
               let t2 = typecheck o m curr_class e2 in 
               if t2 <> (Class "Int") then begin
-                printf "ERROR: %s: Type-Check: arithmetic on %s instead of Ints\n" exp.loc (type_to_str t2);
+                printf "ERROR: %s: Type-Check: arithmetic on Int %s instead of Ints\n" exp.loc (type_to_str t2);
                 exit 1
               end;
               (Class "Int")
             | EQ(e1,e2) ->
               let t1 = typecheck o m curr_class e1 in 
               let t2 = typecheck o m curr_class e2 in 
-              if t1 <> t2 then begin
-                printf "ERROR: %s: Type-Check: comparison between %s and %s\n" exp.loc (type_to_str t1) (type_to_str t2);
-                exit 1
-              end;
+              (match (type_to_str t1) with 
+              | "Int" | "String"  | "Bool" ->
+                if t1 <> t2 then begin
+                  printf "ERROR: %s: Type-Check: comparison between %s and %s\n" exp.loc (type_to_str t1) (type_to_str t2);
+                  exit 1
+                end;
+              | x ->
+                (match (type_to_str t2) with
+                  | "Int" | "String" | "Bool" ->
+                      if t1 <> t2 then begin
+                        printf "ERROR: %s: Type-Check: comparison between %s and %s\n" exp.loc (type_to_str t1) (type_to_str t2);
+                        exit 1
+                      end
+                  | x -> () 
+                  )
+              );
               (Class "Bool")
             | LE(e1,e2) ->
               let t1 = typecheck o m curr_class e1 in 
@@ -1225,7 +1278,7 @@ let main () = begin
               (* just in case the body is wrong does not need to be used*)
               let type_pool = typecheck o m curr_class pool in 
               if type_loop <> (Class "Bool") then (
-                printf "ERROR: %s: Type-Check: predicate has tpye %s not Bool\n" exp.loc (type_to_str type_loop);
+                printf "ERROR: %s: Type-Check: predicate has type %s not Bool\n" exp.loc (type_to_str type_loop);
                 exit 1
               );
               (Class "Object")
@@ -1245,7 +1298,8 @@ let main () = begin
             | Let(binding_list,let_body) -> 
               (match binding_list with 
               | [] -> 
-                typecheck o m curr_class let_body; (*same as the video for none*)
+                let type_body = typecheck o m curr_class let_body in 
+                type_body (*same as the video for none*)
               | ((vloc, vname), (typeloc,typename), let_exp) :: tail -> (*need the tail otherwise it'll crash since let_body is a list you need to indivual
                 typecheck each expression *)
                 if vname = "self" then (
@@ -1421,7 +1475,7 @@ let main () = begin
               in 
               (*compare the types to actaul*)
               if List.length arg_list_types <> List.length arg_list_prime_types then (
-                printf "ERROR: %s: Type-Check: wring number of actual arguments (%d vs. %d)\n" func_loc (List.length arg_list_types) (List.length arg_list_prime_types);
+                printf "ERROR: %s: Type-Check: wrong number of actual arguments (%d vs. %d)\n" func_loc (List.length arg_list_types) (List.length arg_list_prime_types);
                 exit 1
               );
               (*last part same as dynamic dispatch*)
@@ -1450,17 +1504,17 @@ let main () = begin
                   t1
                 else 
                   (Class ret_prime)
-            | Self_Dispatch((func_loc,func_name), arg_list) ->
+            | Self_Dispatch((func_loc,fname), arg_list) ->
               let arg_list_types = 
                 List.map (fun arg -> typecheck o m curr_class arg ) arg_list in 
               let t0 = (SELF_TYPE (type_to_str (type_to_norm curr_class))) in 
               (* i forgot we can use ' in ocaml :( *)
               let t0' = (type_to_norm curr_class) in 
               let arg_list_prime_types, ret_prime = 
-                if Hashtbl.mem m (t0', func_name) then
-                  Hashtbl.find m (t0', func_name)
+                if Hashtbl.mem m (t0', fname) then
+                  Hashtbl.find m (t0', fname)
                 else (
-                  printf "ERROR: %s: Type-Check: unknown method %s in dispatch on %s\n" func_loc func_name (type_to_str t0');
+                  printf "ERROR: %s: Type-Check: unknown method %s in dispatch on %s\n" func_loc fname (type_to_str t0');
                   exit 1
                 )
               in 
@@ -1581,8 +1635,11 @@ let main () = begin
           (* DONE WITH ERROR CHECKING *)
           (* Now we emit the CL-TYPE File *)
           (* For PA4_C_ -- we just do the class map *)
-          let cname = (Filename.chop_extension fname) ^ ".cl-test" in 
+          let cname = (Filename.chop_extension fname) ^ ".cl-type" in 
           let fout = open_out cname in
+          let rec output_id bruh_val = 
+            fprintf fout "%s\n%s\n" (fst bruh_val) (snd bruh_val) 
+          in
           let rec output_exp e = 
             (* output the type for class map*)
             fprintf fout "%s\n" e.loc ;
@@ -1591,9 +1648,6 @@ let main () = begin
             | Some(Class(c)) -> fprintf fout "%s\n" c;
             | Some(SELF_TYPE(c)) -> fprintf fout "SELF_TYPE\n" 
             );
-            let rec output_id bruh_val = 
-              fprintf fout "%s\n%s\n" (fst bruh_val) (snd bruh_val) 
-            in
             match e.exp_kind with
             | Integer(ival) -> fprintf fout "integer\n%s\n" ival
               | String(ival) -> fprintf fout "string\n%s\n" ival
@@ -1614,19 +1668,21 @@ let main () = begin
                 fprintf fout "minus\n"; output_exp(ival); output_exp(xval)
               | Let(bindings, let_body) ->
                 fprintf fout "let\n";
-                List.iter (fun (let_vare, var_type, last_exp) ->
-                  (match last_exp with
-                  | None -> 
+                fprintf fout "%d\n" (List.length bindings) ;
+                List.iter (fun bind ->
+                  (match bind with
+                  | (let_vare, var_type, None) -> 
                     fprintf fout "let_binding_no_init\n";
                     output_id let_vare;
                     output_id var_type;
-                  | Some init_exp -> 
+                  | (let_vare, var_type, (Some init_exp)) -> 
                     fprintf fout "let_binding_init\n";
                     output_id let_vare;
                     output_id var_type;
                     output_exp init_exp
                   )
                 ) bindings;
+                output_exp let_body; 
               | Block(expr_list) ->
                 fprintf fout "block\n";
                 fprintf fout "%d\n" (List.length expr_list); 
@@ -1677,9 +1733,7 @@ let main () = begin
                 fprintf fout "%d\n" (List.length args) ;
                 List.iter output_exp args;
               | Self_Dispatch(metho,args) -> 
-                Printf.printf "Outputting self_dispatch for method %s\n" (snd metho);
                 fprintf fout "self_dispatch\n";
-                print_id metho;
                 output_id metho;
                 fprintf fout "%d\n" (List.length args) ;
                 List.iter output_exp args;
@@ -1748,10 +1802,154 @@ let main () = begin
           output_attr cname;
           ) sorted_classes;
 
+          (*imp map time*)
+          let rec output_metho class_name top_class_name_list =
+            if class_name = "" then 
+              ()
+            else begin
+              (* Recursive call to output the parent class implementation map *)
+              output_metho (find_parent inherit_tracker class_name) (class_name :: top_class_name_list);
+          
+              (* Find the features (methods) of the class *)
+              let methods =
+                let _, _, features = List.find (fun ((_, cname2), _, _) -> cname2 = class_name) last_ast in
+                List.filter (function
+                | Method( (locN, nameN),_,_,_ ) ->
+                  (
+                   let ret = 
+                   List.exists (fun n-> 
+                     (Hashtbl.mem class_local (n, "meth", nameN))
+                   ) top_class_name_list
+                   in
+                  if ret then
+                     false
+                  else
+                     true
+                  )
+                  | _ -> false
+                ) features
+              in
+          
+              (* Output method details *)
+              List.iter (function
+                | Method ((_, mname), formals, (_, mtype), exp) ->
+                  fprintf fout "%s\n" mname;
+                  fprintf fout "%d\n" (List.length formals);
+                  List.iter (fun ((_, fname), (_, _)) ->
+                    fprintf fout "%s\n" fname;
+                  ) formals;
+                  fprintf fout "%s\n" class_name;
+                  output_exp exp
+                | _ -> failwith "attribute unexpected"
+              ) methods
+            end
+          in
+          let count_mehto class_name =
+            let init_list = [] in
+          
+            (* Recursive accumulator function to collect method names *)
+            let rec accu_func accu_class_name accu_list =
+              if accu_class_name = "" then
+                [] @ accu_list
+              else
+                (* Recursively collect methods from parent classes *)
+                let tmp_list = accu_func (find_parent inherit_tracker accu_class_name) accu_list in
+          
+                (* Extract the methods of the current class *)
+                let methods =
+                  let _, _, features = List.find (fun ((_, cname2), _, _) -> cname2 = accu_class_name) last_ast in
+                  List.filter (function
+                    | Method _ -> true
+                    | _ -> false
+                  ) features
+                in
+          
+                (* Extract method names *)
+                let method_names =
+                  List.map (function
+                    | Method ((_, nameN), _, (_, nameT), _) -> nameN
+                    | _ -> failwith "unexpected feature"
+                  ) methods
+                in
+          
+                (* Filter out method names that have already been collected *)
+                let method_names_filtered =
+                  List.filter (fun x -> not (List.mem x tmp_list)) method_names
+                in
+                
+                (* Combine the filtered method names with the previously collected ones *)
+                tmp_list @ method_names_filtered
+            in
+          
+            (* Get the result list of method names and return its length *)
+            let result_list = accu_func class_name init_list in
+            List.length result_list
+          in
+          
+          fprintf fout "implementation_map\n%d\n" (List.length all_classes) ;
+          List.iter (fun cname ->
+          fprintf fout "%s\n" cname;
+          fprintf fout "%d\n" (count_mehto cname);
+          output_metho cname [];
+          ) sorted_classes;
+
+          fprintf fout "parent_map\n";
+          fprintf fout "%d\n" (List.length sorted_classes -1 );
+          List.iter (fun cname ->
+            if cname <> "Object" then (
+              fprintf fout "%s\n" cname;
+              fprintf fout "%s\n" (find_parent inherit_tracker cname)
+            )
+            ) sorted_classes;
           (* not needed anymore: if not (List.mem "Main" all_classes) then begin
             printf "ERROR: 0: Type-Check: class Main not found\n";
             exit 1;
           end; to do need to sort here *)
+          let rec output_cool_prog ast = output_classes ast
+          and output_classes ast =
+              fprintf fout "%d\n" (List.length ast);
+              List.iter output_class ast
+
+          and output_class ast = 
+            match ast with
+            | class_bruh, None, feats -> 
+              output_id class_bruh;
+              fprintf fout "no_inherits\n";
+              fprintf fout "%d\n" (List.length feats);
+              List.iter output_feature feats
+            | class_bruh, Some(parent_class), feats -> 
+              output_id class_bruh;
+              fprintf fout "inherits\n";
+              output_id parent_class;
+              fprintf fout "%d\n" (List.length feats);
+              List.iter output_feature feats
+
+          and output_feature ast_feature = 
+              match ast_feature with
+              | Attribute(attr_name, attr_type, None) ->
+                fprintf fout "attribute_no_init\n"; 
+                output_id attr_name;
+                output_id attr_type
+              | Attribute(attr_name, (attr_type_loc, attr_type), Some(init_exp)) ->
+                fprintf fout "attribute_init\n";
+                output_id attr_name ;
+                output_id (attr_type_loc, attr_type) ;
+                output_exp init_exp
+
+              | Method(metho_name, forms, (metho_type_loc, metho_type), body_exp) ->
+                fprintf fout "method\n";
+                output_id metho_name; 
+                fprintf fout "%d\n" (List.length forms); 
+                List.iter output_formal forms;
+                output_id (metho_type_loc, metho_type);
+                output_exp body_exp
+                
+
+          and output_formal (form_name, form_type) = 
+              output_id form_name;
+              output_id form_type
+          in 
+          output_cool_prog ast;
     close_out fout;
 end ;;
 main () ;;
