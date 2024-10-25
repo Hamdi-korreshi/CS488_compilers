@@ -1154,7 +1154,7 @@ let main () = begin
                 printf "ERROR: %s: Type-Check: compare %s instead of Int\n" exp.loc (type_to_str t2);
                 exit 1
               end;
-              (Class "Int")
+              (Class "Bool")
             | LT(e1,e2) -> 
               let t1 = typecheck o m curr_class e1 in
               if (type_to_norm t1) <> (Class "Int") then begin
@@ -1167,7 +1167,7 @@ let main () = begin
                 printf "ERROR: %s: Type-Check: compare %s instead of Int\n" exp.loc (type_to_str t2);
                 exit 1
               end;
-              (Class "Int")
+              (Class "Bool")
             | Isvoid(e) ->
               typecheck o m curr_class e; (*just to make sure no problems arise*)
               (Class "Bool")
