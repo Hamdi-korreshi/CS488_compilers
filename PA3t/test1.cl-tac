@@ -1,0 +1,4 @@
+comment start
+label Main_main_0
+t$0 <- int 3
+return t$0

@@ -1,0 +1,6 @@
+comment start
+label Bar_printh_0
+t$2 <- h
+t$1 <- call out_int t$2
+t$0 <- int 0
+return t$0

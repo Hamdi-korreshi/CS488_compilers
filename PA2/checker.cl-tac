@@ -1,0 +1,7 @@
+comment start
+label Bruh_teehee_0
+t$2 <- g
+t$3 <- a
+t$1 <- call concat t$2
+t$0 <- int 3
+return t$0

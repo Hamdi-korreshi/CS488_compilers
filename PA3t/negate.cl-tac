@@ -1,0 +1,5 @@
+comment start
+label A_myfuning_0
+x <- int 3
+t$0 <- x
+return t$0
