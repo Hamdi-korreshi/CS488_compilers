@@ -1,0 +1,9 @@
+comment start
+x <- int 3
+label A_myfunc_0
+t0 <- int 1
+t1 <- + x t0
+t2 <- int 2
+t3 <- + t1 t2
+label B_myfunc_0
+label Main_main_0

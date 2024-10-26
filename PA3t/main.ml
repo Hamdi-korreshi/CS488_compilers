@@ -2,6 +2,25 @@ type static_type =  (*static type of cool expression*)
   | Class of string
   | SELF_TYPE of string
 
+type tac_expr =
+  | TAC_Variable of string
+  | TAC_Int of int
+
+  type tac_instr =
+  | TAC_Assign_Int of string * int
+  | TAC_Assign_Var of string * string
+  | TAC_Assign_Plus of string * tac_expr * tac_expr
+  | TAC_Assign_Minus of string * tac_expr * tac_expr
+  | TAC_Assign_Times of string * tac_expr * tac_expr
+  | TAC_Assign_Divide of string * tac_expr * tac_expr
+
+let fresh_variable =
+  let counter = ref 0 in
+  fun () ->
+    let var_name = "t" ^ string_of_int !counter in
+    incr counter;
+    var_name
+
 type cool_prog = cool_class list
 and loc = string
 and id = loc * string
@@ -46,10 +65,153 @@ and exp_kind =
   | Not of exp
 open Printf
 
-let method_tac (mymethod : feature) =
-  printf "A"
-  ;
+let rec convert_expr (e : exp) : (tac_instr list * tac_expr) =
+  match e.exp_kind with
+  | Integer value ->
+      let new_var = fresh_variable () in
+      let int_value = int_of_string value in
+      [TAC_Assign_Int (new_var, int_value)], TAC_Variable new_var
 
+  | Identifier (_, name) ->
+      [], TAC_Variable name
+
+  | Plus (e1, e2) ->
+      let instrs1, temp1 = convert_expr e1 in
+      let instrs2, temp2 = convert_expr e2 in
+      let new_var = fresh_variable () in
+      let to_output = TAC_Assign_Plus (new_var, temp1, temp2) in
+      instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
+
+  | Minus (e1, e2) ->
+      let instrs1, temp1 = convert_expr e1 in
+      let instrs2, temp2 = convert_expr e2 in
+      let new_var = fresh_variable () in
+      let to_output = TAC_Assign_Minus (new_var, temp1, temp2) in
+      instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
+
+  | Times (e1, e2) ->
+      let instrs1, temp1 = convert_expr e1 in
+      let instrs2, temp2 = convert_expr e2 in
+      let new_var = fresh_variable () in
+      let to_output = TAC_Assign_Times (new_var, temp1, temp2) in
+      instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
+
+  | Divide (e1, e2) ->
+      let instrs1, temp1 = convert_expr e1 in
+      let instrs2, temp2 = convert_expr e2 in
+      let new_var = fresh_variable () in
+      let to_output = TAC_Assign_Divide (new_var, temp1, temp2) in
+      instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
+
+  | _ -> [], TAC_Variable ""
+type attr_table = (string, string) Hashtbl.t 
+(* let is_digit num = 
+  let jack = Str.string_match (Str.regexp "123456789") num 0 in
+  jack  *)
+
+let print_cool_type (loc, tname) =
+  Printf.printf "Cool_Type (location: %s, type: %s)\n" loc tname
+let rec print_id (loc, name) =
+  Printf.printf "ID (location: %s, name: %s)\n" loc name
+let rec print_exp exp =
+  Printf.printf "Expression (location: %s)\n" exp.loc;
+  (match exp.static_type with
+    | None -> Printf.printf "Static type: None\n"
+    | Some(Class(c)) -> Printf.printf "Static type: Class %s\n" c
+    | Some(SELF_TYPE(c)) -> Printf.printf "Static type: SELF_TYPE %s\n" c);
+  match exp.exp_kind with
+  | Not value ->
+    Printf.printf "  Not: \n";
+    print_exp value
+  | Integer value -> Printf.printf "  Integer: %s\n" value
+  | Bool value -> Printf.printf "  Bool: %s\n" value
+  | String value -> Printf.printf "  String: %s\n" value
+  | Plus(exp1, exp2) ->
+      Printf.printf "plus\n";
+      print_exp exp1;
+      print_exp exp2
+  | Minus(exp1, exp2) ->
+      Printf.printf "minus\n";
+      print_exp exp1;
+      print_exp exp2
+  | Times(exp1, exp2) ->
+      Printf.printf "times\n";
+      print_exp exp1;
+      print_exp exp2
+  | Divide(exp1, exp2) ->
+      Printf.printf "divide\n";
+      print_exp exp1;
+      print_exp exp2
+  | Block exp_list ->
+      Printf.printf "block\n";
+      List.iter print_exp exp_list
+  | Assign (var, rhs_exp) ->
+      print_id var;
+      print_exp rhs_exp
+  | Isvoid void_exp -> 
+      print_exp void_exp
+  | If (if_exp, then_exp, else_exp) ->
+      print_exp if_exp;
+      print_exp then_exp;
+      print_exp else_exp
+  | While (loop, pool) ->
+      print_exp loop; 
+      print_exp pool
+  | Let (bindings, let_body) ->
+      Printf.printf "let\n";
+      List.iter (fun ((vloc, vname), (typeloc, typename), init_exp) ->
+        Printf.printf " Bindings: %s: %s\n" vname typename;
+        (match init_exp with
+          | None -> Printf.printf " No init\n"
+          | Some init -> Printf.printf " Init:\n"; print_exp init)
+      ) bindings;
+      Printf.printf "in\n";
+      print_exp let_body
+  | Identifier ival ->
+      print_id ival
+  | Case (test_exp, case_list) ->
+      Printf.printf "First exp:\n";
+      print_exp test_exp;
+      List.iter (fun ((vloc, vname), (tloc, tname), rest_exp) ->
+        Printf.printf "  Case: %s: %s\n" vname tname;
+        print_exp rest_exp
+      ) case_list
+  | New ((loc_ival, ival_name)) ->
+      Printf.printf "new\n";
+      Printf.printf "  New Object: %s\n" ival_name
+  | Dynamic_Dispatch (e, metho, args) ->
+      Printf.printf "Dynamic Dispatch:\n";
+      print_exp e;
+      print_id metho;
+      Printf.printf "  Args:\n";
+      List.iter print_exp args
+  | Static_Dispatch (e, stat_type, metho, args) ->
+      Printf.printf "Static Dispatch:\n";
+      print_exp e;
+      print_cool_type stat_type;
+      print_id metho;
+      Printf.printf "  Args:\n";
+      List.iter print_exp args
+  | Self_Dispatch (metho, args) ->
+      Printf.printf "Self Dispatch:\n";
+      print_id metho;
+      Printf.printf "  Args:\n";
+      List.iter print_exp args
+  | LT (exp1, exp2) ->
+      Printf.printf "LT\n";
+      print_exp exp1;
+      print_exp exp2
+  | LE (exp1, exp2) ->
+      Printf.printf "LE\n";
+      print_exp exp1;
+      print_exp exp2
+  | EQ (exp1, exp2) ->
+      Printf.printf "EQ\n";
+      print_exp exp1;
+      print_exp exp2
+  | Negate exp1 ->
+      Printf.printf "Negate\n";
+      print_exp exp1
 
 let main () = begin
   (* printf "start main \n"; *)
@@ -262,32 +424,193 @@ let main () = begin
           in
           let ast = read_cool_program () in
           close_in fin ;
-          let user_classes = List.map (fun ((_, cname),_,_) -> cname) ast in
-          (* Acquire the methods of said class *)
-          let currClass = List.hd user_classes;
-          let currMethods = 
-            let _ , _, features = List.find (fun ((_, currClass), _, _) -> cname = currClass) ast in;
-            List.filter(fun feat -> match feat with 
-            | Attribute -> false
-            | Method -> true
-            ) features
-          with Non_found -> []
-        in
+          let cname = (Filename.chop_extension fname) ^ ".cl-tactest" in 
+          let fout = open_out cname in
+          (* let rec output_id bruh_val = 
+            fprintf fout "%s\n%s\n" (fst bruh_val) (snd bruh_val) 
+          in
+          let rec output_ints sval = 
+            match sval with 
+            | Identifier(ival) ->
+              fprintf fout "%s\n" (snd ival)
+            | Integer(ival) -> fprintf fout "int %s\n" ival
+            | _ -> printf "unmatch case\n";
+          in
+          let counter = ref 0 in
+          let rec output_tac e =
+            match e.exp_kind with
+            | Identifier(ival) ->
+              fprintf fout "%s\n" (snd ival);
+              print_id ival;
+            | Integer(ival) -> fprintf fout "int %s\n" ival
+            | String(ival) -> fprintf fout "string\n%s\n" ival
+            | Plus(e1,e2) ->
+              let t3 = "t$" ^ string_of_int !counter in 
+              let () = counter <- !counter + 1  in
+              let t1 = "t$" ^ string_of_int !counter in 
+              printf "%s\n"  t1;
+              fprintf fout "%s <- " t1;
+              output_tac e1;
+              let () = counter <- !counter + 1  in
+              let t2 = "t$" ^ string_of_int !counter in 
+              fprintf fout "%s <- " t2;
+              output_tac e2;
+              fprintf fout "%s <- + %s %s\n" t3 t1 t2
+            | _ -> fprintf fout ""
+        in *)
+        (* let metho_count = ref 0 in
+        fprintf fout "comment start\n";
+        List.iter (fun ((cloc,cname),inherits, feats) ->
+          List.iter (fun feat ->
+          match feat with 
+          | Attribute((name_loc, name),(dt_loc,dt_type), (Some init_exp)) ->
+            fprintf fout "%s <- " name;
+            output_tac init_exp
+          | Method((metho_loc,metho_name), forms, (metho_type_loc,metho_type), metho_bod) ->
+            fprintf fout "label %s_%s_%d\n" cname metho_name !metho_count;
+            output_tac metho_bod
+          | Attribute((_, _),(_,_), None) ->
+            printf "bruh";
+          ) feats; 
+        ) ast; *)
+        let print_tac_instr fout instr =
+          match instr with
+          | TAC_Assign_Int (var, value) ->
+            fprintf fout "%s <- int %d\n" var value
+          | TAC_Assign_Var (var, src_var) ->
+              fprintf fout "%s <- %s\n" var src_var
+          | TAC_Assign_Plus (var, e1, e2) ->
+              let e1_str = match e1 with
+                          | TAC_Variable v -> v
+                          | TAC_Int i -> "int " ^ string_of_int i in
+              let e2_str = match e2 with
+                          | TAC_Variable v -> v
+                          | TAC_Int i -> "int " ^ string_of_int i in
+              fprintf fout "%s <- %s + %s\n" var e1_str e2_str
+          | TAC_Assign_Minus (var, e1, e2) ->
+              let e1_str = match e1 with
+                          | TAC_Variable v -> v
+                          | TAC_Int i -> "int " ^ string_of_int i in
+              let e2_str = match e2 with
+                          | TAC_Variable v -> v
+                          | TAC_Int i -> "int " ^ string_of_int i in
+              fprintf fout "%s <- %s - %s\n" var e1_str e2_str
+          | TAC_Assign_Times (var, e1, e2) ->
+              let e1_str = match e1 with
+                          | TAC_Variable v -> v
+                          | TAC_Int i -> "int " ^ string_of_int i in
+              let e2_str = match e2 with
+                          | TAC_Variable v -> v
+                          | TAC_Int i -> "int " ^ string_of_int i in
+              fprintf fout "%s <- %s * %s\n" var e1_str e2_str
+          | TAC_Assign_Divide (var, e1, e2) ->
+              let e1_str = match e1 with
+                          | TAC_Variable v -> v
+                          | TAC_Int i -> "int " ^ string_of_int i in
+              let e2_str = match e2 with
+                          | TAC_Variable v -> v
+                          | TAC_Int i -> "int " ^ string_of_int i in
+              fprintf fout "%s <- %s / %s\n" var e1_str e2_str
+        in let rec convert_expr (e : exp) (target : string option) : (tac_instr list * tac_expr) =
+          match e.exp_kind with
+          | Integer value ->
+              let int_value = int_of_string value in
+              (match target with
+               | Some var -> [TAC_Assign_Int (var, int_value)], TAC_Variable var
+               | None ->
+                  let new_var = fresh_variable () in
+                  [TAC_Assign_Int (new_var, int_value)], TAC_Variable new_var)
         
-          while (List.length currMethods <> 0 & is_empty (user_classes) ) do
-            user_class = List.tail user_classes
-            currClass = List.hd user_classes
-            _,_, features = List.find (fun ((_, currClass), _, _) -> = currClass)
-            printf "a\n";
-        done
-        if (List.length currMethods > 0 ) then
-          run_method_function
-
-          (* user_classes = List.tail user_class *)
-          (* List.iter(fun meth -> 
-            match meth with
-            | Method())
-            | Attribute _ -> failwith "method unexpected"
-            ) *)
-          in ast
+          | Identifier (_, name) ->
+              [], TAC_Variable name
+        
+          | Plus (e1, e2) ->
+              let instrs1, temp1 = convert_expr e1 None in
+              let instrs2, temp2 = convert_expr e2 None in
+              let new_var = fresh_variable () in
+              let to_output = TAC_Assign_Plus (new_var, temp1, temp2) in
+              instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
+        
+          | Minus (e1, e2) ->
+              let instrs1, temp1 = convert_expr e1 None in
+              let instrs2, temp2 = convert_expr e2 None in
+              let new_var = fresh_variable () in
+              let to_output = TAC_Assign_Minus (new_var, temp1, temp2) in
+              instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
+          | Times (e1, e2) ->
+              let instrs1, temp1 = convert_expr e1 None in
+              let instrs2, temp2 = convert_expr e2 None in
+              let new_var = fresh_variable () in
+              let to_output = TAC_Assign_Times (new_var, temp1, temp2) in
+              instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
+          | Divide (e1, e2) ->
+              let instrs1, temp1 = convert_expr e1 None in
+              let instrs2, temp2 = convert_expr e2 None in
+              let new_var = fresh_variable () in
+              let to_output = TAC_Assign_Divide (new_var, temp1, temp2) in
+              instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
+          | _ -> [], TAC_Variable ""
+          in
+        (* Function to print a single TAC instruction *)
+        let print_tac_instr fout instr =
+          match instr with
+          | TAC_Assign_Int (var, value) ->
+              fprintf fout "%s <- int %d\n" var value
+          | TAC_Assign_Var (var, src_var) ->
+              fprintf fout "%s <- %s\n" var src_var
+          | TAC_Assign_Plus (var, e1, e2) ->
+              let e1_str = match e1 with
+                           | TAC_Variable v -> v
+                           | TAC_Int i -> "int " ^ string_of_int i in
+              let e2_str = match e2 with
+                           | TAC_Variable v -> v
+                           | TAC_Int i -> "int " ^ string_of_int i in
+              fprintf fout "%s <- + %s %s\n" var e1_str e2_str
+          | TAC_Assign_Minus (var, e1, e2) ->
+              let e1_str = match e1 with
+                           | TAC_Variable v -> v
+                           | TAC_Int i -> "int " ^ string_of_int i in
+              let e2_str = match e2 with
+                           | TAC_Variable v -> v
+                           | TAC_Int i -> "int " ^ string_of_int i in
+              fprintf fout "%s <- - %s %s\n" var e1_str e2_str
+          | TAC_Assign_Times (var, e1, e2) ->
+              let e1_str = match e1 with
+                           | TAC_Variable v -> v
+                           | TAC_Int i -> "int " ^ string_of_int i in
+              let e2_str = match e2 with
+                           | TAC_Variable v -> v
+                           | TAC_Int i -> "int " ^ string_of_int i in
+              fprintf fout "%s <- * %s %s\n" var e1_str e2_str
+          | TAC_Assign_Divide (var, e1, e2) ->
+              let e1_str = match e1 with
+                           | TAC_Variable v -> v
+                           | TAC_Int i -> "int " ^ string_of_int i in
+              let e2_str = match e2 with
+                           | TAC_Variable v -> v
+                           | TAC_Int i -> "int " ^ string_of_int i in
+              fprintf fout "%s <- / %s %s\n" var e1_str e2_str
+          in        
+        (* Function to output the full list of TAC instructions for a method body *)
+        let output_tac fout target e =
+          let tac_instrs, _ = convert_expr e target in
+          List.iter (print_tac_instr fout) tac_instrs
+        in 
+        (* Main program to iterate over the classes and features *)
+        let metho_count = ref 0 in
+        fprintf fout "comment start\n";
+        List.iter (fun ((cloc, cname), inherits, feats) ->
+          List.iter (fun feat ->
+            match feat with
+            | Attribute ((name_loc, name), (dt_loc, dt_type), Some init_exp) ->
+                output_tac fout (Some name) init_exp
+            | Method ((metho_loc, metho_name), forms, (metho_type_loc, metho_type), metho_bod) ->
+                fprintf fout "label %s_%s_%d\n" cname metho_name !metho_count;
+                output_tac fout None metho_bod
+            | Attribute ((_, _), (_, _), None) ->
+                printf "bruh"
+          ) feats;
+        ) ast;
+        close_out fout;
         end ;;
+main();;
