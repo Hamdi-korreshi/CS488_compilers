@@ -5,6 +5,8 @@ type static_type =  (*static type of cool expression*)
 type tac_expr =
   | TAC_Variable of string
   | TAC_Int of int
+  | TAC_String of string
+  | TAC_Bool of bool
 
   type tac_instr =
   | TAC_Assign_Int of string * int
@@ -13,6 +15,31 @@ type tac_expr =
   | TAC_Assign_Minus of string * tac_expr * tac_expr
   | TAC_Assign_Times of string * tac_expr * tac_expr
   | TAC_Assign_Divide of string * tac_expr * tac_expr
+  | TAC_Cnd_LessThan of string * tac_expr * tac_expr
+  | TAC_Cnd_LessEqual of string * tac_expr * tac_expr
+  | TAC_Cnd_Equal of string * tac_expr * tac_expr
+  | TAC_Cnd_Not of string * tac_expr
+  | TAC_Negate of string * tac_expr
+  | TAC_New of string * tac_expr
+  | TAC_Default of string * tac_expr
+  | TAC_isvoid of string * tac_expr
+  | TAC_call_out of string * string * string (* out_string, out_int *)
+  | TAC_call_in of string * string (* in_string, in_int *)
+
+  (* TODO
+    Branches, Labels, and Control Flow:
+    jmp label - this happens right after the conditional body finishes
+    label label - this is the "function Label" - after the conditional is done then write this Label
+    return x - only occurs once per method, somewhat handled by current program
+    comment ...text until end of line... - some arbrituary program that gives context
+    bt x label - if a conditional appears then there is a contradiction variable (that acts as the false) and then the bt's are listed right after that
+
+    Implement way for methods
+    Handle not and negate
+    Handle new and default
+    Research new type and default type
+    Stack the methods into one program
+  *)
 
 let fresh_variable =
   let counter = ref 0 in
@@ -66,6 +93,7 @@ and exp_kind =
 open Printf
 
 let rec convert_expr (e : exp) : (tac_instr list * tac_expr) =
+  (* TODO: match method *)
   match e.exp_kind with
   | Integer value ->
       let new_var = fresh_variable () in
@@ -102,6 +130,42 @@ let rec convert_expr (e : exp) : (tac_instr list * tac_expr) =
       let new_var = fresh_variable () in
       let to_output = TAC_Assign_Divide (new_var, temp1, temp2) in
       instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
+  | LT (e1, e2) ->
+    let instrs1, temp1 = convert_expr e1 in
+    let instrs2, temp2 = convert_expr e2 in
+    let new_var = fresh_variable () in
+    let to_output = TAC_Cnd_LessThan (new_var, temp1, temp2) in
+    instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
+  | LE (e1, e2) ->
+    let instrs1, temp1 = convert_expr e1 in
+    let instrs2, temp2 = convert_expr e2 in
+    let new_var = fresh_variable () in
+    let to_output = TAC_Cnd_LessEqual (new_var, temp1, temp2) in
+    instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
+
+  | EQ (e1, e2) ->
+    let instrs1, temp1 = convert_expr e1 in
+    let instrs2, temp2 = convert_expr e2 in
+    let new_var = fresh_variable () in
+    let to_output = TAC_Cnd_Equal (new_var, temp1, temp2) in
+    instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
+  | Not (e1) -> 
+    let instrs1, temp1 = convert_expr e1 in
+    let new_var = fresh_variable () in
+    let to_output = TAC_Cnd_Not (new_var, temp1) in
+    instrs1 @ [to_output], TAC_Variable new_var
+  
+  | Negate (e1) ->
+    let instrs1, temp1 = convert_expr e1 in
+    let new_var = fresh_variable () in
+    let to_output = TAC_Negate (new_var, temp1) in
+    instrs1 @ [to_output], TAC_Variable new_var
+
+  | New (e1) ->
+    let instrs1, temp1 = convert_expr e1 in
+    let new_var = fresh_variable () in
+    let to_output = TAC_New (new_var, temp1) in
+    instrs1 @ [to_output], TAC_Variable new_var
 
   | _ -> [], TAC_Variable ""
 type attr_table = (string, string) Hashtbl.t 
@@ -511,6 +575,88 @@ let main () = begin
                           | TAC_Variable v -> v
                           | TAC_Int i -> "int " ^ string_of_int i in
               fprintf fout "%s <- %s / %s\n" var e1_str e2_str
+          | TAC_Cnd_LessThan (var, e1, e2) ->
+              let e1_val = match e1 with
+                          | TAC_Variable v -> v
+                          | TAC_String i -> "string" 
+                          | TAC_Int i -> "int"
+                          | TAC_Bool i -> "bool" ^ string_of_bool i in
+              let e2_val = match e2 with
+                          | TAC_Variable v -> v
+                          | TAC_String i -> "string" 
+                          | TAC_Int i -> "int" ^ string_of_int i
+                          | TAC_Bool i -> "bool" ^ string_of_bool i in
+              fprintf fout "%s <- %s < %s\n" var e1_val e2_val
+          | TAC_Cnd_LessEqual (var, e1, e2) ->
+              let e1_val = match e1 with
+                        | TAC_Variable v -> v
+                        | TAC_String i -> "string" 
+                        | TAC_Int i -> "int" ^ string_of_int i
+                        | TAC_Bool i -> "bool" ^ string_of_bool i in
+              let e2_val = match e2 with
+                        | TAC_Variable v -> v
+                        | TAC_String i -> "string" 
+                        | TAC_Int i -> "int" ^ string_of_int i
+                        | TAC_Bool i -> "bool" ^ string_of_bool i in
+              fprintf fout "%s <- %s <= %s\n" var e2_val e2_val
+
+          | TAC_Cnd_Equal (var, e1, e2) ->
+            let e1_val = match e1 with
+                      | TAC_Variable v -> v
+                      | TAC_String i -> "string" 
+                      | TAC_Int i -> "int" ^ string_of_int i
+                      | TAC_Bool i -> "bool" ^ string_of_bool i in
+            let e2_val = match e2 with
+                      | TAC_Variable v -> v
+                      | TAC_String i -> "string" 
+                      | TAC_Int i -> "int" ^ string_of_int i
+                      | TAC_Bool i -> "bool" ^ string_of_bool i in
+            fprintf fout "%s <- %s = %s\n" var e2_val e2_val
+          
+          | TAC_Cnd_Not (var, e1) ->
+            (* this is for booleans *)
+            let e1_val = match e1 with
+                      | TAC_Variable v -> v
+                      | TAC_String i -> "string"
+                      | TAC_Int i -> "int" ^ string_of_int i
+                      | TAC_Bool i -> "bool" ^ string_of_bool i in
+            fprintf fout "%s <- not %s\n" var e1_val
+
+          | TAC_Negate (var, e1) ->
+            (* this is for ints *)
+            let e1_val = match e1 with
+                      | TAC_Variable v -> v
+                      | TAC_String i -> "string"
+                      | TAC_Int i -> "int" ^ string_of_int i
+                      | TAC_Bool i -> "bool" ^ string_of_bool i in
+            fprintf fout "%s <- ~ %s\n" var e1_val
+
+          | TAC_New (var, e1) ->
+              let e1_val = match e1 with
+                      | TAC_Variable v -> v
+                      | TAC_String i -> "string"
+                      | TAC_Int i -> "int" ^ string_of_int i 
+                      | TAC_Bool i -> "bool" ^ string_of_bool i in
+               fprintf fout "%s <- new %s\n" var e1_val
+          | TAC_Default (var, e1) ->
+              let e1_val = match e1 with
+                      | TAC_Variable v -> v
+                      | TAC_String i -> "string"  
+                      | TAC_Int i -> "int"
+                      | TAC_Bool i -> "bool" in
+                fprintf fout "%s <- default %s\n" var e1_val
+          | TAC_isvoid (var, e1) ->
+              let e1_val = match e1 with
+                      | TAC_Variable v -> v
+                      | TAC_String i -> "string"  
+                      | TAC_Int i -> "int"
+                      | TAC_Bool i -> "bool" in
+                fprintf fout "%s <- isvoid %s\n" var e1_val
+          | TAC_call_out (var, e1, e2) -> 
+                fprintf fout "%s <- call %s %s\n" var e1 e2
+          | TAC_call_in (var, e1) ->
+                fprintf fout "%s <- call %s\n" var e1 
+          
         in let rec convert_expr (e : exp) (target : string option) : (tac_instr list * tac_expr) =
           match e.exp_kind with
           | Integer value ->
@@ -590,6 +736,87 @@ let main () = begin
                            | TAC_Variable v -> v
                            | TAC_Int i -> "int " ^ string_of_int i in
               fprintf fout "%s <- / %s %s\n" var e1_str e2_str
+          | TAC_Cnd_LessThan (var, e1, e2) ->
+              let e1_val = match e1 with
+                          | TAC_Variable v -> v
+                          | TAC_String i -> "string" 
+                          | TAC_Int i -> "int"
+                          | TAC_Bool i -> "bool" ^ string_of_bool i in
+              let e2_val = match e2 with
+                          | TAC_Variable v -> v
+                          | TAC_String i -> "string" 
+                          | TAC_Int i -> "int" ^ string_of_int i
+                          | TAC_Bool i -> "bool" ^ string_of_bool i in
+              fprintf fout "%s <- %s < %s\n" var e1_val e2_val
+          | TAC_Cnd_LessEqual (var, e1, e2) ->
+              let e1_val = match e1 with
+                        | TAC_Variable v -> v
+                        | TAC_String i -> "string" 
+                        | TAC_Int i -> "int" ^ string_of_int i
+                        | TAC_Bool i -> "bool" ^ string_of_bool i in
+              let e2_val = match e2 with
+                        | TAC_Variable v -> v
+                        | TAC_String i -> "string" 
+                        | TAC_Int i -> "int" ^ string_of_int i
+                        | TAC_Bool i -> "bool" ^ string_of_bool i in
+              fprintf fout "%s <- %s <= %s\n" var e1_val e2_val
+
+          | TAC_Cnd_Equal (var, e1, e2) ->
+            let e1_val = match e1 with
+                      | TAC_Variable v -> v
+                      | TAC_String i -> "string" 
+                      | TAC_Int i -> "int" ^ string_of_int i
+                      | TAC_Bool i -> "bool" ^ string_of_bool i in
+            let e2_val = match e2 with
+                      | TAC_Variable v -> v
+                      | TAC_String i -> "string" 
+                      | TAC_Int i -> "int" ^ string_of_int i
+                      | TAC_Bool i -> "bool" ^ string_of_bool i in
+            fprintf fout "%s <- %s = %s\n" var e1_val e2_val
+          
+          | TAC_Cnd_Not (var, e1) ->
+            (* Just for Booleans *)
+            let e1_val = match e1 with
+                      | TAC_Variable v -> v
+                      | TAC_String i -> "string" 
+                      | TAC_Int i -> "int" ^ string_of_int i
+                      | TAC_Bool i -> "bool" ^ string_of_bool i in
+            fprintf fout "%s <- not %s\n" var e1_val
+
+          | TAC_Negate (var, e1) ->
+            (* Only for ints *)
+            let e1_val = match e1 with
+                      | TAC_Variable v -> v
+                      | TAC_String i -> "string"
+                      | TAC_Int i -> "int" ^ string_of_int i
+                      | TAC_Bool i -> "bool" ^ string_of_bool i in
+            fprintf fout "%s <- ~ %s\n" var e1_val
+        
+          | TAC_New (var, e1) ->
+              let e1_val = match e1 with
+                      | TAC_Variable v -> v
+                      | TAC_String i -> "string"
+                      | TAC_Int i -> "int" ^ string_of_int i 
+                      | TAC_Bool i -> "bool" ^ string_of_bool i in
+                fprintf fout "%s <- new %s\n" var e1_val
+          | TAC_Default (var, e1) ->
+              let e1_val = match e1 with
+                      | TAC_Variable v -> v
+                      | TAC_String i -> "string"  
+                      | TAC_Int i -> "int"
+                      | TAC_Bool i -> "bool" in
+                fprintf fout "%s <- default %s\n" var e1_val
+          | TAC_isvoid (var, e1) ->
+              let e1_val = match e1 with
+                      | TAC_Variable v -> v
+                      | TAC_String i -> "string"  
+                      | TAC_Int i -> "int"
+                      | TAC_Bool i -> "bool" in
+                fprintf fout "%s <- isvoid %s\n" var e1_val
+          | TAC_call_out (var, e1, e2) ->
+                fprintf fout "%s <- call %s %s\n" var e1 e2
+          | TAC_call_in (var, e1) ->
+                fprintf fout "%s <- call %s\n" var e1
           in        
         (* Function to output the full list of TAC instructions for a method body *)
         let output_tac fout target e =
