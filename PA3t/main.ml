@@ -590,25 +590,21 @@ let main () = begin
               match bindings with
               | [] -> acc_instrs  (* No more bindings; return accumulated instructions *)
               | ((let_var_loc, let_var_name), (let_type_loc, let_type_name), init_opt) :: rest ->
-                  let new_var = fresh_variable () in  (* Create a new temporary variable *)
                   let init_instrs =
                     match init_opt with
                     | Some init_exp -> 
-                        let expr_instrs, expr_result = convert_expr init_exp (Some new_var) in
-                        expr_instrs @ [TAC_Assign_Var (let_var_name, new_var)]
-                    | None -> 
-                        []  (* No initialization, so no instructions needed *)
+                        let expr_instrs, expr_result = convert_expr init_exp (Some let_var_name) in
+                        acc_instrs @ expr_instrs
+                    | None -> acc_instrs  (* No initialization needed *)
                   in
-                  (* Continue processing remaining bindings with updated instructions *)
-                  process_bindings rest (acc_instrs @ init_instrs)
+                  process_bindings rest init_instrs
             in
             (* Generate instructions for all bindings *)
             let binding_instrs = process_bindings bindings [] in
             (* Convert the body expression with the bindings in effect *)
             let body_instrs, body_tac_expr = convert_expr let_body target in
-            (* Combine binding instructions with body instructions, returning the final expression *)
             binding_instrs @ body_instrs, body_tac_expr
-        
+            
           | _ -> 
             fprintf fout "hit the let";
             [], TAC_Variable "yeah uhhhh"
@@ -721,7 +717,7 @@ let main () = begin
           | TAC_isvoid (var, e1) ->
               let e1_val = match e1 with
                       | TAC_Variable v -> v
-                      | TAC_String i -> "string"  
+                      | TAC_String i -> "string"
                       | TAC_Int i -> "int"
                       | TAC_Bool i -> "bool" in
                 fprintf fout "%s <- isvoid %s\n" var e1_val
@@ -729,11 +725,6 @@ let main () = begin
                 fprintf fout "%s <- call %s %s\n" var e1 e2
           | TAC_call_in (var, e1) ->
                 fprintf fout "%s <- call %s\n" var e1
-          | TAC_Let (bindings, body_expr) ->
-            (* Process each binding as an assignment *)
-            List.iter (fun binding -> print_tac_instr fout binding ) bindings;
-            fprintf fout "in ";
-            print_tac_instr fout body_expr;
     in
         (* Function to output the full list of TAC instructions for a method body *)
         let output_tac fout target e =
