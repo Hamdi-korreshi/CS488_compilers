@@ -1,3 +1,4 @@
+open Printf
 type static_type =  (*static type of cool expression*)
   | Class of string
   | SELF_TYPE of string
@@ -8,52 +9,11 @@ type tac_expr =
   | TAC_String of string
   | TAC_Bool of bool
 
-  let safe_head lst =
-    try Some (List.hd (List.rev lst))
-    with Failure _ -> None
-  
-  type tac_instr =
-  | TAC_Assign_Int of string * int
-  | TAC_Assign_Var of string * string
-  | TAC_Assign_Plus of string * tac_expr * tac_expr
-  | TAC_Assign_Minus of string * tac_expr * tac_expr
-  | TAC_Assign_Times of string * tac_expr * tac_expr
-  | TAC_Assign_Divide of string * tac_expr * tac_expr
-  | TAC_Cnd_LessThan of string * tac_expr * tac_expr
-  | TAC_Cnd_LessEqual of string * tac_expr * tac_expr
-  | TAC_Cnd_Equal of string * tac_expr * tac_expr
-  | TAC_Cnd_Not of string * tac_expr
-  | TAC_Negate of string * tac_expr
-  | TAC_New of string * tac_expr
-  | TAC_Default of string * tac_expr
-  | TAC_isvoid of string * tac_expr
-  | TAC_call_out of string * string * string (* out_string, out_int *)
-  | TAC_call_in of string * string (* in_string, in_int *)
-  | TAC_Let of (string * string * tac_expr option ) list * tac_expr
+let safe_head lst =
+  try Some (List.hd (List.rev lst))
+  with Failure _ -> None
 
-  (* TODO
-    Branches, Labels, and Control Flow:
-    jmp label - this happens right after the conditional body finishes
-    label label - this is the "function Label" - after the conditional is done then write this Label
-    return x - only occurs once per method, somewhat handled by current program
-    comment ...text until end of line... - some arbrituary program that gives context
-    bt x label - if a conditional appears then there is a contradiction variable (that acts as the false) and then the bt's are listed right after that
-
-    Implement way for methods
-    Handle not and negate
-    Handle new and default
-    Research new type and default type
-    Stack the methods into one program
-  *)
-
-let fresh_variable =
-  let counter = ref 0 in
-  fun () ->
-    let var_name = "t" ^ string_of_int !counter in
-    incr counter;
-    var_name
-
-type cool_prog = cool_class list
+  type cool_prog = cool_class list
 and loc = string
 and id = loc * string
 and cool_type = id
@@ -95,8 +55,75 @@ and exp_kind =
   | EQ of exp * exp
   | Negate of exp
   | Not of exp
-open Printf
-let rec convert_id ((loc,iname)) =
+
+type tac_instr =
+| TAC_Assign_Int of string * int
+| TAC_Assign_Var of string * string
+| TAC_Assign_Plus of string * tac_expr * tac_expr
+| TAC_Assign_Minus of string * tac_expr * tac_expr
+| TAC_Assign_Times of string * tac_expr * tac_expr
+| TAC_Assign_Divide of string * tac_expr * tac_expr
+| TAC_Cnd_LessThan of string * tac_expr * tac_expr
+| TAC_Cnd_LessEqual of string * tac_expr * tac_expr
+| TAC_Cnd_Equal of string * tac_expr * tac_expr
+| TAC_Cnd_Not of string * tac_expr
+| TAC_Negate of string * tac_expr
+| TAC_New of string * tac_expr
+| TAC_Default of string * tac_expr
+| TAC_isvoid of string * tac_expr
+| TAC_call_out of string * string * string (* out_string, out_int *)
+| TAC_call_in of string * string (* in_string, in_int *)
+| TAC_Let of (string * string * tac_expr option ) list * tac_expr
+| TAC_Jump of string              (* Unconditional jump to a label *)
+| TAC_Jump_If_Not of tac_expr * string  (* Conditional jump if expr is false *)
+| TAC_Label of string 
+| TAC_Self_Dispatch of string * id * tac_expr list
+
+let debug tac = 
+  match tac with
+    | Some (TAC_Assign_Int (var, _) 
+          | TAC_Assign_Var (var, _)
+          | TAC_Assign_Plus (var, _, _)
+          | TAC_Assign_Minus (var, _, _)
+          | TAC_Assign_Times (var, _, _)
+          | TAC_Assign_Divide (var, _, _)
+          | TAC_Cnd_LessThan (var, _, _)
+          | TAC_Cnd_LessEqual (var, _, _)
+          | TAC_Cnd_Equal (var, _, _)
+          | TAC_Cnd_Not (var, _)
+          | TAC_Negate (var, _)
+          | TAC_New (var, _)
+          | TAC_Default (var, _)
+          | TAC_isvoid (var, _)
+          | TAC_call_out (var, _, _)
+          | TAC_call_in (var, _)) ->
+        printf "return %s\n" var
+    | _ -> ()
+
+  (* TODO
+    Branches, Labels, and Control Flow:
+    jmp label - this happens right after the conditional body finishes
+    label label - this is the "function Label" - after the conditional is done then write this Label
+    return x - only occurs once per method, somewhat handled by current program
+    comment ...text until end of line... - some arbrituary program that gives context
+    bt x label - if a conditional appears then there is a contradiction variable (that acts as the false) and then the bt's are listed right after that
+
+    Implement way for methods
+    Handle not and negate
+    Handle new and default
+    Research new type and default type
+    Stack the methods into one program
+  *)
+
+let fresh_variable =
+  let counter = ref 0 in
+  fun () ->
+    let var_name = "t" ^ string_of_int !counter in
+    incr counter;
+    var_name
+
+
+let rec convert_id (loc,iname) =
   [], TAC_Variable iname
 
 
@@ -548,6 +575,7 @@ let main () = begin
         ) ast; *)
 
         let rec convert_expr (e : exp) (target : string option) : (tac_instr list * tac_expr) =
+
           match e.exp_kind with
           | Integer value ->
               let int_value = int_of_string value in
@@ -559,13 +587,14 @@ let main () = begin
         
           | Identifier (_, name) ->
               [], TAC_Variable name
-        
+          (* | If(if_stat,else_stat,then_stat) -> *)
+
           | Plus (e1, e2) ->
-              let instrs1, temp1 = convert_expr e1 None in
-              let instrs2, temp2 = convert_expr e2 None in
-              let new_var = fresh_variable () in
-              let to_output = TAC_Assign_Plus (new_var, temp1, temp2) in
-              instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
+            let instrs1, temp1 = convert_expr e1 None in
+            let instrs2, temp2 = convert_expr e2 None in
+            let new_var = fresh_variable () in
+            let to_output = TAC_Assign_Plus (new_var, temp1, temp2) in
+            instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
           | Minus (e1, e2) ->
               let instrs1, temp1 = convert_expr e1 None in
               let instrs2, temp2 = convert_expr e2 None in
@@ -584,8 +613,103 @@ let main () = begin
               let new_var = fresh_variable () in
               let to_output = TAC_Assign_Divide (new_var, temp1, temp2) in
               instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
+          | If (if_exp, then_exp, else_exp) ->
+            (* Generate unique labels *)
+            let then_label = "then_" ^ fresh_variable () in
+            let else_label = "else_" ^ fresh_variable () in
+            let end_label = "end_" ^ fresh_variable () in
+        
+            (* Step 1: Process the condition (if_exp) *)
+            let cond_instrs, cond_result = convert_expr if_exp None in
+        
+            (* Step 2: Negate the condition for the else branch jump *)
+            let negated_var = fresh_variable () in
+            let negate_instr = TAC_Cnd_Not (negated_var, cond_result) in
+        
+            (* Step 3: Generate conditional jumps *)
+            let jump_to_else = TAC_Jump_If_Not (TAC_Variable negated_var, else_label) in
+            let jump_to_then = TAC_Jump_If_Not (cond_result, then_label) in
+        
+            (* Step 4: Process the 'then' branch *)
+            let then_instrs, _ = convert_expr then_exp None in
+            let then_branch = [TAC_Label then_label] @ then_instrs @ [TAC_Jump end_label] in
+        
+            (* Step 5: Process the 'else' branch *)
+            let else_instrs, _ = convert_expr else_exp None in
+            let else_branch = [TAC_Label else_label] @ else_instrs in
+        
+            (* Step 6: Combine all instructions with labels *)
+            cond_instrs
+            @ [negate_instr]                       (* Negate the condition after it's evaluated *)
+            @ [jump_to_else; jump_to_then]         (* Both condition jumps *)
+            @ then_branch                          (* Then branch instructions *)
+            @ else_branch                          (* Else branch instructions *)
+            @ [TAC_Label end_label], TAC_Variable end_label
+          | LT (e1, e2) ->
+            let instrs1, temp1 = convert_expr e1 None in
+            let instrs2, temp2 = convert_expr e2 None in
+            let new_var = fresh_variable () in
+            let to_output = TAC_Cnd_LessThan (new_var, temp1, temp2) in
+            instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
+          | LE (e1, e2) ->
+            let instrs1, temp1 = convert_expr e1 None in
+            let instrs2, temp2 = convert_expr e2 None in
+            let new_var = fresh_variable () in
+            let to_output = TAC_Cnd_LessEqual (new_var, temp1, temp2) in
+            instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
+          | EQ (e1, e2) ->
+            let instrs1, temp1 = convert_expr e1 None in
+            let instrs2, temp2 = convert_expr e2 None in
+            let new_var = fresh_variable () in
+            let to_output = TAC_Cnd_Equal (new_var, temp1, temp2) in
+            instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
+          | Not (e1) -> 
+            let instrs1, temp1 = convert_expr e1 None in
+            let new_var = fresh_variable () in
+            let to_output = TAC_Cnd_Not (new_var, temp1) in
+            instrs1 @ [to_output], TAC_Variable new_var
+          | Negate (e1) ->
+            let instrs1, temp1 = convert_expr e1 None in
+            let new_var = fresh_variable () in
+            let to_output = TAC_Negate (new_var, temp1) in
+            instrs1 @ [to_output], TAC_Variable new_var
+          | New (e1) ->
+            printf "hit new\n";
+            let instrs1, temp1 = convert_id e1 in
+            let new_var = fresh_variable () in
+            printf "new var: %s\n" new_var;
+            let to_output = TAC_New (new_var, temp1) in
+            instrs1 @ [to_output], TAC_Variable new_var
+          | Block exp_list ->
+            let rec process_block exprs acc_instrs =
+              match exprs with
+              | [] -> acc_instrs, TAC_Variable "unit"  (* Return empty if no expressions *)
+              | [last] ->  (* Last expression in the block *)
+                  let instrs, last_result = convert_expr last None in
+                  acc_instrs @ instrs, last_result
+              | exp :: rest ->  (* Process each expression sequentially *)
+                  let instrs, _ = convert_expr exp None in
+                  process_block rest (acc_instrs @ instrs)
+            in
+            process_block exp_list []
+            | Self_Dispatch (method_id, args) ->
+              (* Step 1: Generate TAC for each argument *)
+              let rec process_args args acc_instrs acc_args =
+                match args with
+                | [] -> acc_instrs, List.rev acc_args  (* Return accumulated instructions and argument expressions *)
+                | arg :: rest ->
+                    let instrs, arg_result = convert_expr arg None in
+                    process_args rest (acc_instrs @ instrs) (arg_result :: acc_args)
+              in
+              let arg_instrs, arg_exprs = process_args args [] [] in
+          
+              (* Step 2: Generate a new variable for the result *)
+              let new_var = fresh_variable () in
+          
+              (* Step 3: Create the TAC for the self-dispatch call *)
+              let to_output = TAC_Self_Dispatch (new_var, method_id, arg_exprs) in
+              arg_instrs @ [to_output], TAC_Variable new_var
           | Let (bindings, let_body) ->
-            (* Process each binding in the let expression *)
             let rec process_bindings bindings acc_instrs =
               match bindings with
               | [] -> acc_instrs  (* No more bindings; return accumulated instructions *)
@@ -593,25 +717,36 @@ let main () = begin
                   let init_instrs =
                     match init_opt with
                     | Some init_exp -> 
-                        let expr_instrs, expr_result = convert_expr init_exp (Some let_var_name) in
+                        let expr_instrs, expr_result = convert_expr init_exp None in
                         acc_instrs @ expr_instrs
-                    | None -> acc_instrs  (* No initialization needed *)
+                    | None -> acc_instrs
                   in
                   process_bindings rest init_instrs
             in
-            (* Generate instructions for all bindings *)
             let binding_instrs = process_bindings bindings [] in
-            (* Convert the body expression with the bindings in effect *)
             let body_instrs, body_tac_expr = convert_expr let_body target in
             binding_instrs @ body_instrs, body_tac_expr
-            
           | _ -> 
-            fprintf fout "hit the let";
+            fprintf fout "";
             [], TAC_Variable "yeah uhhhh"
           in
-        (* Function to print a single TAC instruction *)
+        let print_tac_expr fout expr =
+          match expr with
+          | TAC_Variable var_name -> fprintf fout "%s" var_name
+          | TAC_Int int_val -> fprintf fout "%d" int_val
+          | TAC_String str_val -> fprintf fout "\"%s\"" str_val
+          | TAC_Bool bool_val -> fprintf fout "%b" bool_val
+        in
         let rec print_tac_instr fout instr =
           match instr with
+          | TAC_Jump_If_Not (cond_expr, label) ->
+            fprintf fout "bt ";
+            print_tac_expr fout cond_expr;
+            fprintf fout " %s\n" label
+          | TAC_Jump label ->
+              fprintf fout "jmp %s\n" label
+          | TAC_Label label ->
+            fprintf fout "label %s\n" label
           | TAC_Assign_Int (var, value) ->
               fprintf fout "%s <- int %d\n" var value
           | TAC_Assign_Var (var, src_var) ->
@@ -659,7 +794,7 @@ let main () = begin
                           | TAC_String i -> "string" 
                           | TAC_Int i -> "int" ^ string_of_int i
                           | TAC_Bool i -> "bool" ^ string_of_bool i in
-              fprintf fout "%s <- %s < %s\n" var e1_val e2_val
+              fprintf fout "%s <- < %s %s\n" var e1_val e2_val
           | TAC_Cnd_LessEqual (var, e1, e2) ->
               let e1_val = match e1 with
                         | TAC_Variable v -> v
@@ -671,7 +806,7 @@ let main () = begin
                         | TAC_String i -> "string" 
                         | TAC_Int i -> "int" ^ string_of_int i
                         | TAC_Bool i -> "bool" ^ string_of_bool i in
-              fprintf fout "%s <- %s <= %s\n" var e1_val e2_val
+              fprintf fout "%s <- <= %s  %s\n" var e1_val e2_val
           | TAC_Cnd_Equal (var, e1, e2) ->
             let e1_val = match e1 with
                       | TAC_Variable v -> v
@@ -683,7 +818,7 @@ let main () = begin
                       | TAC_String i -> "string" 
                       | TAC_Int i -> "int" ^ string_of_int i
                       | TAC_Bool i -> "bool" ^ string_of_bool i in
-            fprintf fout "%s <- %s = %s\n" var e1_val e2_val
+            fprintf fout "%s <- = %s %s\n" var e1_val e2_val
           | TAC_Cnd_Not (var, e1) ->
             (* Just for Booleans *)
             let e1_val = match e1 with
@@ -725,12 +860,40 @@ let main () = begin
                 fprintf fout "%s <- call %s %s\n" var e1 e2
           | TAC_call_in (var, e1) ->
                 fprintf fout "%s <- call %s\n" var e1
+          | TAC_Self_Dispatch (result_var, (loc, method_name), args) ->
+            fprintf fout "%s <- call %s " result_var method_name;
+            List.iteri (fun i arg ->
+              if i > 0 then fprintf fout " ";
+              print_tac_expr fout arg
+            ) args;
+            fprintf fout "\n"
+          | TAC_Let (bingings, let_body) ->
+            fprintf fout ""
     in
         (* Function to output the full list of TAC instructions for a method body *)
         let output_tac fout target e =
           let tac_instrs, _ = convert_expr e target in
           List.iter (print_tac_instr fout) tac_instrs;
-          safe_head tac_instrs
+          match safe_head tac_instrs with
+          | Some (TAC_Assign_Int (var, _) 
+                | TAC_Assign_Var (var, _)
+                | TAC_Assign_Plus (var, _, _)
+                | TAC_Assign_Minus (var, _, _)
+                | TAC_Assign_Times (var, _, _)
+                | TAC_Assign_Divide (var, _, _)
+                | TAC_Cnd_LessThan (var, _, _)
+                | TAC_Cnd_LessEqual (var, _, _)
+                | TAC_Cnd_Equal (var, _, _)
+                | TAC_Cnd_Not (var, _)
+                | TAC_Negate (var, _)
+                | TAC_New (var, _)
+                | TAC_Default (var, _)
+                | TAC_isvoid (var, _)
+                | TAC_call_out (var, _, _)
+                | TAC_call_in (var, _)
+                | TAC_Self_Dispatch (var,_,_)) ->
+              fprintf fout "return %s\n" var
+          | _ -> ()
         in 
         (* Main program to iterate over the classes and features *)
         let metho_count = ref 0 in
@@ -739,12 +902,10 @@ let main () = begin
           List.iter (fun feat ->
             match feat with
             | Attribute ((name_loc, name), (dt_loc, dt_type), Some init_exp) ->
-                let last = output_tac fout (Some name) init_exp in 
-                fprintf fout ""
+                output_tac fout (Some name) init_exp
             | Method ((metho_loc, metho_name), forms, (metho_type_loc, metho_type), metho_bod) ->
                 fprintf fout "label %s_%s_%d\n" cname metho_name !metho_count;
-                let last = output_tac fout None metho_bod in
-                fprintf fout ""
+                output_tac fout None metho_bod
             | Attribute ((_, _), (_, _), None) ->
                 printf "bruh"
           ) feats;
