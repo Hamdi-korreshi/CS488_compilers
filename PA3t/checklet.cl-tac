@@ -1,0 +1,5 @@
+comment start
+label Main_main_0
+t$1 <- int 5
+t$0 <- t$1
+return t$0

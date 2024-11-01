@@ -584,7 +584,6 @@ let main () = begin
                | None ->
                   let new_var = fresh_variable () in
                   [TAC_Assign_Int (new_var, int_value)], TAC_Variable new_var)
-        
           | Identifier (_, name) ->
               [], TAC_Variable name
           (* | If(if_stat,else_stat,then_stat) -> *)

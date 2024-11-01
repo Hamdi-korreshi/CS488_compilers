@@ -1640,7 +1640,7 @@ let main () = begin
           let rec output_id bruh_val = 
             fprintf fout "%s\n%s\n" (fst bruh_val) (snd bruh_val) 
           in
-          let rec output_exp e = 
+          let rec output_exp e =
             (* output the type for class map*)
             fprintf fout "%s\n" e.loc ;
             (match e.static_type with 
