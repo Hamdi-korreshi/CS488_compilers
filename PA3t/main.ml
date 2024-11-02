@@ -727,7 +727,7 @@ let main () = begin
             binding_instrs @ body_instrs, body_tac_expr
           | _ -> 
             fprintf fout "";
-            [], TAC_Variable "yeah uhhhh"
+            [], TAC_Variable "something went wrong"
           in
         let print_tac_expr fout expr =
           match expr with
@@ -873,26 +873,7 @@ let main () = begin
         let output_tac fout target e =
           let tac_instrs, _ = convert_expr e target in
           List.iter (print_tac_instr fout) tac_instrs;
-          match safe_head tac_instrs with
-          | Some (TAC_Assign_Int (var, _) 
-                | TAC_Assign_Var (var, _)
-                | TAC_Assign_Plus (var, _, _)
-                | TAC_Assign_Minus (var, _, _)
-                | TAC_Assign_Times (var, _, _)
-                | TAC_Assign_Divide (var, _, _)
-                | TAC_Cnd_LessThan (var, _, _)
-                | TAC_Cnd_LessEqual (var, _, _)
-                | TAC_Cnd_Equal (var, _, _)
-                | TAC_Cnd_Not (var, _)
-                | TAC_Negate (var, _)
-                | TAC_New (var, _)
-                | TAC_Default (var, _)
-                | TAC_isvoid (var, _)
-                | TAC_call_out (var, _, _)
-                | TAC_call_in (var, _)
-                | TAC_Self_Dispatch (var,_,_)) ->
-              fprintf fout "return %s\n" var
-          | _ -> ()
+          safe_head tac_instrs
         in 
         (* Main program to iterate over the classes and features *)
         let metho_count = ref 0 in
@@ -901,12 +882,33 @@ let main () = begin
           List.iter (fun feat ->
             match feat with
             | Attribute ((name_loc, name), (dt_loc, dt_type), Some init_exp) ->
-                output_tac fout (Some name) init_exp
+                let last = output_tac fout (Some name) init_exp in 
+                fprintf fout ""
             | Method ((metho_loc, metho_name), forms, (metho_type_loc, metho_type), metho_bod) ->
                 fprintf fout "label %s_%s_%d\n" cname metho_name !metho_count;
-                output_tac fout None metho_bod
+                let last = output_tac fout None metho_bod in 
+                (match last with
+                | Some (TAC_Assign_Int (var, _) 
+                      | TAC_Assign_Var (var, _)
+                      | TAC_Assign_Plus (var, _, _)
+                      | TAC_Assign_Minus (var, _, _)
+                      | TAC_Assign_Times (var, _, _)
+                      | TAC_Assign_Divide (var, _, _)
+                      | TAC_Cnd_LessThan (var, _, _)
+                      | TAC_Cnd_LessEqual (var, _, _)
+                      | TAC_Cnd_Equal (var, _, _)
+                      | TAC_Cnd_Not (var, _)
+                      | TAC_Negate (var, _)
+                      | TAC_New (var, _)
+                      | TAC_Default (var, _)
+                      | TAC_isvoid (var, _)
+                      | TAC_call_out (var, _, _)
+                      | TAC_call_in (var, _)
+                      | TAC_Self_Dispatch (var,_,_)) ->
+                    fprintf fout "return %s\n" var
+                 | _ -> fprintf fout "")
             | Attribute ((_, _), (_, _), None) ->
-                printf "bruh"
+                printf ""
           ) feats;
         ) ast;
         close_out fout;

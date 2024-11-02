@@ -10,7 +10,8 @@ class Main inherits IO {
         {
         y <- 3;
         if (y = 3) then {
-            out_string("A");
+            let x : Int <- 3 in 
+            out_int(x+2);
         }
         else{
             out_string("B");
