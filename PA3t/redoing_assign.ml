@@ -1,3 +1,5 @@
+
+(*8:58 trying to fix up assign and the way they did it*)
 open Printf
 type static_type =  (*static type of cool expression*)
   | Class of string
@@ -587,8 +589,16 @@ let main () = begin
           | Identifier (_, name) ->
             [], TAC_Variable name
           | Assign (var,rhs_exp) -> (* id, exp*)
-            convert_expr rhs_exp (Some (snd var))
-          
+            let new_var = fresh_variable () in 
+            let rhs_val = convert_expr rhs_exp in
+            (* Integer *)
+
+            (* String *)
+            (* Bool *)
+            (* Some Type *)
+            [TAC_Assign_Int (new_var, rhs_val)], TAC_Variable new_var
+          (* | If(if_stat,else_stat,then_stat) -> *)
+
           | Plus (e1, e2) ->
             let instrs1, temp1 = convert_expr e1 None in
             let instrs2, temp2 = convert_expr e2 None in
@@ -683,7 +693,7 @@ let main () = begin
           | Block exp_list ->
             let rec process_block exprs acc_instrs =
               match exprs with
-              | [] -> failwith "Exit 1" (* Return empty if no expressions *)
+              | [] -> acc_instrs, TAC_Variable "unit"  (* Return empty if no expressions *)
               | [last] ->  (* Last expression in the block *)
                   let instrs, last_result = convert_expr last None in
                   acc_instrs @ instrs, last_result
@@ -692,37 +702,37 @@ let main () = begin
                   process_block rest (acc_instrs @ instrs)
             in
             process_block exp_list []
-          | Self_Dispatch (method_id, args) ->
-            (* Step 1: Generate TAC for each argument *)
-            let rec process_args args acc_instrs acc_args =
-              match args with
-              | [] -> acc_instrs, List.rev acc_args  (* Return accumulated instructions and argument expressions *)
-              | arg :: rest ->
-                  let instrs, arg_result = convert_expr arg None in
-                  process_args rest (acc_instrs @ instrs) (arg_result :: acc_args)
-            in
-            let arg_instrs, arg_exprs = process_args args [] [] in
-        
-            (* Step 2: Generate a new variable for the result *)
-            let new_var = fresh_variable () in
-        
-            (* Step 3: Create the TAC for the self-dispatch call *)
-            let to_output = TAC_Self_Dispatch (new_var, method_id, arg_exprs) in
-            arg_instrs @ [to_output], TAC_Variable new_var
-          | Let (bindings, let_body) ->
-            let rec process_bindings bindings acc_instrs =
-              match bindings with
-              | [] -> acc_instrs  (* No more bindings; return accumulated instructions *)
-              | ((let_var_loc, let_var_name), (let_type_loc, let_type_name), init_opt) :: rest ->
-                  let init_instrs =
-                    match init_opt with
-                    | Some init_exp -> 
-                        let expr_instrs, expr_result = convert_expr init_exp None in
-                        acc_instrs @ expr_instrs
-                    | None -> acc_instrs
+            | Self_Dispatch (method_id, args) ->
+              (* Step 1: Generate TAC for each argument *)
+              let rec process_args args acc_instrs acc_args =
+                match args with
+                | [] -> acc_instrs, List.rev acc_args  (* Return accumulated instructions and argument expressions *)
+                | arg :: rest ->
+                    let instrs, arg_result = convert_expr arg None in
+                    process_args rest (acc_instrs @ instrs) (arg_result :: acc_args)
+              in
+              let arg_instrs, arg_exprs = process_args args [] [] in
+          
+              (* Step 2: Generate a new variable for the result *)
+              let new_var = fresh_variable () in
+          
+              (* Step 3: Create the TAC for the self-dispatch call *)
+              let to_output = TAC_Self_Dispatch (new_var, method_id, arg_exprs) in
+              arg_instrs @ [to_output], TAC_Variable new_var
+            | Let (bindings, let_body) ->
+              let rec process_bindings bindings acc_instrs =
+                match bindings with
+                | [] -> acc_instrs  (* No more bindings; return accumulated instructions *)
+                | ((let_var_loc, let_var_name), (let_type_loc, let_type_name), init_opt) :: rest ->
+                    let init_instrs =
+                      match init_opt with
+                      | Some init_exp -> 
+                          let expr_instrs, expr_result = convert_expr init_exp None in
+                          acc_instrs @ expr_instrs
+                      | None -> acc_instrs
+                    in
+                    process_bindings rest init_instrs
                   in
-                  process_bindings rest init_instrs
-                in
             let binding_instrs = process_bindings bindings [] in
             let body_instrs, body_tac_expr = convert_expr let_body target in
             binding_instrs @ body_instrs, body_tac_expr
