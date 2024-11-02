@@ -527,47 +527,47 @@ let main () = begin
           let cname = (Filename.chop_extension fname) ^ ".cl-tactest" in 
           let fout = open_out cname in
           (* let rec output_id bruh_val = 
-            fprintf fout "%s\n%s\n" (fst bruh_val) (snd bruh_val) 
+            printf "%s\n%s\n" (fst bruh_val) (snd bruh_val) 
           in
           let rec output_ints sval = 
             match sval with 
             | Identifier(ival) ->
-              fprintf fout "%s\n" (snd ival)
-            | Integer(ival) -> fprintf fout "int %s\n" ival
+              printf "%s\n" (snd ival)
+            | Integer(ival) -> printf "int %s\n" ival
             | _ -> printf "unmatch case\n";
           in
           let counter = ref 0 in
           let rec output_tac e =
             match e.exp_kind with
             | Identifier(ival) ->
-              fprintf fout "%s\n" (snd ival);
+              printf "%s\n" (snd ival);
               print_id ival;
-            | Integer(ival) -> fprintf fout "int %s\n" ival
-            | String(ival) -> fprintf fout "string\n%s\n" ival
+            | Integer(ival) -> printf "int %s\n" ival
+            | String(ival) -> printf "string\n%s\n" ival
             | Plus(e1,e2) ->
               let t3 = "t$" ^ string_of_int !counter in 
               let () = counter <- !counter + 1  in
               let t1 = "t$" ^ string_of_int !counter in 
               printf "%s\n"  t1;
-              fprintf fout "%s <- " t1;
+              printf "%s <- " t1;
               output_tac e1;
               let () = counter <- !counter + 1  in
               let t2 = "t$" ^ string_of_int !counter in 
-              fprintf fout "%s <- " t2;
+              printf "%s <- " t2;
               output_tac e2;
-              fprintf fout "%s <- + %s %s\n" t3 t1 t2
-            | _ -> fprintf fout ""
+              printf "%s <- + %s %s\n" t3 t1 t2
+            | _ -> printf ""
         in *)
         (* let metho_count = ref 0 in
-        fprintf fout "comment start\n";
+        printf "comment start\n";
         List.iter (fun ((cloc,cname),inherits, feats) ->
           List.iter (fun feat ->
           match feat with 
           | Attribute((name_loc, name),(dt_loc,dt_type), (Some init_exp)) ->
-            fprintf fout "%s <- " name;
+            printf "%s <- " name;
             output_tac init_exp
           | Method((metho_loc,metho_name), forms, (metho_type_loc,metho_type), metho_bod) ->
-            fprintf fout "label %s_%s_%d\n" cname metho_name !metho_count;
+            printf "label %s_%s_%d\n" cname metho_name !metho_count;
             output_tac metho_bod
           | Attribute((_, _),(_,_), None) ->
             printf "bruh";
@@ -726,30 +726,30 @@ let main () = begin
             let body_instrs, body_tac_expr = convert_expr let_body target in
             binding_instrs @ body_instrs, body_tac_expr
           | _ -> 
-            fprintf fout "";
+            printf "";
             [], TAC_Variable "something went wrong"
           in
         let print_tac_expr fout expr =
           match expr with
-          | TAC_Variable var_name -> fprintf fout "%s" var_name
-          | TAC_Int int_val -> fprintf fout "%d" int_val
-          | TAC_String str_val -> fprintf fout "\"%s\"" str_val
-          | TAC_Bool bool_val -> fprintf fout "%b" bool_val
+          | TAC_Variable var_name -> printf "%s" var_name
+          | TAC_Int int_val -> printf "%d" int_val
+          | TAC_String str_val -> printf "\"%s\"" str_val
+          | TAC_Bool bool_val -> printf "%b" bool_val
         in
         let rec print_tac_instr fout instr =
           match instr with
           | TAC_Jump_If_Not (cond_expr, label) ->
-            fprintf fout "bt ";
+            printf "bt ";
             print_tac_expr fout cond_expr;
-            fprintf fout " %s\n" label
+            printf " %s\n" label
           | TAC_Jump label ->
-              fprintf fout "jmp %s\n" label
+              printf "jmp %s\n" label
           | TAC_Label label ->
-            fprintf fout "label %s\n" label
+            printf "label %s\n" label
           | TAC_Assign_Int (var, value) ->
-              fprintf fout "%s <- int %d\n" var value
+              printf "%s <- int %d\n" var value
           | TAC_Assign_Var (var, src_var) ->
-              fprintf fout "%s <- %s\n" var src_var
+              printf "%s <- %s\n" var src_var
           | TAC_Assign_Plus (var, e1, e2) ->
               let e1_str = match e1 with
                            | TAC_Variable v -> v
@@ -757,7 +757,7 @@ let main () = begin
               let e2_str = match e2 with
                            | TAC_Variable v -> v
                            | TAC_Int i -> "int " ^ string_of_int i in
-              fprintf fout "%s <- + %s %s\n" var e1_str e2_str
+              printf "%s <- + %s %s\n" var e1_str e2_str
           | TAC_Assign_Minus (var, e1, e2) ->
               let e1_str = match e1 with
                            | TAC_Variable v -> v
@@ -765,7 +765,7 @@ let main () = begin
               let e2_str = match e2 with
                            | TAC_Variable v -> v
                            | TAC_Int i -> "int " ^ string_of_int i in
-              fprintf fout "%s <- - %s %s\n" var e1_str e2_str
+              printf "%s <- - %s %s\n" var e1_str e2_str
           | TAC_Assign_Times (var, e1, e2) ->
               let e1_str = match e1 with
                            | TAC_Variable v -> v
@@ -773,7 +773,7 @@ let main () = begin
               let e2_str = match e2 with
                            | TAC_Variable v -> v
                            | TAC_Int i -> "int " ^ string_of_int i in
-              fprintf fout "%s <- * %s %s\n" var e1_str e2_str
+              printf "%s <- * %s %s\n" var e1_str e2_str
           | TAC_Assign_Divide (var, e1, e2) ->
               let e1_str = match e1 with
                            | TAC_Variable v -> v
@@ -781,7 +781,7 @@ let main () = begin
               let e2_str = match e2 with
                            | TAC_Variable v -> v
                            | TAC_Int i -> "int " ^ string_of_int i in
-              fprintf fout "%s <- / %s %s\n" var e1_str e2_str
+              printf "%s <- / %s %s\n" var e1_str e2_str
           | TAC_Cnd_LessThan (var, e1, e2) ->
               let e1_val = match e1 with
                           | TAC_Variable v -> v
@@ -793,7 +793,7 @@ let main () = begin
                           | TAC_String i -> "string" 
                           | TAC_Int i -> "int" ^ string_of_int i
                           | TAC_Bool i -> "bool" ^ string_of_bool i in
-              fprintf fout "%s <- < %s %s\n" var e1_val e2_val
+              printf "%s <- < %s %s\n" var e1_val e2_val
           | TAC_Cnd_LessEqual (var, e1, e2) ->
               let e1_val = match e1 with
                         | TAC_Variable v -> v
@@ -805,7 +805,7 @@ let main () = begin
                         | TAC_String i -> "string" 
                         | TAC_Int i -> "int" ^ string_of_int i
                         | TAC_Bool i -> "bool" ^ string_of_bool i in
-              fprintf fout "%s <- <= %s  %s\n" var e1_val e2_val
+              printf "%s <- <= %s  %s\n" var e1_val e2_val
           | TAC_Cnd_Equal (var, e1, e2) ->
             let e1_val = match e1 with
                       | TAC_Variable v -> v
@@ -817,7 +817,7 @@ let main () = begin
                       | TAC_String i -> "string" 
                       | TAC_Int i -> "int" ^ string_of_int i
                       | TAC_Bool i -> "bool" ^ string_of_bool i in
-            fprintf fout "%s <- = %s %s\n" var e1_val e2_val
+            printf "%s <- = %s %s\n" var e1_val e2_val
           | TAC_Cnd_Not (var, e1) ->
             (* Just for Booleans *)
             let e1_val = match e1 with
@@ -825,7 +825,7 @@ let main () = begin
                       | TAC_String i -> "string" 
                       | TAC_Int i -> "int" ^ string_of_int i
                       | TAC_Bool i -> "bool" ^ string_of_bool i in
-            fprintf fout "%s <- not %s\n" var e1_val
+            printf "%s <- not %s\n" var e1_val
           | TAC_Negate (var, e1) ->
             (* Only for ints *)
             let e1_val = match e1 with
@@ -833,41 +833,41 @@ let main () = begin
                       | TAC_String i -> "string"
                       | TAC_Int i -> "int" ^ string_of_int i
                       | TAC_Bool i -> "bool" ^ string_of_bool i in
-            fprintf fout "%s <- ~ %s\n" var e1_val
+            printf "%s <- ~ %s\n" var e1_val
           | TAC_New (var, e1) ->
               let e1_val = match e1 with
                       | TAC_Variable v -> v
                       | TAC_String i -> "string"
                       | TAC_Int i -> "int" ^ string_of_int i 
                       | TAC_Bool i -> "bool" ^ string_of_bool i in
-                fprintf fout "%s <- new %s\n" var e1_val
+                printf "%s <- new %s\n" var e1_val
           | TAC_Default (var, e1) ->
               let e1_val = match e1 with
                       | TAC_Variable v -> v
                       | TAC_String i -> "string"  
                       | TAC_Int i -> "int"
                       | TAC_Bool i -> "bool" in
-                fprintf fout "%s <- default %s\n" var e1_val
+                printf "%s <- default %s\n" var e1_val
           | TAC_isvoid (var, e1) ->
               let e1_val = match e1 with
                       | TAC_Variable v -> v
                       | TAC_String i -> "string"
                       | TAC_Int i -> "int"
                       | TAC_Bool i -> "bool" in
-                fprintf fout "%s <- isvoid %s\n" var e1_val
+                printf "%s <- isvoid %s\n" var e1_val
           | TAC_call_out (var, e1, e2) ->
-                fprintf fout "%s <- call %s %s\n" var e1 e2
+                printf "%s <- call %s %s\n" var e1 e2
           | TAC_call_in (var, e1) ->
-                fprintf fout "%s <- call %s\n" var e1
+                printf "%s <- call %s\n" var e1
           | TAC_Self_Dispatch (result_var, (loc, method_name), args) ->
-            fprintf fout "%s <- call %s " result_var method_name;
+            printf "%s <- call %s " result_var method_name;
             List.iteri (fun i arg ->
-              if i > 0 then fprintf fout " ";
+              if i > 0 then printf " ";
               print_tac_expr fout arg
             ) args;
-            fprintf fout "\n"
+            printf "\n"
           | TAC_Let (bingings, let_body) ->
-            fprintf fout ""
+            printf ""
     in
         (* Function to output the full list of TAC instructions for a method body *)
         let output_tac fout target e =
@@ -877,15 +877,15 @@ let main () = begin
         in 
         (* Main program to iterate over the classes and features *)
         let metho_count = ref 0 in
-        fprintf fout "comment start\n";
+        printf "comment start\n";
         List.iter (fun ((cloc, cname), inherits, feats) ->
           List.iter (fun feat ->
             match feat with
             | Attribute ((name_loc, name), (dt_loc, dt_type), Some init_exp) ->
                 let last = output_tac fout (Some name) init_exp in 
-                fprintf fout ""
+                printf ""
             | Method ((metho_loc, metho_name), forms, (metho_type_loc, metho_type), metho_bod) ->
-                fprintf fout "label %s_%s_%d\n" cname metho_name !metho_count;
+                printf "label %s_%s_%d\n" cname metho_name !metho_count;
                 let last = output_tac fout None metho_bod in 
                 (match last with
                 | Some (TAC_Assign_Int (var, _) 
@@ -905,8 +905,8 @@ let main () = begin
                       | TAC_call_out (var, _, _)
                       | TAC_call_in (var, _)
                       | TAC_Self_Dispatch (var,_,_)) ->
-                    fprintf fout "return %s\n" var
-                 | _ -> fprintf fout "")
+                    printf "return %s\n" var
+                 | _ -> printf "")
             | Attribute ((_, _), (_, _), None) ->
                 printf ""
           ) feats;
