@@ -1,0 +1,6 @@
+comment start
+label Main_main_0
+y <- bool true
+t$1 <- y
+t$0 <- int 3
+return t$0

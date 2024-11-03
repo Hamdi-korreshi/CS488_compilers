@@ -8,8 +8,8 @@ label Main_main_1
 t$4 <- y
 t$5 <- int 3
 t$3 <- < t$4 t$5
-t$9 <- not t$3
-bt t$9 Main_main_2
+t$10 <- not t$3
+bt t$10 Main_main_2
 bt t$3 Main_main_3
 comment while-join
 label Main_main_2
@@ -18,8 +18,10 @@ t$0 <- int 3
 return t$0
 comment while-body
 label Main_main_3
+t$8 <- y
+t$9 <- int 1
+y <- + t$8 t$9
 t$7 <- y
-t$8 <- int 1
-y <- + t$7 t$8
-t$6 <- y
+x <- y
+t$6 <- x
 jmp Main_main_1
