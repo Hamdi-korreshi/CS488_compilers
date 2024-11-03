@@ -1,0 +1,5 @@
+comment start
+label Animal_make_sound_0
+t$0 <- string
+generic animal sound
+return t$0

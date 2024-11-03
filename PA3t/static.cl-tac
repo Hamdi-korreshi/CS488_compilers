@@ -1,0 +1,5 @@
+comment start
+label Animal_describe_0
+t$0 <- string
+I am an animal.
+return t$0
