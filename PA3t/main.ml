@@ -59,6 +59,7 @@ and exp_kind =
 
 type tac_instr =
 | TAC_Assign_Int of string * int
+| TAC_Assign_Bool of string * bool
 | TAC_Assign_String of string * string
 | TAC_Assign_Var of string * string
 | TAC_Assign_Plus of string * tac_expr * tac_expr
@@ -71,7 +72,7 @@ type tac_instr =
 | TAC_Cnd_Not of string * tac_expr
 | TAC_Negate of string * tac_expr
 | TAC_New of string * tac_expr
-| TAC_Default of string * tac_expr
+| TAC_Default of tac_expr * string
 | TAC_isvoid of string * tac_expr
 | TAC_call_out of string * string * string (* out_string, out_int *)
 | TAC_call_in of string * string (* in_string, in_int *)
@@ -84,7 +85,8 @@ type tac_instr =
 
 let debug tac = 
   match tac with
-    | Some (TAC_Assign_Int (var, _) 
+    | Some (TAC_Assign_Int (var, _)
+          | TAC_Assign_Bool (var, _) 
           | TAC_Assign_Var (var, _)
           | TAC_Assign_Plus (var, _, _)
           | TAC_Assign_Minus (var, _, _)
@@ -96,7 +98,6 @@ let debug tac =
           | TAC_Cnd_Not (var, _)
           | TAC_Negate (var, _)
           | TAC_New (var, _)
-          | TAC_Default (var, _)
           | TAC_isvoid (var, _)
           | TAC_call_out (var, _, _)
           | TAC_call_in (var, _)) ->
@@ -316,6 +317,7 @@ let rec print_exp exp =
       Printf.printf "Negate\n";
       print_exp exp1
 
+  let metho_count = ref 0
 let main () = begin
   (* printf "start main \n"; *)
   (*deserialzing the CL-AST file*)
@@ -595,6 +597,13 @@ let main () = begin
                   [TAC_Assign_String (new_var, value)], TAC_Variable new_var)
           | Identifier (_, name) ->
             [], TAC_Variable name
+          | Bool value ->
+            let bool_value = bool_of_string value in
+            (match target with
+              | Some var -> [TAC_Assign_Bool (var, bool_value)], TAC_Variable var
+              | None -> 
+                let new_var = fresh_variable () in 
+                [TAC_Assign_Bool (new_var, bool_value)], TAC_Variable new_var)
           | Assign (var, rhs_exp) ->
             (* Step 1: Generate TAC for the right-hand side expression *)
             let rhs_instrs, rhs_result = convert_expr rhs_exp None in
@@ -633,10 +642,13 @@ let main () = begin
               let to_output = TAC_Assign_Divide (new_var, temp1, temp2) in
               instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
           | If (if_exp, then_exp, else_exp) ->
-            (* Generate unique labels for the then, else, and end branches *)
-            let then_label = "then_" ^ fresh_variable () in
-            let else_label = "else_" ^ fresh_variable () in
-            let end_label = "end_" ^ fresh_variable () in
+            (* Generate unique labels *)
+            metho_count := !metho_count + 1;
+            let then_label = "Main_main_" ^ (string_of_int !metho_count) in
+            metho_count := !metho_count + 1;
+            let else_label = "Main_main_" ^ (string_of_int !metho_count) in
+            metho_count := !metho_count + 1;
+            let end_label = "Main_main_" ^ (string_of_int !metho_count) in
         
             (* Generate a unique variable to hold the if expression result *)
             let if_result = fresh_variable () in
@@ -672,8 +684,6 @@ let main () = begin
             @ [TAC_Label end_label]               (* End label *)
             @ [TAC_Return if_result], TAC_Variable if_result
           | While (pool, loop) ->
-            (* TODo *)
-            (* method cntr *)
             metho_count := !metho_count + 1;
             let main_pred_label = "Main_main_" ^ (string_of_int !metho_count) in
             metho_count := !metho_count + 1;
@@ -696,6 +706,7 @@ let main () = begin
 
 
             (* make the default_obj_var  *)
+            let def_obj = TAC_Default (TAC_Variable (fresh_variable()), "Object") in  
 
 
             (* Step 6: Combine all instructions with labels *)
@@ -708,8 +719,7 @@ let main () = begin
             @ [jump_to_else; jump_to_then]         (* Both condition jumps *)
             (* @ [TAC_Label main_join_label] *)
             @ body_branch                          (* Body branch instructions *)
-            (* Add the jmp label *)
-            @ [TAC_Label main_body_label], TAC_Variable main_body_label
+            @ [TAC_Label main_body_label] @ [def_obj] ,TAC_Variable main_body_label
           | LT (e1, e2) ->
             let instrs1, temp1 = convert_expr e1 None in
             let instrs2, temp2 = convert_expr e2 None in
@@ -822,12 +832,20 @@ let main () = begin
             printf "bt ";
             print_tac_expr fout cond_expr;
             printf " %s\n" label
+          | TAC_Default (varname, sometype) ->
+            print_tac_expr fout varname;
+            printf " <- default %s\n" sometype
           | TAC_Jump label ->
               printf "jmp %s\n" label
           | TAC_Label label ->
             printf "label %s\n" label
           | TAC_Assign_Int (var, value) ->
               printf "%s <- int %d\n" var value
+          | TAC_Assign_Bool (var, value) ->
+                if value = true then
+                  printf "%s <- true\n" var
+                else 
+                  printf "%s <- false\n" var
           | TAC_Assign_Var (var, src_var) ->
               printf "%s <- %s\n" var src_var
           | TAC_Assign_Plus (var, e1, e2) ->
@@ -921,13 +939,6 @@ let main () = begin
                       | TAC_Int i -> "int" ^ string_of_int i 
                       | TAC_Bool i -> "bool" ^ string_of_bool i in
                 printf "%s <- new %s\n" var e1_val
-          | TAC_Default (var, e1) ->
-              let e1_val = match e1 with
-                      | TAC_Variable v -> v
-                      | TAC_String i -> "string"  
-                      | TAC_Int i -> "int"
-                      | TAC_Bool i -> "bool" in
-                printf "%s <- default %s\n" var e1_val
           | TAC_isvoid (var, e1) ->
               let e1_val = match e1 with
                       | TAC_Variable v -> v
@@ -958,7 +969,6 @@ let main () = begin
           safe_head tac_instrs
         in 
         (* Main program to iterate over the classes and features *)
-        let metho_count = ref 0 in
         printf "comment start\n";
         List.iter (fun ((cloc, cname), inherits, feats) ->
           List.iter (fun feat ->
@@ -970,7 +980,8 @@ let main () = begin
                 printf "label %s_%s_%d\n" cname metho_name !metho_count;
                 let last = output_tac fout None metho_bod in 
                 (match last with
-                | Some (TAC_Assign_Int (var, _) 
+                | Some (TAC_Assign_Int (var, _)
+                      | TAC_Assign_Bool (var, _) 
                       | TAC_Assign_Var (var, _)
                       | TAC_Assign_Plus (var, _, _)
                       | TAC_Assign_Minus (var, _, _)
@@ -982,7 +993,6 @@ let main () = begin
                       | TAC_Cnd_Not (var, _)
                       | TAC_Negate (var, _)
                       | TAC_New (var, _)
-                      | TAC_Default (var, _)
                       | TAC_isvoid (var, _)
                       | TAC_call_out (var, _, _)
                       | TAC_call_in (var, _)
