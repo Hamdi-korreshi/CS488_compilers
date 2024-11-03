@@ -623,9 +623,12 @@ let main () = begin
               instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
           | If (if_exp, then_exp, else_exp) ->
             (* Generate unique labels *)
-            let then_label = "then_" ^ fresh_variable () in
-            let else_label = "else_" ^ fresh_variable () in
-            let end_label = "end_" ^ fresh_variable () in
+            metho_count := !metho_count + 1;
+            let then_label = "Main_main_" ^ (string_of_int !metho_count) in
+            metho_count := !metho_count + 1;
+            let else_label = "Main_main_" ^ (string_of_int !metho_count) in
+            metho_count := !metho_count + 1;
+            let end_label = "Main_main_" ^ (string_of_int !metho_count) in
         
             (* Step 1: Process the condition (if_exp) *)
             let cond_instrs, cond_result = convert_expr if_exp None in
