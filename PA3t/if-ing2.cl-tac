@@ -2,22 +2,28 @@ comment start
 label Main_main_0
 y <- int 3
 t$1 <- y
-t$3 <- y
-t$4 <- int 3
-t$2 <- = t$3 t$4
-t$10 <- not t$2
-bt t$10 Main_main_2
-bt t$2 Main_main_1
+z <- bool true
+t$2 <- z
+t$6 <- y
+t$7 <- int 3
+t$4 <- = t$6 t$7
+t$8 <- z
+t$9 <- bool false
+t$5 <- = t$8 t$9
+t$3 <- = t$4 t$5
+t$15 <- not t$3
+bt t$15 Main_main_2
+bt t$3 Main_main_1
 comment then branch
 label Main_main_1
-t$5 <- int 3
-t$7 <- t$5
-t$8 <- int 2
-t$6 <- + t$7 t$8
+t$10 <- int 3
+t$12 <- t$10
+t$13 <- int 2
+t$11 <- + t$12 t$13
 jmp Main_main_4
 comment else branch
 label Main_main_2
-t$9 <- string
+t$14 <- string
 B
 jmp Main_main_6
 comment if-join
@@ -25,9 +31,9 @@ label Main_main_3
 return t$0
 comment fcall-pre to out_int
 label Main_main_4
-t$0 <- call out_int t$6
+t$0 <- call out_int t$11
 jmp Main_main_3
 comment fcall-pre to out_string
 label Main_main_6
-t$0 <- call out_string t$9
+t$0 <- call out_string t$14
 jmp Main_main_3

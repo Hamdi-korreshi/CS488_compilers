@@ -1,7 +1,0 @@
-comment start
-label Main_main_0
-t$1 <- new Object
-t$2 <- string
-jack
-t$0 <- call out_string t$2
-return t$0
