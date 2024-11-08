@@ -82,6 +82,15 @@ type tac_instr =
 | TAC_Label of string 
 | TAC_Self_Dispatch of string * id * tac_expr list
 | TAC_Return of string
+let match_exp exp1 = 
+  let jack = 
+    (match exp1 with
+              | TAC_Variable v -> v
+              | TAC_Int i -> "int " ^ string_of_int i 
+              | TAC_Bool i -> "bool " ^ string_of_bool i 
+              | TAC_String i -> "string\n" ^ i 
+     ) in 
+    jack
 
 let debug tac = 
   match tac with
@@ -879,36 +888,20 @@ let main () = begin
           | TAC_Assign_Var (var, src_var) ->
               printf "%s <- %s\n" var src_var
           | TAC_Assign_Plus (var, e1, e2) ->
-              let e1_str = match e1 with
-                           | TAC_Variable v -> v
-                           | TAC_Int i -> "int " ^ string_of_int i in
-              let e2_str = match e2 with
-                           | TAC_Variable v -> v
-                           | TAC_Int i -> "int " ^ string_of_int i in
+              let e1_str = match_exp e1 in
+              let e2_str = match_exp e2 in
               printf "%s <- + %s %s\n" var e1_str e2_str
           | TAC_Assign_Minus (var, e1, e2) ->
-              let e1_str = match e1 with
-                           | TAC_Variable v -> v
-                           | TAC_Int i -> "int " ^ string_of_int i in
-              let e2_str = match e2 with
-                           | TAC_Variable v -> v
-                           | TAC_Int i -> "int " ^ string_of_int i in
+            let e1_str = match_exp e1 in
+            let e2_str = match_exp e2 in
               printf "%s <- - %s %s\n" var e1_str e2_str
           | TAC_Assign_Times (var, e1, e2) ->
-              let e1_str = match e1 with
-                           | TAC_Variable v -> v
-                           | TAC_Int i -> "int " ^ string_of_int i in
-              let e2_str = match e2 with
-                           | TAC_Variable v -> v
-                           | TAC_Int i -> "int " ^ string_of_int i in
+            let e1_str = match_exp e1 in
+            let e2_str = match_exp e2 in
               printf "%s <- * %s %s\n" var e1_str e2_str
           | TAC_Assign_Divide (var, e1, e2) ->
-              let e1_str = match e1 with
-                           | TAC_Variable v -> v
-                           | TAC_Int i -> "int " ^ string_of_int i in
-              let e2_str = match e2 with
-                           | TAC_Variable v -> v
-                           | TAC_Int i -> "int " ^ string_of_int i in
+            let e1_str = match_exp e1 in
+            let e2_str = match_exp e2 in
               printf "%s <- / %s %s\n" var e1_str e2_str
           | TAC_Cnd_LessThan (var, e1, e2) ->
               let e1_val = match e1 with
@@ -1009,7 +1002,6 @@ let main () = begin
                 printf ""
             | Method ((metho_loc, metho_name), forms, (metho_type_loc, metho_type), metho_bod) ->
                 curr_method := metho_name ;
-                
                 printf "label %s_%s_%d\n" !curr_class !curr_method !metho_count;
                 let last = output_tac None metho_bod in 
                 (match last with
