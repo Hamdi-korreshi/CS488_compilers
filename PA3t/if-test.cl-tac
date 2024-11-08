@@ -1,0 +1,16 @@
+label Main_main_0
+y <- int 3
+t1 <- int 3
+t2 <- = y t1
+t3 <- not t2
+bt t3 Main_main_2
+bt t2 Main_main_1
+label Main_main_1
+t4 <- int 3
+t5 <- int 2
+t6 <- + x t5
+t7 <- call out_int t6
+jmp Main_main_3
+label Main_main_2
+t8 <- call out_string something went wrong
+label Main_main_3
