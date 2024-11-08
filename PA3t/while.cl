@@ -13,7 +13,7 @@ class Main inherits IO {
             y <- y + 1;
             x <- y;
         } pool;
-        3;
+        out_int(y+x);
     }
     };
 };

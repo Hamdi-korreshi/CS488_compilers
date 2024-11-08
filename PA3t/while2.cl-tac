@@ -1,0 +1,21 @@
+comment start
+label Main_main_0
+t0 <- int 0
+y <- t0
+jmp Main_main_1
+label Main_main_1
+t1 <- int 3
+t2 <- < y t1
+t3 <- not t2
+bt t3 Main_main_2
+bt t2 Main_main_3
+label Main_main_3
+t4 <- int 1
+t5 <- + y t4
+y <- t5
+x <- y
+jmp Main_main_1
+label Main_main_2
+t6 <- default Object
+t7 <- int 3
+return t7

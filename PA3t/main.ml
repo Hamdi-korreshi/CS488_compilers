@@ -529,8 +529,6 @@ let main () = begin
           in
           let ast = read_cool_program () in
           close_in fin ;
-          let cname = (Filename.chop_extension fname) ^ ".cl-tactest" in 
-          let fout = open_out cname in
           (* let rec output_id bruh_val = 
             printf "%s\n%s\n" (fst bruh_val) (snd bruh_val) 
           in
@@ -817,23 +815,23 @@ let main () = begin
             printf "";
             [], TAC_Variable "something went wrong"
           in
-        let print_tac_expr fout expr =
+        let print_tac_expr expr =
           match expr with
           | TAC_Variable var_name -> printf "%s" var_name
           | TAC_Int int_val -> printf "%d" int_val
           | TAC_String str_val -> printf "\"%s\"" str_val
           | TAC_Bool bool_val -> printf "%b" bool_val
         in
-        let rec print_tac_instr fout instr =
+        let rec print_tac_instr instr =
           match instr with
           | TAC_Assign_String (var, value) ->
             printf "%s <- string \n%s\n" var value
           | TAC_Jump_If_Not (cond_expr, label) ->
             printf "bt ";
-            print_tac_expr fout cond_expr;
+            print_tac_expr cond_expr;
             printf " %s\n" label
           | TAC_Default (varname, sometype) ->
-            print_tac_expr fout varname;
+            print_tac_expr varname;
             printf " <- default %s\n" sometype
           | TAC_Jump label ->
               printf "jmp %s\n" label
@@ -954,7 +952,7 @@ let main () = begin
             printf "%s <- call %s " result_var method_name;
             List.iteri (fun i arg ->
               if i > 0 then printf " ";
-              print_tac_expr fout arg
+              print_tac_expr arg
             ) args;
             printf "\n"
           | TAC_Return result_var ->
@@ -963,9 +961,9 @@ let main () = begin
             printf ""
     in
         (* Function to output the full list of TAC instructions for a method body *)
-        let output_tac fout target e =
+        let output_tac target e =
           let tac_instrs, _ = convert_expr e target in
-          List.iter (print_tac_instr fout) tac_instrs;
+          List.iter (print_tac_instr) tac_instrs;
           safe_head tac_instrs
         in 
         (* Main program to iterate over the classes and features *)
@@ -974,11 +972,11 @@ let main () = begin
           List.iter (fun feat ->
             match feat with
             | Attribute ((name_loc, name), (dt_loc, dt_type), Some init_exp) ->
-                let last = output_tac fout (Some name) init_exp in 
+                let last = output_tac (Some name) init_exp in 
                 printf ""
             | Method ((metho_loc, metho_name), forms, (metho_type_loc, metho_type), metho_bod) ->
                 printf "label %s_%s_%d\n" cname metho_name !metho_count;
-                let last = output_tac fout None metho_bod in 
+                let last = output_tac None metho_bod in 
                 (match last with
                 | Some (TAC_Assign_Int (var, _)
                       | TAC_Assign_Bool (var, _) 
@@ -1003,6 +1001,5 @@ let main () = begin
                 printf ""
           ) feats;
         ) ast;
-        close_out fout;
         end ;;
 main();;
