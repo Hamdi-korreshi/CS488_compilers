@@ -1,0 +1,32 @@
+comment start
+x <- int 4
+label Main_main_0
+t0 <- int 3
+y <- t0
+t1 <- int 3
+t2 <- = y t1
+t3 <- not t2
+bt t3 else_label_1
+label then_label_1
+t5 <- int 3
+x <- t5
+t6 <- int 2
+t7 <- + x t6
+t8 <- call out_int t7
+t9 <- string 
+\n
+t10 <- call out_string t9
+t4 <- t10
+jmp end_label_1
+label else_label_1
+t11 <- string 
+B
+t12 <- call out_string t11
+t4 <- t12
+label end_label_1
+t13 <- int 3
+t14 <- call out_int t13
+t15 <- string 
+\n
+t16 <- call out_string t15
+return t16

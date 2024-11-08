@@ -652,49 +652,43 @@ let main () = begin
               let to_output = TAC_Assign_Divide (new_var, temp1, temp2) in
               instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
           | If (if_exp, then_exp, else_exp) ->
-            (* Generate unique labels *)
-            let classmethod_label = !curr_class ^ "_" ^ !curr_method ^ "_" in
+            (* Generate unique labels for then, else, and end of the if statement *)
             metho_count := !metho_count + 1;
-            (* Format is Classname_funcname_ *)
-            let then_label = classmethod_label ^ (string_of_int !metho_count) in
-            metho_count := !metho_count + 1;
-            let else_label = classmethod_label ^ (string_of_int !metho_count) in
-            metho_count := !metho_count + 1;
-            let end_label = classmethod_label ^ (string_of_int !metho_count) in
-        
-            (* Generate a unique variable to hold the if expression result *)
-            let if_result = fresh_variable () in
+            let then_label = "then_label_" ^ string_of_int !metho_count in
+            let else_label = "else_label_" ^ string_of_int !metho_count in
+            let end_label = "end_label_" ^ string_of_int !metho_count in
         
             (* Step 1: Process the condition (if_exp) *)
             let cond_instrs, cond_result = convert_expr if_exp None in
         
-            (* Step 2: Negate the condition *)
+            (* Step 2: Generate the conditional jump to the else branch if condition is false *)
             let negated_var = fresh_variable () in
             let negate_instr = TAC_Cnd_Not (negated_var, cond_result) in
-        
-            (* Step 3: Generate the jump to the else branch using the negated condition *)
             let jump_to_else = TAC_Jump_If_Not (TAC_Variable negated_var, else_label) in
         
-            (* Step 4: Process the 'then' branch, storing the result in if_result *)
-            let then_instrs, then_result = convert_expr then_exp (Some if_result) in
-            let then_branch = [TAC_Label then_label] @ then_instrs @ [TAC_Assign_Var (if_result, match then_result with
-                                                    | TAC_Variable v -> v
-                                                    | _ -> failwith "Unexpected TAC expression")] @ [TAC_Jump end_label] in
+            (* Step 3: Process the 'then' branch and store its result in a new variable *)
+            let result_var = fresh_variable () in
+            let then_instrs, then_result = convert_expr then_exp (Some result_var) in
+            let then_branch = [TAC_Label then_label] @ then_instrs @ [TAC_Assign_Var (result_var, match then_result with
+                                                              | TAC_Variable v -> v
+                                                              | _ -> failwith "Unexpected TAC expression")] @ [TAC_Jump end_label] in
         
-            (* Step 5: Process the 'else' branch, also storing the result in if_result *)
-            let else_instrs, else_result = convert_expr else_exp (Some if_result) in
-            let else_branch = [TAC_Label else_label] @ else_instrs @ [TAC_Assign_Var (if_result, match else_result with
-                                                    | TAC_Variable v -> v
-                                                    | _ -> failwith "Unexpected TAC expression")] in
+            (* Step 4: Process the 'else' branch and store its result in the same variable *)
+            let else_instrs, else_result = convert_expr else_exp (Some result_var) in
+            let else_branch = [TAC_Label else_label] @ else_instrs @ [TAC_Assign_Var (result_var, match else_result with
+                                                              | TAC_Variable v -> v
+                                                              | _ -> failwith "Unexpected TAC expression")] in
         
-            (* Step 6: Combine all instructions with labels and add a return statement *)
-            cond_instrs
-            @ [negate_instr]                      (* Negate the condition *)
-            @ [jump_to_else]                      (* Jump to else if negated condition is true *)
-            @ then_branch                         (* Then branch instructions *)
-            @ else_branch                         (* Else branch instructions *)
-            @ [TAC_Label end_label]               (* End label *)
-            @ [TAC_Return if_result], TAC_Variable if_result
+            (* Step 5: Combine all instructions and return the result *)
+            let combined_instrs = 
+                cond_instrs
+                @ [negate_instr]                       (* Negate the condition *)
+                @ [jump_to_else]                       (* Jump to else if negated condition is true *)
+                @ then_branch                          (* Then branch instructions *)
+                @ else_branch                          (* Else branch instructions *)
+                @ [TAC_Label end_label]                (* End label for the if statement *)
+            in
+            combined_instrs, TAC_Variable result_var
           | While (pool, loop) ->
             let classmethod_label = !curr_class ^ "_" ^ !curr_method ^ "_" in
             metho_count := !metho_count + 1;

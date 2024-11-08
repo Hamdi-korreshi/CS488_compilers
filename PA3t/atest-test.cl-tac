@@ -1,0 +1,36 @@
+comment start
+label Main_main_0
+t0 <- call in_int 
+age <- t0
+t2 <- int 18
+t3 <- < age t2
+t4 <- not t3
+bt t4 Main_main_2
+label Main_main_1
+t5 <- int 1
+t6 <- call out_int t5
+t1 <- t6
+jmp Main_main_3
+label Main_main_2
+t8 <- int 18
+t9 <- <= age  t8
+t10 <- int 65
+t11 <- < age t10
+t12 <- = t9 t11
+t13 <- not t12
+t14 <- not t13
+bt t14 Main_main_5
+label Main_main_4
+t15 <- int 2
+t16 <- call out_int t15
+t7 <- t16
+jmp Main_main_6
+label Main_main_5
+t17 <- int 3
+t18 <- call out_int t17
+t7 <- t18
+label Main_main_6
+return t7
+t1 <- t7
+label Main_main_3
+return t1
