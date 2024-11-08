@@ -1,0 +1,8 @@
+comment start
+label Main_main_0
+t$2 <- int 16
+t$3 <- new Person
+t$1 <- call init_age t$2
+t$4 <- t$1
+t$0 <- call check_age
+return t$0

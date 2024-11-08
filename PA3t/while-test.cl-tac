@@ -17,5 +17,6 @@ x <- y
 jmp Main_main_1
 label Main_main_2
 t6 <- default Object
-t7 <- int 3
-return t7
+t7 <- + y x
+t8 <- call out_int t7
+return t8

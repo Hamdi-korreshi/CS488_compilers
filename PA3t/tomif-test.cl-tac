@@ -1,0 +1,29 @@
+comment start
+t0 <- new A
+label Main_main_0
+t1 <- int 3
+y <- t1
+t2 <- bool true
+z <- t2
+t4 <- bool false
+t5 <- = z t4
+t6 <- int 3
+t7 <- = y t6
+t8 <- = t5 t7
+t9 <- not t8
+bt t9 Main_main_2
+label Main_main_1
+t10 <- int 3
+x <- t10
+t11 <- int 2
+t12 <- + x t11
+t13 <- call out_int t12
+t3 <- t13
+jmp Main_main_3
+label Main_main_2
+t14 <- string 
+B
+t15 <- call out_string t14
+t3 <- t15
+label Main_main_3
+return t3

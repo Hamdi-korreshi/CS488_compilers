@@ -404,7 +404,7 @@ let main () = begin
           | "true" ->
               Bool("true")
           | "false" ->
-              Bool("true")
+              Bool("false")
           | "negate" ->
             let ival = read_exp() in
             Negate(ival)
@@ -595,10 +595,11 @@ let main () = begin
                   [TAC_Assign_String (new_var, value)], TAC_Variable new_var)
           | Identifier (_, name) ->
             [], TAC_Variable name
-          | Bool value ->
+          | Bool (value) ->
             let bool_value = bool_of_string value in
             (match target with
-              | Some var -> [TAC_Assign_Bool (var, bool_value)], TAC_Variable var
+              | Some var -> 
+                [TAC_Assign_Bool (var, bool_value)], TAC_Variable var
               | None -> 
                 let new_var = fresh_variable () in 
                 [TAC_Assign_Bool (new_var, bool_value)], TAC_Variable new_var)
@@ -780,6 +781,32 @@ let main () = begin
             (* Step 3: Create the TAC for the self-dispatch call *)
             let to_output = TAC_Self_Dispatch (new_var, method_id, arg_exprs) in
             arg_instrs @ [to_output], TAC_Variable new_var
+            | Dynamic_Dispatch (e, method_id, args) ->
+              (* Step 1: Generate TAC for the arguments first, then the object *)
+              let arg_instrs, arg_vars = 
+                match args with
+                | [arg] -> 
+                    let arg_instrs, arg_var = convert_expr arg None in
+                    arg_instrs, [arg_var]
+                | _ -> failwith "Expected a single argument for init_age"
+              in
+          
+              (* Step 2: Generate TAC for the dispatch object *)
+              let obj_instrs, obj_var = convert_expr e None in
+          
+              (* Step 3: Generate a new temporary for the result of the dynamic dispatch *)
+              let new_var = fresh_variable () in
+          
+              (* Step 4: Create the dynamic dispatch call with args and the object *)
+              let call_instr = TAC_Self_Dispatch (new_var, method_id, arg_vars @ [obj_var]) in
+          
+              (* Step 5: Assign the result to a new variable, if needed *)
+              let result_var = fresh_variable () in
+              let assign_instr = TAC_Assign_Var (result_var, new_var) in
+          
+              (* Step 6: Return instructions *)
+              arg_instrs @ obj_instrs @ [call_instr; assign_instr], TAC_Variable result_var
+          
           | Let (bindings, let_body) ->
             (* Process each binding in sequence, accumulating TAC instructions *)
             let rec process_bindings bindings acc_instrs =
@@ -841,9 +868,9 @@ let main () = begin
               printf "%s <- int %d\n" var value
           | TAC_Assign_Bool (var, value) ->
                 if value = true then
-                  printf "%s <- true\n" var
+                  printf "%s <- bool true\n" var
                 else 
-                  printf "%s <- false\n" var
+                  printf "%s <- bool false\n" var
           | TAC_Assign_Var (var, src_var) ->
               printf "%s <- %s\n" var src_var
           | TAC_Assign_Plus (var, e1, e2) ->
@@ -965,10 +992,11 @@ let main () = begin
           let tac_instrs, _ = convert_expr e target in
           List.iter (print_tac_instr) tac_instrs;
           safe_head tac_instrs
-        in 
+        in
         (* Main program to iterate over the classes and features *)
         printf "comment start\n";
         List.iter (fun ((cloc, cname), inherits, feats) ->
+
           List.iter (fun feat ->
             match feat with
             | Attribute ((name_loc, name), (dt_loc, dt_type), Some init_exp) ->
