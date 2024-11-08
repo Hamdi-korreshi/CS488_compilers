@@ -318,6 +318,8 @@ let rec print_exp exp =
       print_exp exp1
 
   let metho_count = ref 0
+  let curr_class = ref ""
+  let curr_method = ref ""
 let main () = begin
   (* printf "start main \n"; *)
   (*deserialzing the CL-AST file*)
@@ -641,12 +643,14 @@ let main () = begin
               instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
           | If (if_exp, then_exp, else_exp) ->
             (* Generate unique labels *)
+            let classmethod_label = !curr_class ^ "_" ^ !curr_method ^ "_" in
             metho_count := !metho_count + 1;
-            let then_label = "Main_main_" ^ (string_of_int !metho_count) in
+            (* Format is Classname_funcname_ *)
+            let then_label = classmethod_label ^ (string_of_int !metho_count) in
             metho_count := !metho_count + 1;
-            let else_label = "Main_main_" ^ (string_of_int !metho_count) in
+            let else_label = classmethod_label ^ (string_of_int !metho_count) in
             metho_count := !metho_count + 1;
-            let end_label = "Main_main_" ^ (string_of_int !metho_count) in
+            let end_label = classmethod_label ^ (string_of_int !metho_count) in
         
             (* Generate a unique variable to hold the if expression result *)
             let if_result = fresh_variable () in
@@ -682,12 +686,13 @@ let main () = begin
             @ [TAC_Label end_label]               (* End label *)
             @ [TAC_Return if_result], TAC_Variable if_result
           | While (pool, loop) ->
+            let classmethod_label = !curr_class ^ "_" ^ !curr_method ^ "_" in
             metho_count := !metho_count + 1;
-            let main_pred_label = "Main_main_" ^ (string_of_int !metho_count) in
+            let main_pred_label = classmethod_label ^ (string_of_int !metho_count) in
             metho_count := !metho_count + 1;
-            let main_body_label = "Main_main_" ^ (string_of_int !metho_count) in
+            let main_body_label = classmethod_label ^ (string_of_int !metho_count) in
             metho_count := !metho_count + 1;
-            let main_join_label = "Main_main_" ^ (string_of_int !metho_count) in
+            let main_join_label = classmethod_label ^ (string_of_int !metho_count) in
 
             let cond_instrs, cond_result = convert_expr pool None in
 
@@ -969,13 +974,16 @@ let main () = begin
         (* Main program to iterate over the classes and features *)
         printf "comment start\n";
         List.iter (fun ((cloc, cname), inherits, feats) ->
+          curr_class := cname;
           List.iter (fun feat ->
             match feat with
             | Attribute ((name_loc, name), (dt_loc, dt_type), Some init_exp) ->
                 let last = output_tac (Some name) init_exp in 
                 printf ""
             | Method ((metho_loc, metho_name), forms, (metho_type_loc, metho_type), metho_bod) ->
-                printf "label %s_%s_%d\n" cname metho_name !metho_count;
+                curr_method := metho_name ;
+                
+                printf "label %s_%s_%d\n" !curr_class !curr_method !metho_count;
                 let last = output_tac None metho_bod in 
                 (match last with
                 | Some (TAC_Assign_Int (var, _)
