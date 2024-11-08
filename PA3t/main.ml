@@ -679,7 +679,6 @@ let main () = begin
                                                               | TAC_Variable v -> v
                                                               | _ -> failwith "Unexpected TAC expression")] in
         
-<<<<<<< HEAD
             (* Step 5: Combine all instructions and return the result *)
             let combined_instrs = 
                 cond_instrs
@@ -690,15 +689,7 @@ let main () = begin
                 @ [TAC_Label end_label]                (* End label for the if statement *)
             in
             combined_instrs, TAC_Variable result_var
-=======
-            (* Step 6: Combine all instructions with labels and add a return statement *)
-            cond_instrs
-            @ [negate_instr]                      (* Negate the condition *)
-            @ [jump_to_else]                      (* Jump to else if negated condition is true *)
-            @ then_branch                         (* Then branch instructions *)
-            @ else_branch                         (* Else branch instructions *)
-            @ [TAC_Label end_label]               (* End label *), TAC_Variable if_result
->>>>>>> 2d76542 (added-pa3c2)
+
           | While (pool, loop) ->
             let classmethod_label = !curr_class ^ "_" ^ !curr_method ^ "_" in
             metho_count := !metho_count + 1;
