@@ -589,7 +589,6 @@ let main () = begin
         ) ast; *)
 
         let rec convert_expr (e : exp) (target : string option) : (tac_instr list * tac_expr) =
-          (* TODO *)
           match e.exp_kind with
           | Integer value ->
               let int_value = int_of_string value in
@@ -979,7 +978,7 @@ let main () = begin
             printf "return %s\n" result_var
           | TAC_Let (bingings, let_body) ->
             printf ""
-    in
+        in
         (* Function to output the full list of TAC instructions for a method body *)
         let output_tac target e =
           let tac_instrs, _ = convert_expr e target in
