@@ -540,6 +540,7 @@ let main () = begin
           in
           let ast = read_cool_program () in
           close_in fin ;
+        
           (* let rec output_id bruh_val = 
             printf "%s\n%s\n" (fst bruh_val) (snd bruh_val) 
           in
@@ -857,7 +858,8 @@ let main () = begin
           | TAC_String str_val -> printf "\"%s\"" str_val
           | TAC_Bool bool_val -> printf "%b" bool_val
         in
-        let rec print_tac_instr instr =
+        (* Printing *)
+        (* let rec print_tac_instr instr =
           match instr with
           | TAC_Assign_String (var, value) ->
             printf "%s <- string \n%s\n" var value
@@ -978,7 +980,129 @@ let main () = begin
             printf "return %s\n" result_var
           | TAC_Let (bingings, let_body) ->
             printf ""
-        in
+        in *)
+        let rec tac_to_asm instr =
+        match instr with
+        | TAC_Assign_String (var, value) ->
+          printf "%s <- string \n%s\n" var value
+        | TAC_Jump_If_Not (cond_expr, label) ->
+          printf "bt ";
+          print_tac_expr cond_expr;
+          printf " %s\n" label
+        | TAC_Default (varname, sometype) ->
+          print_tac_expr varname;
+          printf " <- default %s\n" sometype
+        | TAC_Jump label ->
+            printf "jmp %s\n" label
+        | TAC_Label label ->
+          printf "label %s\n" label
+        | TAC_Assign_Int (var, value) ->
+            printf "%s <- int %d\n" var value
+        | TAC_Assign_Bool (var, value) ->
+              if value = true then
+                printf "%s <- bool true\n" var
+              else 
+                printf "%s <- bool false\n" var
+        | TAC_Assign_Var (var, src_var) ->
+            printf "%s <- %s\n" var src_var
+        | TAC_Assign_Plus (var, e1, e2) ->
+            let e1_str = match_exp e1 in
+            let e2_str = match_exp e2 in
+            printf "%s <- + %s %s\n" var e1_str e2_str
+        | TAC_Assign_Minus (var, e1, e2) ->
+          let e1_str = match_exp e1 in
+          let e2_str = match_exp e2 in
+            printf "%s <- - %s %s\n" var e1_str e2_str
+        | TAC_Assign_Times (var, e1, e2) ->
+          let e1_str = match_exp e1 in
+          let e2_str = match_exp e2 in
+            printf "%s <- * %s %s\n" var e1_str e2_str
+        | TAC_Assign_Divide (var, e1, e2) ->
+          let e1_str = match_exp e1 in
+          let e2_str = match_exp e2 in
+            printf "%s <- / %s %s\n" var e1_str e2_str
+        | TAC_Cnd_LessThan (var, e1, e2) ->
+            let e1_val = match e1 with
+                        | TAC_Variable v -> v
+                        | TAC_String i -> "string" 
+                        | TAC_Int i -> "int"
+                        | TAC_Bool i -> "bool" ^ string_of_bool i in
+            let e2_val = match e2 with
+                        | TAC_Variable v -> v
+                        | TAC_String i -> "string" 
+                        | TAC_Int i -> "int" ^ string_of_int i
+                        | TAC_Bool i -> "bool" ^ string_of_bool i in
+            printf "%s <- < %s %s\n" var e1_val e2_val
+        | TAC_Cnd_LessEqual (var, e1, e2) ->
+            let e1_val = match e1 with
+                      | TAC_Variable v -> v
+                      | TAC_String i -> "string" 
+                      | TAC_Int i -> "int" ^ string_of_int i
+                      | TAC_Bool i -> "bool" ^ string_of_bool i in
+            let e2_val = match e2 with
+                      | TAC_Variable v -> v
+                      | TAC_String i -> "string" 
+                      | TAC_Int i -> "int" ^ string_of_int i
+                      | TAC_Bool i -> "bool" ^ string_of_bool i in
+            printf "%s <- <= %s  %s\n" var e1_val e2_val
+        | TAC_Cnd_Equal (var, e1, e2) ->
+          let e1_val = match e1 with
+                    | TAC_Variable v -> v
+                    | TAC_String i -> "string" 
+                    | TAC_Int i -> "int" ^ string_of_int i
+                    | TAC_Bool i -> "bool" ^ string_of_bool i in
+          let e2_val = match e2 with
+                    | TAC_Variable v -> v
+                    | TAC_String i -> "string" 
+                    | TAC_Int i -> "int" ^ string_of_int i
+                    | TAC_Bool i -> "bool" ^ string_of_bool i in
+          printf "%s <- = %s %s\n" var e1_val e2_val
+        | TAC_Cnd_Not (var, e1) ->
+          (* Just for Booleans *)
+          let e1_val = match e1 with
+                    | TAC_Variable v -> v
+                    | TAC_String i -> "string" 
+                    | TAC_Int i -> "int" ^ string_of_int i
+                    | TAC_Bool i -> "bool" ^ string_of_bool i in
+          printf "%s <- not %s\n" var e1_val
+        | TAC_Negate (var, e1) ->
+          (* Only for ints *)
+          let e1_val = match e1 with
+                    | TAC_Variable v -> v
+                    | TAC_String i -> "string"
+                    | TAC_Int i -> "int" ^ string_of_int i
+                    | TAC_Bool i -> "bool" ^ string_of_bool i in
+          printf "%s <- ~ %s\n" var e1_val
+        | TAC_New (var, e1) ->
+            let e1_val = match e1 with
+                    | TAC_Variable v -> v
+                    | TAC_String i -> "string"
+                    | TAC_Int i -> "int" ^ string_of_int i 
+                    | TAC_Bool i -> "bool" ^ string_of_bool i in
+              printf "%s <- new %s\n" var e1_val
+        | TAC_isvoid (var, e1) ->
+            let e1_val = match e1 with
+                    | TAC_Variable v -> v
+                    | TAC_String i -> "string"
+                    | TAC_Int i -> "int"
+                    | TAC_Bool i -> "bool" in
+              printf "%s <- isvoid %s\n" var e1_val
+        | TAC_call_out (var, e1, e2) ->
+              printf "%s <- call %s %s\n" var e1 e2
+        | TAC_call_in (var, e1) ->
+              printf "%s <- call %s\n" var e1
+        | TAC_Self_Dispatch (result_var, (loc, method_name), args) ->
+          printf "%s <- call %s " result_var method_name;
+          List.iteri (fun i arg ->
+            if i > 0 then printf " ";
+            print_tac_expr arg
+          ) args;
+          printf "\n"
+        | TAC_Return result_var ->
+          printf "return %s\n" result_var
+        | TAC_Let (bingings, let_body) ->
+          printf ""
+      in
         (* Function to output the full list of TAC instructions for a method body *)
         let output_tac target e =
           let tac_instrs, _ = convert_expr e target in
