@@ -1144,6 +1144,52 @@ let main () = begin
         ) ast;
         end ;;
 main();;
+(* Create a hashtbl for class_tag per class name *)
+let global_start_comment = printf "\t\t\t\t\t## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n" in
+let global_setup classfunc = printf ".globl %s\n" classfunc in
+let constructor_setup classfunc classname = printf "%s\t\t## constructor for %s\n"  classfunc classname in
+let custom_setup classfunc msg = printf "%s:\t\t%s\n" classfunc msg in
+let ret_addr_handling = printf "## return address handling\n" in
+let store_c_tag = printf "## store class tag, object size and vtable pointer\n" in
+let stack_temps number = printf "## stack room for temporaries: %s\n" number in
+let init_attrs = printf "## initialize attributes\n" in
+let self_holds pos varname vartype = printf "## self[%s] holds field %s (%s)\n" pos varname vartype in
+let push_stack reg = printf "push %s\n" reg in
+let pop_stack reg = printf "pop %s\n" reg in
+let mov_op src dest = printf "movq %s, %s\n" src dest in
+let add_op src dest = printf "addq %s, %s\n" src dest in
+let sub_op src dest = printf "subq %s, %s\n" src dest in
+let multi_op src dest = printf "imul %s, %s\n" src dest in
+let div_op src dest = printf "testing" in
+let and_op src dest = printf "and %s, %s\n" src dest in
+let or_op src dest = printf "or %s, %s\n" src dest in
+let cmp_op src dest = printf "cmpq %s, %s\n" src dest in 
+let test_op src dest = printf "test %s, %s\n" src dest in 
+let jmp_op label = printf "jmp %s\n" label in
+let je_op label = printf "je %s\n" label in
+let jne_op label = printf "jne %s\n" label in
+let jns_op label = printf "jns %s\n" label in
+let jl_op label = printf "jl %s\n" label in
+let jle_op label = printf "jle %s\n" label in
+let call_op op = printf "call %s\n" op in
+let return_op = printf "ret\n" in
+let new_class_instance class_name stack_loc = printf "## new Int\n";
+        push_stack "%rbp";
+        push_stack "%r12";
+        mov_op "$Int..new", "%r14";
+        call_op "*%r14";
+        pop_stack "%r12";
+        pop_stack "%rbp";
+        mov_op "%r13" (stack_loc ^ "(%r12)");
+      in
+  let self_non_std stack_loc = mov_op "$0" (stack_loc ^ "(%r12)") in 
+  let self_init pos varname varinfo = 
+    if varinfo == "none" then
+        printf "## self[%s] %s initializer -- none\n" pos varname
+    else 
+      printf "## self[%s] %s initializer <- %s\n" pos varname varinfo
+    in
+  let custom_comment msg = printf "## %s\n" msg in
 
 let initial_vtable_before_main = "                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Bool..vtable
@@ -1258,55 +1304,34 @@ Int..new:               ## constructor for Int
                         ## return address handling
                         movq %rbp, %rsp
                         popq %rbp
-                        ret
-                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-.globl Main..new
-Main..new:              ## constructor for Main
-                        pushq %rbp
-                        movq %rsp, %rbp
-                        ## stack room for temporaries: 1
-                        movq $8, %r14
-                        subq %r14, %rsp
-                        ## return address handling
-                        movq $5, %r12
-                        movq $8, %rsi
-			movq %r12, %rdi
-			call calloc
-			movq %rax, %r12
-                        ## store class tag, object size and vtable pointer
-                        movq $12, %r14
-                        movq %r14, 0(%r12)
-                        movq $5, %r14
-                        movq %r14, 8(%r12)
-                        movq $Main..vtable, %r14
-                        movq %r14, 16(%r12)
-                        ## initialize attributes
-                        ## self[3] holds field y (Int)
-                        ## new Int
-                        pushq %rbp
-                        pushq %r12
-                        movq $Int..new, %r14
-                        call *%r14
-                        popq %r12
-                        popq %rbp
-                        movq %r13, 24(%r12)
-                        ## self[4] holds field x (Int)
-                        ## new Int
-                        pushq %rbp
-                        pushq %r12
-                        movq $Int..new, %r14
-                        call *%r14
-                        popq %r12
-                        popq %rbp
-                        movq %r13, 32(%r12)
-                        ## self[3] y initializer -- none 
-                        ## self[4] x initializer -- none 
-                        movq %r12, %r13
-                        ## return address handling
-                        movq %rbp, %rsp
-                        popq %rbp
-                        ret
-                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+                        ret" in
+      let initial_main_new =
+        let number_of_feats = 3 in (* Change dynamically *)
+        global_start_comment;
+        global_setup "Main..new";
+        custom_setup "Main..new" "constructor for main";
+        push_stack "%rbp";
+        stack_temps "1";
+        sub_op "$8" "%rsp";
+        ret_addr_handling;
+        mov_op (string_of_int (3 + number_of_feats)) "%rsi" ;
+        mov_op "$8" "%rdi";
+        call_op "calloc";
+        mov_op "%rax" "%r12";
+        store_c_tag;
+        let c_tag = 10 in (* Have some sort of hashtbl that holds these tags *)
+        mov_op ("$" ^ string_of_int c_tag) "%r12";
+        mov_op (string_of_int number_of_feats) "8(%r12)";
+        let vtbl = "Main..vtable" in
+        mov_op ("$" ^ vtbl) "16(%r12)";
+        (* Read through each feature in class_map *)
+        ret_addr_handling;
+        mov_op "%rbp" "%rsp";
+        pop_stack "%rbp";
+        return_op;
+
+    in
+  let io_table = "                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl IO.in_int
 IO.in_int:              ## method definition
                         pushq %rbp
@@ -1381,6 +1406,26 @@ IO.out_int.end:         ## method body ends
                         movq %rbp, %rsp
                         popq %rbp
                         ret" in
+let initial_Main_main = (* global text*) 
+push_stack "%rbp";
+mov_op "16(%rsp)" "%r12"; (* might need re-work *)
+stack_temps "x";
+sub_op "$16" "%rsp";
+ret_addr_handling;
+(* Selfs for each attr *)
+custom_comment "method body begins";
+(* Do body work *)
+in
+
+let initial_Main_main_end = 
+  global_setup "Main.main.end";
+  custom_setup "Main.Main.end" "## method body ends";
+  ret_addr_handling;
+  mov_op "%rbp" "%rsp";
+  pop_stack "%rbp";
+  return_op;
+in
+
 let initial_vtable_after_main = "                        ## global string constants
 .globl string2
 string2:                # 'Bool'
