@@ -14,7 +14,7 @@ let safe_head lst =
   try Some (List.hd (List.rev lst))
   with Failure _ -> None
 
-  type cool_prog = cool_class list
+type cool_prog = cool_class list
 and loc = string
 and id = loc * string
 and cool_type = id
@@ -56,6 +56,20 @@ and exp_kind =
   | EQ of exp * exp
   | Negate of exp
   | Not of exp
+  | Internal of cool_type * string * string
+
+(* class_map type = hashtable of class_map *)
+type cmap = (string, int) Hashtbl.t
+type implementation_map = (string, method_entry list) Hashtbl.t 
+and method_entry = method_name * num_formals * formal_names * defining_class * method_body
+and method_name = string
+and num_formals = int
+and formal_names = string list option
+and defining_class = string
+and method_body = string
+type pmap = (string,string) Hashtbl.t
+
+let empty_map () = Hashtbl.create 128
 
 type tac_instr =
 | TAC_Assign_Int of string * int
@@ -113,6 +127,41 @@ let debug tac =
         printf "return %s\n" var
     | _ -> ()
 
+let print_class_map class_map =
+  printf "got to print\n";
+  Printf.printf "class_map\n";
+  Printf.printf "%d\n" (Hashtbl.length class_map);
+  Hashtbl.iter (fun class_name attributes ->
+    Printf.printf "%s\n" class_name;
+    Printf.printf "%d\n" attributes
+  ) class_map
+    
+
+let print_implementation_map imp_map =
+  Printf.printf "implementation_map\n";
+  Printf.printf "%d\n" (Hashtbl.length imp_map);
+  Hashtbl.iter (fun class_name methods ->
+    Printf.printf "%s\n" class_name;
+    Printf.printf "%d\n" (List.length methods);
+    List.iter (fun (method_name, num_formals, formals, defining_class, method_body) ->
+      Printf.printf "%s\n" method_name;
+      Printf.printf "%d\n" num_formals;
+      (* Print formal parameters only if there are any *)
+      (match formals with
+      | Some formal_names -> List.iter (fun formal_name -> Printf.printf "%s\n" formal_name) formal_names
+      | None -> ());  (* No formal parameters, do nothing *)
+      Printf.printf "%s\n" defining_class;
+      Printf.printf "%s\n" method_body;
+    ) methods
+  ) imp_map
+  
+let print_parent_map parent_map =
+  Printf.printf "parent_map\n";
+  Printf.printf "%d\n" (Hashtbl.length parent_map);
+  Hashtbl.iter (fun child_class parent_class ->
+    Printf.printf "%s\n%s\n" child_class parent_class
+  ) parent_map
+  
 let fresh_variable =
   let counter = ref 0 in
   fun () ->
@@ -322,9 +371,9 @@ let rec print_exp exp =
       Printf.printf "Negate\n";
       print_exp exp1
 
-  let metho_count = ref 0
-  let curr_class = ref ""
-  let curr_method = ref ""
+let metho_count = ref 0
+let curr_class = ref ""
+let curr_method = ref ""
 let main () = begin
   (* printf "start main \n"; *)
   (*deserialzing the CL-AST file*)
@@ -534,9 +583,95 @@ let main () = begin
             static_type = None;
           }
           in
-          let ast = read_cool_program () in
+          
+          let read_class_map () = 
+            let class_map: cmap = empty_map () in
+            let not_need =  read () in 
+            let num_classes = int_of_string (read ()) in 
+            printf "%d\n" num_classes;
+            let rec parse_class_map n = 
+              if n > 0 then begin
+                let class_name = read () in 
+                let num_attr = int_of_string (read ()) in 
+                Hashtbl.add class_map class_name num_attr;
+                parse_class_map (n-1)
+              end;
+            in parse_class_map num_classes;
+            class_map
+          in
+          
+          let read_imp_map () =
+            let imp_map: implementation_map = empty_map () in 
+            let not_need =  read () in
+            let num_classes = int_of_string (read ()) in  (* Number of classes in the implementation map *)
+            
+            (* Helper function to read a method entry as a tuple *)
+            let read_method () : method_entry =
+              let method_name = read () in
+              printf "metho name: %s\n" method_name;
+              let num_formals = int_of_string (read ()) in
+              printf "# forms: %d\n" num_formals;
+              let formals =
+                if num_formals > 0 then
+                  Some (List.init num_formals (fun _ -> read ()))
+                else
+                  None  (* No formal parameters *)
+              in
+              let defining_class = read () in
+              printf "defining class: %s\n" defining_class;
+              let method_body = read () in
+              (method_name, num_formals, formals, defining_class, method_body)
+            in
+          
+            (* Helper function to read all methods for a class *)
+            let read_class_methods () =
+              let class_name = read () in
+              printf "class name: %s\n" class_name;
+              let num_methods = int_of_string (read ()) in
+              let methods = List.init num_methods (fun _ -> read_method ()) in
+              Hashtbl.add imp_map class_name methods
+            in
+          
+            (* Read each class in the implementation map *)
+            for _ = 1 to num_classes do
+              read_class_methods ()
+            done;
+            
+            imp_map
+          in
+          
+          let read_parent_map () = 
+            let parent_map: pmap = empty_map () in
+            let not_need =  read () in 
+            let num_classes = int_of_string (read ()) in 
+            let rec parse_class_map n = 
+              if n > 0 then begin
+                let class_name = read () in 
+                let parent_class = read () in 
+                Hashtbl.add parent_map class_name parent_class;
+                parse_class_map (n-1)
+              end;
+            in parse_class_map num_classes;
+            parent_map
+          in
+          printf "Starting class map \n";
+          let class_map = read_class_map () in
+          printf "\nfinished class map \n";
+          printf "starting imp map \n";
+          let imp_map = read_imp_map () in
+          printf "\nfinished imp map \n";
+          let par_map = read_parent_map () in
           close_in fin ;
-        
+          
+          print_class_map class_map;
+          printf "Starting imp map \n";
+          printf "finished class map \n";
+          print_implementation_map imp_map;
+          printf "Starting parent map \n";
+          print_parent_map par_map;
+          
+          exit 1;
+          let ast = read_cool_program () in
           (* let rec output_id bruh_val = 
             printf "%s\n%s\n" (fst bruh_val) (snd bruh_val) 
           in
@@ -1102,7 +1237,7 @@ let main () = begin
         (* Function to output the full list of TAC instructions for a method body *)
         let output_tac target e =
           let tac_instrs, _ = convert_expr e target in
-          List.iter (print_tac_instr) tac_instrs;
+          List.iter (tac_to_asm) tac_instrs;
           safe_head tac_instrs
         in
         (* Main program to iterate over the classes and features *)
