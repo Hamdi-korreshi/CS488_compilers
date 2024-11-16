@@ -1,0 +1,15 @@
+The Implementation Map
+Output implementation_map \n.
+Output the number of classes and then \n.
+Output each class in turn (in ascending alphabetical order):
+Output the name of the class and then \n.
+Output the number of methods for that class and then \n.
+Output each method in turn 
+(in order of appearance, with inherited or overridden methods from a superclass coming first; 
+internal methods are defined to appear in ascending alphabetical order):
+Output the method name and then \n.
+Output the number of formals and then \n.
+Output each formal's name only:
+Output the name and then \n
+If this method is inherited from a parent class and not overriden, output the name of the ultimate parent class that defined the method body expression and then \n. Otherwise, output the name of the current class and then \n.
+Output the method body expression.
