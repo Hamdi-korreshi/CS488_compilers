@@ -58,177 +58,177 @@ type class_map = (string, (string * string * exp option) list option) Hashtbl.t
 type implementation_map = (loc, (loc * (loc) list * loc * exp) list) Hashtbl.t
 type parent_map = (loc,loc) Hashtbl.t
 
-let rec print_cool_prog ast =
-  output_classes ast
-
-and output_classes ast =
-  printf "Annotated ast\n";
-  printf "%d\n" (List.length ast);
-  List.iter (output_class ()) ast
-
-and output_class fout ast =
-  match ast with
-  | (class_bruh, None, feats) ->
-      output_id fout class_bruh;
-      printf "no_inherits\n";
-      printf "%d\n" (List.length feats);
-      List.iter (output_feature fout) feats
-  | (class_bruh, Some parent_class, feats) ->
-      output_id fout class_bruh;
-      printf "inherits\n";
-      output_id fout parent_class;
-      printf "%d\n" (List.length feats);
-      List.iter (output_feature fout) feats
-
-and output_feature fout ast_feature =
-  match ast_feature with
-  | Attribute (attr_name, attr_type, None) ->
-      printf "attribute_no_init\n";
-      output_id fout attr_name;
-      output_id fout attr_type
-  | Attribute (attr_name, attr_type, Some init_exp) ->
-      printf "attribute_init\n";
-      output_id fout attr_name;
-      output_id fout attr_type;
-      output_exp fout init_exp
-  | Method (metho_name, formals, metho_type, body_exp) ->
-      printf "method\n";
-      output_id fout metho_name;
-      printf "%d\n" (List.length formals);
-      List.iter (output_formal fout) formals;
-      output_id fout metho_type;
-      output_exp fout body_exp
-
-and output_formal fout (form_name, form_type) =
-  output_id fout form_name;
-  output_id fout form_type
-
-and output_exp fout exp =
-  printf "%s\n" exp.loc;
-  (match exp.static_type with
-  | None -> failwith "Expression missing static type"
-  | Some (Class c) -> printf "%s\n" c
-  | Some (SELF_TYPE _) -> printf "SELF_TYPE\n");
-  match exp.exp_kind with
-  | Integer ival -> printf "integer\n%s\n" ival
-  | String sval -> printf "string\n%s\n" sval
-  | Bool bval -> 
-    (match bval with 
-      | "true" -> 
-        printf "bool\ntrue\n"
-      | "false" -> 
-        printf "bool\nfalse\n"
-      | _ ->  (printf ""))
-  | Plus (e1, e2) ->
-      printf "plus\n";
-      output_exp fout e1;
-      output_exp fout e2
-  | Minus (e1, e2) ->
-      printf "minus\n";
-      output_exp fout e1;
-      output_exp fout e2
-  | Times (e1, e2) ->
-      printf "times\n";
-      output_exp fout e1;
-      output_exp fout e2
-  | Divide (e1, e2) ->
-      printf "divide\n";
-      output_exp fout e1;
-      output_exp fout e2
-  | Let (bindings, let_body) ->
-      printf "let\n";
-      printf "%d\n" (List.length bindings);
-      List.iter (fun (let_vare, var_type, init_opt) ->
-        match init_opt with
-        | None ->
-            printf "let_binding_no_init\n";
-            output_id fout let_vare;
-            output_id fout var_type
-        | Some init_exp ->
-            printf "let_binding_init\n";
-            output_id fout let_vare;
-            output_id fout var_type;
-            output_exp fout init_exp
-      ) bindings;
-      output_exp fout let_body
-  | Block exprs ->
-      printf "block\n";
-      printf "%d\n" (List.length exprs);
-      List.iter (output_exp fout) exprs
-  | Case (test_exp, case_list) ->
-      printf "case\n";
-      output_exp fout test_exp;
-      printf "%d\n" (List.length case_list);
-      List.iter (fun (var, var_type, case_body) ->
-        output_id fout var;
-        output_id fout var_type;
-        output_exp fout case_body
-      ) case_list
-  | Identifier id ->
-      printf "identifier\n";
-      output_id fout id
-  | New id ->
-      printf "new\n";
-      output_id fout id
-  | If (if_exp, then_exp, else_exp) ->
-      printf "if\n";
-      output_exp fout if_exp;
-      output_exp fout then_exp;
-      output_exp fout else_exp
-  | While (loop_cond, loop_body) ->
-      printf "while\n";
-      output_exp fout loop_cond;
-      output_exp fout loop_body
-  | Assign (var, rhs_exp) ->
-      printf "assign\n";
-      output_id fout var;
-      output_exp fout rhs_exp
-  | Isvoid exp ->
-      printf "isvoid\n";
-      output_exp fout exp
-  | Dynamic_Dispatch (e, metho, args) ->
-      printf "dynamic_dispatch\n";
-      output_exp fout e;
-      output_id fout metho;
-      printf "%d\n" (List.length args);
-      List.iter (output_exp fout) args
-  | Static_Dispatch (e, ftype, metho, args) ->
-      printf "static_dispatch\n";
-      output_exp fout e;
-      output_id fout ftype;
-      output_id fout metho;
-      printf "%d\n" (List.length args);
-      List.iter (output_exp fout) args
-  | Self_Dispatch (metho, args) ->
-      printf "self_dispatch\n";
-      output_id fout metho;
-      printf "%d\n" (List.length args);
-      List.iter (output_exp fout) args
-  | LT (e1, e2) ->
-      printf "lt\n";
-      output_exp fout e1;
-      output_exp fout e2
-  | LE (e1, e2) ->
-      printf "le\n";
-      output_exp fout e1;
-      output_exp fout e2
-  | EQ (e1, e2) ->
-      printf "eq\n";
-      output_exp fout e1;
-      output_exp fout e2
-  | Negate e ->
-      printf "negate\n";
-      output_exp fout e
-  | Not e ->
-      printf "not\n";
-      output_exp fout e
-  | Internal ((type_loc, typ_name), class_name, metho_name) ->
-      printf "internal\n";
-      printf "%s.%s\n" class_name metho_name
-
-and output_id fout (loc, name) =
-  printf "%s\n%s\n" loc name
-
+  let rec output_cool_prog ast =
+    output_classes ast
+  
+  and output_classes ast =
+    printf "Annotated ast\n";
+    printf "%d\n" (List.length ast);
+    List.iter output_class ast
+  
+  and output_class ast =
+    match ast with
+    | (class_bruh, None, feats) ->
+        output_id class_bruh;
+        printf "no_inherits\n";
+        printf "%d\n" (List.length feats);
+        List.iter output_feature feats
+    | (class_bruh, Some parent_class, feats) ->
+        output_id class_bruh;
+        printf "inherits\n";
+        output_id parent_class;
+        printf "%d\n" (List.length feats);
+        List.iter output_feature feats
+  
+  and output_feature ast_feature =
+    match ast_feature with
+    | Attribute (attr_name, attr_type, None) ->
+        printf "attribute_no_init\n";
+        output_id attr_name;
+        output_id attr_type
+    | Attribute (attr_name, attr_type, Some init_exp) ->
+        printf "attribute_init\n";
+        output_id attr_name;
+        output_id attr_type;
+        output_exp init_exp
+    | Method (metho_name, formals, metho_type, body_exp) ->
+        printf "method\n";
+        output_id metho_name;
+        printf "%d\n" (List.length formals);
+        List.iter output_formal formals;
+        output_id metho_type;
+        output_exp body_exp
+  
+  and output_formal (form_name, form_type) =
+    output_id form_name;
+    output_id form_type
+  
+  and output_exp exp =
+    printf "%s\n" exp.loc;
+    (match exp.static_type with
+    | None -> failwith "Expression missing static type"
+    | Some (Class c) -> printf "%s\n" c
+    | Some (SELF_TYPE _) -> printf "SELF_TYPE\n");
+    match exp.exp_kind with
+    | Integer ival -> printf "integer\n%s\n" ival
+    | String sval -> printf "string\n%s\n" sval
+    | Bool(ival) ->  (
+                match ival with 
+                | "true" -> 
+                  printf "bool\ntrue\n"
+                | "false" -> 
+                  printf "bool\nfalse\n"
+                | _ ->  (printf ""))
+    | Plus (e1, e2) ->
+        printf "plus\n";
+        output_exp e1;
+        output_exp e2
+    | Minus (e1, e2) ->
+        printf "minus\n";
+        output_exp e1;
+        output_exp e2
+    | Times (e1, e2) ->
+        printf "times\n";
+        output_exp e1;
+        output_exp e2
+    | Divide (e1, e2) ->
+        printf "divide\n";
+        output_exp e1;
+        output_exp e2
+    | Let (bindings, let_body) ->
+        printf "let\n";
+        printf "%d\n" (List.length bindings);
+        List.iter (fun (let_vare, var_type, init_opt) ->
+          match init_opt with
+          | None ->
+              printf "let_binding_no_init\n";
+              output_id let_vare;
+              output_id var_type
+          | Some init_exp ->
+              printf "let_binding_init\n";
+              output_id let_vare;
+              output_id var_type;
+              output_exp init_exp
+        ) bindings;
+        output_exp let_body
+    | Block exprs ->
+        printf "block\n";
+        printf "%d\n" (List.length exprs);
+        List.iter output_exp exprs
+    | Case (test_exp, case_list) ->
+        printf "case\n";
+        output_exp test_exp;
+        printf "%d\n" (List.length case_list);
+        List.iter (fun (var, var_type, case_body) ->
+          output_id var;
+          output_id var_type;
+          output_exp case_body
+        ) case_list
+    | Identifier id ->
+        printf "identifier\n";
+        output_id id
+    | New id ->
+        printf "new\n";
+        output_id id
+    | If (if_exp, then_exp, else_exp) ->
+        printf "if\n";
+        output_exp if_exp;
+        output_exp then_exp;
+        output_exp else_exp
+    | While (loop_cond, loop_body) ->
+        printf "while\n";
+        output_exp loop_cond;
+        output_exp loop_body
+    | Assign (var, rhs_exp) ->
+        printf "assign\n";
+        output_id var;
+        output_exp rhs_exp
+    | Isvoid exp ->
+        printf "isvoid\n";
+        output_exp exp
+    | Dynamic_Dispatch (e, metho, args) ->
+        printf "dynamic_dispatch\n";
+        output_exp e;
+        output_id metho;
+        printf "%d\n" (List.length args);
+        List.iter output_exp args
+    | Static_Dispatch (e, ftype, metho, args) ->
+        printf "static_dispatch\n";
+        output_exp e;
+        output_id ftype;
+        output_id metho;
+        printf "%d\n" (List.length args);
+        List.iter output_exp args
+    | Self_Dispatch (metho, args) ->
+        printf "self_dispatch\n";
+        output_id metho;
+        printf "%d\n" (List.length args);
+        List.iter output_exp args
+    | LT (e1, e2) ->
+        printf "lt\n";
+        output_exp e1;
+        output_exp e2
+    | LE (e1, e2) ->
+        printf "le\n";
+        output_exp e1;
+        output_exp e2
+    | EQ (e1, e2) ->
+        printf "eq\n";
+        output_exp e1;
+        output_exp e2
+    | Negate e ->
+        printf "negate\n";
+        output_exp e
+    | Not e ->
+        printf "not\n";
+        output_exp e
+    | Internal ((type_loc, typ_name), class_name, metho_name) ->
+        printf "internal\n";
+        printf "%s.%s\n" class_name metho_name
+  
+  and output_id (loc, name) =
+    printf "%s\n%s\n" loc name
+  
 
 let main () = begin
   let fname = Sys.argv.(1) in
@@ -901,6 +901,6 @@ let main () = begin
   print_implementation_map imp_map;
   print_parent_map pmap;
   printf "Annoated ast";
-  print_cool_prog ann_ast;
+  output_cool_prog ann_ast;
 end;;
 main();;
