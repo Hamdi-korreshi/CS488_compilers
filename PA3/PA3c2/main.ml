@@ -1,3 +1,6 @@
+(* Keywords:
+TODO
+generating *)
 open Printf
 type static_type =  (*static type of cool expression*)
   | Class of string
@@ -977,6 +980,7 @@ let main () = begin
           | TAC_Let (bingings, let_body) ->
             printf ""
         in *)
+        (* TODO: Print asm instead of tac code *)
         let rec tac_to_asm instr =
         match instr with
         | TAC_Assign_String (var, value) ->
@@ -1173,14 +1177,19 @@ let jl_op label = printf "jl %s\n" label in
 let jle_op label = printf "jle %s\n" label in
 let call_op op = printf "call %s\n" op in
 let return_op = printf "ret\n" in
-let new_class_instance class_name stack_loc = printf "## new Int\n";
+let new_class_instance class_name stack_loc = printf "## new %s\n" class_name;
+        if (class_name == "Int" || class_name == "Bool" || class_name = "String") then 
+          (
         push_stack "%rbp";
         push_stack "%r12";
-        mov_op "$Int..new", "%r14";
+        mov_op ("$"^class_name^"..new") "%r14";
         call_op "*%r14";
         pop_stack "%r12";
         pop_stack "%rbp";
         mov_op "%r13" (stack_loc ^ "(%r12)");
+          )
+      else
+          mov_op "$0" (stack_loc^"(%r12)");
       in
   let self_non_std stack_loc = mov_op "$0" (stack_loc ^ "(%r12)") in 
   let self_init pos varname varinfo = 
@@ -1190,7 +1199,12 @@ let new_class_instance class_name stack_loc = printf "## new Int\n";
       printf "## self[%s] %s initializer <- %s\n" pos varname varinfo
     in
   let custom_comment msg = printf "## %s\n" msg in
+  let actual_tbl classfunc = printf "%s:\t\t\t\t" classfunc in
 
+(* generating vtables
+    read imp_map and extract all functions of class
+    place string of map and class's new 
+ *)
 let initial_vtable_before_main = "                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Bool..vtable
 Bool..vtable:           ## virtual function table for Bool
@@ -1305,11 +1319,17 @@ Int..new:               ## constructor for Int
                         movq %rbp, %rsp
                         popq %rbp
                         ret" in
+(* generating ..new classes
+    read class_map and extract all attributes for classes and push new types into them
+    read class_map and inits on everything w/ $0s (not prims (string, bool, int))
+*)
       let initial_main_new =
-        let number_of_feats = 3 in (* Change dynamically *)
+        (* PA3-full take this code, use parameter cname and replace every instance to be modular *)
+        let myclass = "Main" in
+        let number_of_feats = 3 in (* Dynamically set *)
         global_start_comment;
-        global_setup "Main..new";
-        custom_setup "Main..new" "constructor for main";
+        global_setup (myclass^"..new");
+        custom_setup (myclass^"..new") ("constructor for "^myclass);
         push_stack "%rbp";
         stack_temps "1";
         sub_op "$8" "%rsp";
@@ -1319,12 +1339,24 @@ Int..new:               ## constructor for Int
         call_op "calloc";
         mov_op "%rax" "%r12";
         store_c_tag;
-        let c_tag = 10 in (* Have some sort of hashtbl that holds these tags *)
-        mov_op ("$" ^ string_of_int c_tag) "%r12";
+        let c_tag = 10 in (* Dynamically set || Have some sort of hashtbl that holds these tags *)
+        mov_op ("$" ^ string_of_int c_tag) "%r12"; 
         mov_op (string_of_int number_of_feats) "8(%r12)";
-        let vtbl = "Main..vtable" in
+        let vtbl = (myclass^"..vtable") in (* Dynamically set *)
         mov_op ("$" ^ vtbl) "16(%r12)";
-        (* Read through each feature in class_map *)
+        init_attrs;
+        let selfcount = 3 in
+        custom_comment ("self["^(string_of_int selfcount) ^ "] holds field variable (type)");
+        (* 
+            Read through each feature in class in class_map
+            create the self comment with the info then either make an init or assign $0
+        *)
+        (* Once every feature for class is read
+          Read through each feature in class in class_map
+          Create comments if init'r is none or new Type
+              if none then keep going
+              else it is new type then create a new type
+        *)
         ret_addr_handling;
         mov_op "%rbp" "%rsp";
         pop_stack "%rbp";
@@ -1406,20 +1438,37 @@ IO.out_int.end:         ## method body ends
                         movq %rbp, %rsp
                         popq %rbp
                         ret" in
-let initial_Main_main = (* global text*) 
+(* generating class functions
+    setup the foundational asm cmds
+    read through class_map and print out the self comments
+    read through AST as normally, rewrite tac_to_asm to accommadate the correct asm instead of TAC
+*)
+let initial_Main_main = (* Check the global table work *)
+let classname = "Main" in
+let classfunc = "main" in
+global_setup (classname^"."^classfunc);
+actual_tbl (classname^"."^classfunc);
+custom_comment "method definition";
 push_stack "%rbp";
 mov_op "16(%rsp)" "%r12"; (* might need re-work *)
-stack_temps "x";
+stack_temps "x"; (* dynamic setup *)
 sub_op "$16" "%rsp";
 ret_addr_handling;
-(* Selfs for each attr *)
+(* Read through the class_map
+    print out the self comments
+*)
 custom_comment "method body begins";
+(* Read the AST and continue accordingly *)
 (* Do body work *)
+(* push new int, value and move to the stack *)
+(* when doing conditional or methods go to a l3 *)
 in
 
 let initial_Main_main_end = 
-  global_setup "Main.main.end";
-  custom_setup "Main.Main.end" "## method body ends";
+  let classname = "Main" in
+  let classfunc = "main" in
+  global_setup (classname^"."^classfunc^".end");
+  custom_setup (classname^"."^classfunc^".end") "## method body ends";
   ret_addr_handling;
   mov_op "%rbp" "%rsp";
   pop_stack "%rbp";
