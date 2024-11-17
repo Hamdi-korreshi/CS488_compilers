@@ -723,12 +723,6 @@ let main () = begin
     in
     { loc = eloc; static_type = stat; exp_kind = ekind}
   
-  and read_exps n acc =
-    if n = 0 then List.rev acc
-    else
-      let exp = read_exp () in
-      read_exps (n - 1) (exp :: acc)
-  
   and read_id () =
     let loc = read () in
     let name = read () in
