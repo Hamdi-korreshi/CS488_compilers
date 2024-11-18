@@ -1,0 +1,102 @@
+			comment start
+label Main_main_0
+t0 <- int 3
+t1 <- int 5
+t2 <- + t0 t1
+t3 <- call out_int t2
+t4 <- string 
+\n
+t5 <- call out_string t4
+return t5
+					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl Bool..vtable
+Bool..vtable:		 ## virtual function table for Bool
+					.quad string1
+					.quad Bool..new
+					.quad Object.abort
+					.quad Object.copy
+					.quad Object.type_name
+					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl IO..vtable
+IO..vtable:		 ## virtual function table for IO
+					.quad string2
+					.quad IO..new
+					.quad Object.abort
+					.quad Object.copy
+					.quad Object.type_name
+					.quad IO.in_int
+					.quad IO.in_string
+					.quad IO.out_int
+					.quad IO.out_string
+					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl Int..vtable
+Int..vtable:		 ## virtual function table for Int
+					.quad string3
+					.quad Int..new
+					.quad Object.abort
+					.quad Object.copy
+					.quad Object.type_name
+					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl Main..vtable
+Main..vtable:		 ## virtual function table for Main
+					.quad string4
+					.quad Main..new
+					.quad Object.abort
+					.quad Object.copy
+					.quad Object.type_name
+					.quad IO.in_int
+					.quad IO.in_string
+					.quad IO.out_int
+					.quad IO.out_string
+					.quad Main.main
+					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl Object..vtable
+Object..vtable:		 ## virtual function table for Object
+					.quad string5
+					.quad Object..new
+					.quad Object.abort
+					.quad Object.copy
+					.quad Object.type_name
+					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl String..vtable
+String..vtable:		 ## virtual function table for String
+					.quad string5
+					.quad String..new
+					.quad Object.abort
+					.quad Object.copy
+					.quad Object.type_name
+					.quad String.concat
+					.quad String.length
+					.quad String.substr
+					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+## return address handling
+## store class tag, object size and vtable pointer
+## initialize attributes
+ret
+.globl Main..new
+Main..new:		constructor for Main
+push %rbp
+## stack room for temporaries: 1
+subq $8, %rsp
+movq 6, %rsi
+movq $8, %rdi
+call calloc
+movq %rax, %r12
+movq $10, %r12
+movq 3, 8(%r12)
+movq $Main..vtable, 16(%r12)
+## self[3] holds field variable (type)
+movq %rbp, %rsp
+pop %rbp
+.globl Main.main
+Main.main:				## method definition
+push %rbp
+movq 16(%rsp), %r12
+## stack room for temporaries: x
+subq $16, %rsp
+## method body begins
+.globl Main.main.end
+Main.main.end:		## method body ends
+movq %rbp, %rsp
+pop %rbp
+sample text

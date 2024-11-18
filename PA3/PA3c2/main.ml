@@ -66,6 +66,9 @@ type class_map = (string, (string * string * exp option) list option) Hashtbl.t
 type implementation_map = (loc, (loc * (loc) list * loc * exp) list) Hashtbl.t
 type parent_map = (loc,loc) Hashtbl.t
 
+let print_tab = 
+  printf "\t\t\t"
+
 let empty_map () = Hashtbl.create 128
 
 type tac_instr =
@@ -124,41 +127,132 @@ let debug tac =
         printf "return %s\n" var
     | _ -> ()
 
-let print_class_map class_map =
-  printf "got to print\n";
-  Printf.printf "class_map\n";
-  Printf.printf "%d\n" (Hashtbl.length class_map);
-  Hashtbl.iter (fun class_name attributes ->
-    Printf.printf "%s\n" class_name;
-    Printf.printf "%d\n" attributes
-  ) class_map
-    
+let output_id (loc, name) =
+  printf "%s\n%s\n" loc name
 
-let print_implementation_map imp_map =
-  Printf.printf "implementation_map\n";
-  Printf.printf "%d\n" (Hashtbl.length imp_map);
-  Hashtbl.iter (fun class_name methods ->
-    Printf.printf "%s\n" class_name;
-    Printf.printf "%d\n" (List.length methods);
-    List.iter (fun (method_name, num_formals, formals, defining_class, method_body) ->
-      Printf.printf "%s\n" method_name;
-      Printf.printf "%d\n" num_formals;
-      (* Print formal parameters only if there are any *)
-      (match formals with
-      | Some formal_names -> List.iter (fun formal_name -> Printf.printf "%s\n" formal_name) formal_names
-      | None -> ());  (* No formal parameters, do nothing *)
-      Printf.printf "%s\n" defining_class;
-      Printf.printf "%s\n" method_body;
-    ) methods
-  ) imp_map
-  
-let print_parent_map parent_map =
-  Printf.printf "parent_map\n";
-  Printf.printf "%d\n" (Hashtbl.length parent_map);
-  Hashtbl.iter (fun child_class parent_class ->
-    Printf.printf "%s\n%s\n" child_class parent_class
-  ) parent_map
-  
+let rec output_exp exp =
+  printf "%s\n" exp.loc;
+  (match exp.static_type with
+  | None -> failwith "Expression missing static type"
+  | Some (Class c) -> printf "%s\n" c
+  | Some (SELF_TYPE _) -> printf "SELF_TYPE\n");
+  match exp.exp_kind with
+  | Integer ival -> printf "integer\n%s\n" ival
+  | String sval -> printf "string\n%s\n" sval
+  | Bool(ival) ->  (
+              match ival with 
+              | "true" -> 
+                printf "bool\ntrue\n"
+              | "false" -> 
+                printf "bool\nfalse\n"
+              | _ ->  (printf ""))
+  | Plus (e1, e2) ->
+      printf "plus\n";
+      output_exp e1;
+      output_exp e2
+  | Minus (e1, e2) ->
+      printf "minus\n";
+      output_exp e1;
+      output_exp e2
+  | Times (e1, e2) ->
+      printf "times\n";
+      output_exp e1;
+      output_exp e2
+  | Divide (e1, e2) ->
+      printf "divide\n";
+      output_exp e1;
+      output_exp e2
+  | Let (bindings, let_body) ->
+      printf "let\n";
+      printf "%d\n" (List.length bindings);
+      List.iter (fun (let_vare, var_type, init_opt) ->
+        match init_opt with
+        | None ->
+            printf "let_binding_no_init\n";
+            output_id let_vare;
+            output_id var_type
+        | Some init_exp ->
+            printf "let_binding_init\n";
+            output_id let_vare;
+            output_id var_type;
+            output_exp init_exp
+      ) bindings;
+      output_exp let_body
+  | Block exprs ->
+      printf "block\n";
+      printf "%d\n" (List.length exprs);
+      List.iter output_exp exprs
+  | Case (test_exp, case_list) ->
+      printf "case\n";
+      output_exp test_exp;
+      printf "%d\n" (List.length case_list);
+      List.iter (fun (var, var_type, case_body) ->
+        output_id var;
+        output_id var_type;
+        output_exp case_body
+      ) case_list
+  | Identifier id ->
+      printf "identifier\n";
+      output_id id
+  | New id ->
+      printf "new\n";
+      output_id id
+  | If (if_exp, then_exp, else_exp) ->
+      printf "if\n";
+      output_exp if_exp;
+      output_exp then_exp;
+      output_exp else_exp
+  | While (loop_cond, loop_body) ->
+      printf "while\n";
+      output_exp loop_cond;
+      output_exp loop_body
+  | Assign (var, rhs_exp) ->
+      printf "assign\n";
+      output_id var;
+      output_exp rhs_exp
+  | Isvoid exp ->
+      printf "isvoid\n";
+      output_exp exp
+  | Dynamic_Dispatch (e, metho, args) ->
+      printf "dynamic_dispatch\n";
+      output_exp e;
+      output_id metho;
+      printf "%d\n" (List.length args);
+      List.iter output_exp args
+  | Static_Dispatch (e, ftype, metho, args) ->
+      printf "static_dispatch\n";
+      output_exp e;
+      output_id ftype;
+      output_id metho;
+      printf "%d\n" (List.length args);
+      List.iter output_exp args
+  | Self_Dispatch (metho, args) ->
+      printf "self_dispatch\n";
+      output_id metho;
+      printf "%d\n" (List.length args);
+      List.iter output_exp args
+  | LT (e1, e2) ->
+      printf "lt\n";
+      output_exp e1;
+      output_exp e2
+  | LE (e1, e2) ->
+      printf "le\n";
+      output_exp e1;
+      output_exp e2
+  | EQ (e1, e2) ->
+      printf "eq\n";
+      output_exp e1;
+      output_exp e2
+  | Negate e ->
+      printf "negate\n";
+      output_exp e
+  | Not e ->
+      printf "not\n";
+      output_exp e
+  | Internal ((type_loc, typ_name), class_name, metho_name) ->
+      printf "internal\n";
+      printf "%s.%s\n" class_name metho_name
+
 let fresh_variable =
   let counter = ref 0 in
   fun () ->
@@ -268,105 +362,6 @@ let print_cool_type (loc, tname) =
   Printf.printf "Cool_Type (location: %s, type: %s)\n" loc tname
 let rec print_id (loc, name) =
   Printf.printf "ID (location: %s, name: %s)\n" loc name
-let rec print_exp exp =
-  Printf.printf "Expression (location: %s)\n" exp.loc;
-  (match exp.static_type with
-    | None -> Printf.printf "Static type: None\n"
-    | Some(Class(c)) -> Printf.printf "Static type: Class %s\n" c
-    | Some(SELF_TYPE(c)) -> Printf.printf "Static type: SELF_TYPE %s\n" c);
-  match exp.exp_kind with
-  | Not value ->
-    Printf.printf "  Not: \n";
-    print_exp value
-  | Integer value -> Printf.printf "  Integer: %s\n" value
-  | Bool value -> Printf.printf "  Bool: %s\n" value
-  | String value -> Printf.printf "  String: %s\n" value
-  | Plus(exp1, exp2) ->
-      Printf.printf "plus\n";
-      print_exp exp1;
-      print_exp exp2
-  | Minus(exp1, exp2) ->
-      Printf.printf "minus\n";
-      print_exp exp1;
-      print_exp exp2
-  | Times(exp1, exp2) ->
-      Printf.printf "times\n";
-      print_exp exp1;
-      print_exp exp2
-  | Divide(exp1, exp2) ->
-      Printf.printf "divide\n";
-      print_exp exp1;
-      print_exp exp2
-  | Block exp_list ->
-      Printf.printf "block\n";
-      List.iter print_exp exp_list
-  | Assign (var, rhs_exp) ->
-      print_id var;
-      print_exp rhs_exp
-  | Isvoid void_exp -> 
-      print_exp void_exp
-  | If (if_exp, then_exp, else_exp) ->
-      print_exp if_exp;
-      print_exp then_exp;
-      print_exp else_exp
-  | While (loop, pool) ->
-      print_exp loop; 
-      print_exp pool
-  | Let (bindings, let_body) ->
-      Printf.printf "let\n";
-      List.iter (fun ((vloc, vname), (typeloc, typename), init_exp) ->
-        Printf.printf " Bindings: %s: %s\n" vname typename;
-        (match init_exp with
-          | None -> Printf.printf " No init\n"
-          | Some init -> Printf.printf " Init:\n"; print_exp init)
-      ) bindings;
-      Printf.printf "in\n";
-      print_exp let_body
-  | Identifier ival ->
-      print_id ival
-  | Case (test_exp, case_list) ->
-      Printf.printf "First exp:\n";
-      print_exp test_exp;
-      List.iter (fun ((vloc, vname), (tloc, tname), rest_exp) ->
-        Printf.printf "  Case: %s: %s\n" vname tname;
-        print_exp rest_exp
-      ) case_list
-  | New ((loc_ival, ival_name)) ->
-      Printf.printf "new\n";
-      Printf.printf "  New Object: %s\n" ival_name
-  | Dynamic_Dispatch (e, metho, args) ->
-      Printf.printf "Dynamic Dispatch:\n";
-      print_exp e;
-      print_id metho;
-      Printf.printf "  Args:\n";
-      List.iter print_exp args
-  | Static_Dispatch (e, stat_type, metho, args) ->
-      Printf.printf "Static Dispatch:\n";
-      print_exp e;
-      print_cool_type stat_type;
-      print_id metho;
-      Printf.printf "  Args:\n";
-      List.iter print_exp args
-  | Self_Dispatch (metho, args) ->
-      Printf.printf "Self Dispatch:\n";
-      print_id metho;
-      Printf.printf "  Args:\n";
-      List.iter print_exp args
-  | LT (exp1, exp2) ->
-      Printf.printf "LT\n";
-      print_exp exp1;
-      print_exp exp2
-  | LE (exp1, exp2) ->
-      Printf.printf "LE\n";
-      print_exp exp1;
-      print_exp exp2
-  | EQ (exp1, exp2) ->
-      Printf.printf "EQ\n";
-      print_exp exp1;
-      print_exp exp2
-  | Negate exp1 ->
-      Printf.printf "Negate\n";
-      print_exp exp1
 
 let metho_count = ref 0
 let curr_class = ref ""
@@ -385,7 +380,7 @@ let main () = begin
           let rec read_exp read =
             (* Read location *)
             let eloc = read () in
-            let static_type =
+            let stat =
               match read () with
               | "SELF_TYPE" -> Some (SELF_TYPE "SELF_TYPE") (* Replace "SELF_TYPE" with context if needed *)
               | typ -> Some (Class typ)
@@ -556,7 +551,7 @@ let main () = begin
             {
               loc = eloc;
               exp_kind = ekind;
-              static_type = None;
+              static_type = stat;
             }
             in
             let read_class_map =
@@ -1408,10 +1403,10 @@ let main () = begin
                     | TAC_Bool i -> "bool" in
               printf "%s <- isvoid %s\n" var e1_val
         | TAC_call_out (var, e1, e2) ->
-              printf "%s <- call %s %s\n" var e1 e2
+              printf "%s <- call %s %s\n" var e1 e2;
         | TAC_call_in (var, e1) ->
-              printf "%s <- call %s\n" var e1
-        | TAC_Self_Dispatch (result_var, (loc, method_name), args) ->
+              printf "%s <- call %s\n" var e1;
+        | TAC_Self_Dispatch (result_var, (method_name, loc), args) ->
           printf "%s <- call %s " result_var method_name;
           List.iteri (fun i arg ->
             if i > 0 then printf " ";
@@ -1466,6 +1461,45 @@ let main () = begin
                 printf ""
           ) feats;
         ) ast;
+        let sorted_keys ht =
+          let keys = Hashtbl.fold (fun key _ acc -> key :: acc) ht [] in
+          List.sort String.compare keys
+        in
+        (*TODO for next PA3full, change the hard set string to a referenced 
+        mutable type and increment it*)
+        let build_vtable class_name metho_definition = 
+          printf "\t\t\t\t\t## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
+          printf ".globl %s..vtable\n" class_name;
+          printf "%s..vtable:\t\t ## virtual function table for %s\n" class_name class_name;
+          (match class_name with 
+          | "Bool" ->
+            printf "\t\t\t\t\t.quad string1\n";
+          | "IO" ->
+            printf "\t\t\t\t\t.quad string2\n";
+          | "Int" ->
+            printf "\t\t\t\t\t.quad string3\n";
+          | "Main" ->
+            printf "\t\t\t\t\t.quad string4\n";
+          | "Object" -> 
+            printf "\t\t\t\t\t.quad string5\n";
+          | "String" -> 
+            printf "\t\t\t\t\t.quad string5\n";
+          | x -> printf "Boss something happened with %s\n" x;);
+          printf "\t\t\t\t\t.quad %s..new\n" class_name;
+          List.iter (fun (method_name,formals, return_type, body_exp) ->
+            match body_exp.exp_kind with 
+            | Internal (_, class_name, method_name) -> 
+              printf "\t\t\t\t\t.quad %s.%s\n" class_name method_name;
+            | _ ->
+              printf "\t\t\t\t\t.quad %s.%s\n" class_name method_name;
+          ) metho_definition;
+        in
+
+        let hashed_keys = sorted_keys imp_map in 
+        List.iter ( fun class_name ->
+          build_vtable class_name (Hashtbl.find imp_map class_name))
+        hashed_keys;
+
         end ;;
 main();;
 (* Create a hashtbl for class_tag per class name *)
@@ -1520,11 +1554,12 @@ let new_class_instance class_name stack_loc = printf "## new %s\n" class_name;
     in
   let custom_comment msg = printf "## %s\n" msg in
   let actual_tbl classfunc = printf "%s:\t\t\t\t" classfunc in
-
+  
 (* generating vtables
     read imp_map and extract all functions of class
     place string of map and class's new 
  *)
+
 let initial_vtable_before_main = "                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Bool..vtable
 Bool..vtable:           ## virtual function table for Bool
