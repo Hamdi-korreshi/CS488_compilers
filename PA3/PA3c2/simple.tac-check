@@ -1,4 +1,4 @@
-			comment start
+comment start
 label Main_main_0
 t0 <- int 3
 t1 <- int 5
@@ -60,7 +60,7 @@ Object..vtable:		 ## virtual function table for Object
 					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl String..vtable
 String..vtable:		 ## virtual function table for String
-					.quad string5
+					.quad string6
 					.quad String..new
 					.quad Object.abort
 					.quad Object.copy
@@ -68,6 +68,156 @@ String..vtable:		 ## virtual function table for String
 					.quad String.concat
 					.quad String.length
 					.quad String.substr
+						## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl Bool..new
+Bool..new:				##constructor for Bool
+						pushq %rbp
+						movq %rsp, %rbp
+						## stack room for temporaries: 1
+						movq $8, %r14
+						subq %r14, %rsp
+						## return address handling
+						movq $4, %r12
+						movq $8, %rsi
+						movq %r12, %rdi
+						call calloc
+						movq %rax, %r12
+						## store class tag, object size and vtable pointer
+						movq $0, %r14
+						movq %r14, 0(%r12)
+						movq $4, %r14
+						movq %r14, 8(%r12)
+						movq $Bool..vtable, %r14
+						movq %r14, 16(%r12)
+						## initialize attributes
+						## self[3] holds field (raw content) (Int)
+						movq $0, %r13
+						movq %r13, 24(%r12)
+						## self[3] (raw content) initializer -- none 
+						movq %r12, %r13
+						## return address handling
+						movq %rbp, %rsp
+						popq %rbp
+						ret
+						## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl IO..new
+IO..new:				##constructor for IO
+						pushq %rbp
+						movq %rsp, %rbp
+						## stack room for temporaries: 1
+						movq $8, %r14
+						subq %r14, %rsp
+						## return address handling
+						movq $3, %r12
+						movq $8, %rsi
+						movq %r12, %rdi
+						call calloc
+						movq %rax, %r12
+						## store class tag, object size and vtable pointer
+						movq $10, %r14
+						movq %r14, 0(%r12)
+						movq $3, %r14
+						movq %r14, 8(%r12)
+						movq $IO..vtable, %r14
+						movq %r14, 16(%r12)
+						movq %r12, %r13
+						## return address handling
+						movq %rbp, %rsp
+						popq %rbp
+						ret
+						## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl Int..new
+Int..new:				##constructor for Int
+						pushq %rbp
+						movq %rsp, %rbp
+						## stack room for temporaries: 1
+						movq $8, %r14
+						subq %r14, %rsp
+						## return address handling
+						movq $4, %r12
+						movq $8, %rsi
+						movq %r12, %rdi
+						call calloc
+						movq %rax, %r12
+						## store class tag, object size and vtable pointer
+						movq $1, %r14
+						movq %r14, 0(%r12)
+						movq $4, %r14
+						movq %r14, 8(%r12)
+						movq $Int..vtable, %r14
+						movq %r14, 16(%r12)
+						## initialize attributes
+						## self[3] holds field (raw content) (Int)
+						movq $0, %r13
+						movq %r13, 24(%r12)
+						## self[3] (raw content) initializer -- none 
+						movq %r12, %r13
+						## return address handling
+						movq %rbp, %rsp
+						popq %rbp
+						ret
+						## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl Main..new
+Main..new:				##constructor for Main
+ implement this Main later on
+						## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl Object..new
+Object..new:				##constructor for Object
+						## constructor for Object
+						pushq %rbp
+						movq %rsp, %rbp
+						## stack room for temporaries: 1
+						movq $8, %r14
+						subq %r14, %rsp
+						## return address handling
+						movq $3, %r12
+						movq $8, %rsi
+						movq %r12, %rdi
+						call calloc
+						movq %rax, %r12
+						## store class tag, object size and vtable pointer
+						movq $12, %r14
+						movq %r14, 0(%r12)
+						movq $3, %r14
+						movq %r14, 8(%r12)
+						movq $Object..vtable, %r14
+						movq %r14, 16(%r12)
+						movq %r12, %r13
+						## return address handling
+						movq %rbp, %rsp
+						popq %rbp
+						ret
+						## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl String..new
+String..new:				##constructor for String
+						pushq %rbp
+						movq %rsp, %rbp
+						## stack room for temporaries: 1
+						movq $8, %r14
+						subq %r14, %rsp
+						## return address handling
+						movq $4, %r12
+						movq $8, %rsi
+						movq %r12, %rdi
+						call calloc
+						movq %rax, %r12
+						## store class tag, object size and vtable pointer
+						movq $3, %r14
+						movq %r14, 0(%r12)
+						movq $4, %r14
+						movq %r14, 8(%r12)
+						movq $String..vtable, %r14
+						movq %r14, 16(%r12)
+						## initialize attributes
+						## self[3] holds field (raw content) (String)
+						movq $the.empty.string, %r13
+						movq %r13, 24(%r12)
+						## self[3] (raw content) initializer -- none 
+						movq %r12, %r13
+						## return address handling
+						movq %rbp, %rsp
+						popq %rbp
+						ret
 					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 ## return address handling
 ## store class tag, object size and vtable pointer

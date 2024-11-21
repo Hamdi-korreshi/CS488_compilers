@@ -66,9 +66,6 @@ type class_map = (string, (string * string * exp option) list option) Hashtbl.t
 type implementation_map = (loc, (loc * (loc) list * loc * exp) list) Hashtbl.t
 type parent_map = (loc,loc) Hashtbl.t
 
-let print_tab = 
-  printf "\t\t\t"
-
 let empty_map () = Hashtbl.create 128
 
 type tac_instr =
@@ -1465,6 +1462,181 @@ let main () = begin
           let keys = Hashtbl.fold (fun key _ acc -> key :: acc) ht [] in
           List.sort String.compare keys
         in
+        let print_int_new () =
+          printf "\t\t\t\t\t\tpushq %%rbp\n";
+          printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
+          printf "\t\t\t\t\t\t## stack room for temporaries: 1\n";
+          printf "\t\t\t\t\t\tmovq $8, %%r14\n";
+          printf "\t\t\t\t\t\tsubq %%r14, %%rsp\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\tmovq $4, %%r12\n";
+          printf "\t\t\t\t\t\tmovq $8, %%rsi\n";
+          printf "\t\t\t\t\t\tmovq %%r12, %%rdi\n";
+          printf "\t\t\t\t\t\tcall calloc\n";
+          printf "\t\t\t\t\t\tmovq %%rax, %%r12\n";
+          printf "\t\t\t\t\t\t## store class tag, object size and vtable pointer\n";
+          printf "\t\t\t\t\t\tmovq $1, %%r14\n";
+          printf "\t\t\t\t\t\tmovq %%r14, 0(%%r12)\n";
+          printf "\t\t\t\t\t\tmovq $4, %%r14\n";
+          printf "\t\t\t\t\t\tmovq %%r14, 8(%%r12)\n";
+          printf "\t\t\t\t\t\tmovq $Int..vtable, %%r14\n";
+          printf "\t\t\t\t\t\tmovq %%r14, 16(%%r12)\n";
+          printf "\t\t\t\t\t\t## initialize attributes\n";
+          printf "\t\t\t\t\t\t## self[3] holds field (raw content) (Int)\n";
+          printf "\t\t\t\t\t\tmovq $0, %%r13\n";
+          printf "\t\t\t\t\t\tmovq %%r13, 24(%%r12)\n";
+          printf "\t\t\t\t\t\t## self[3] (raw content) initializer -- none \n";
+          printf "\t\t\t\t\t\tmovq %%r12, %%r13\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\tmovq %%rbp, %%rsp\n";
+          printf "\t\t\t\t\t\tpopq %%rbp\n";
+          printf "\t\t\t\t\t\tret\n";
+        in
+        let print_object_new () =
+          printf "\t\t\t\t\t\t## constructor for Object\n";
+          printf "\t\t\t\t\t\tpushq %%rbp\n";
+          printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
+          printf "\t\t\t\t\t\t## stack room for temporaries: 1\n";
+          printf "\t\t\t\t\t\tmovq $8, %%r14\n";
+          printf "\t\t\t\t\t\tsubq %%r14, %%rsp\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\tmovq $3, %%r12\n";
+          printf "\t\t\t\t\t\tmovq $8, %%rsi\n";
+          printf "\t\t\t\t\t\tmovq %%r12, %%rdi\n";
+          printf "\t\t\t\t\t\tcall calloc\n";
+          printf "\t\t\t\t\t\tmovq %%rax, %%r12\n";
+          printf "\t\t\t\t\t\t## store class tag, object size and vtable pointer\n";
+          printf "\t\t\t\t\t\tmovq $12, %%r14\n";
+          printf "\t\t\t\t\t\tmovq %%r14, 0(%%r12)\n";
+          printf "\t\t\t\t\t\tmovq $3, %%r14\n";
+          printf "\t\t\t\t\t\tmovq %%r14, 8(%%r12)\n";
+          printf "\t\t\t\t\t\tmovq $Object..vtable, %%r14\n";
+          printf "\t\t\t\t\t\tmovq %%r14, 16(%%r12)\n";
+          printf "\t\t\t\t\t\tmovq %%r12, %%r13\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\tmovq %%rbp, %%rsp\n";
+          printf "\t\t\t\t\t\tpopq %%rbp\n";
+          printf "\t\t\t\t\t\tret\n";
+        in 
+        let print_io_new () =
+          printf "\t\t\t\t\t\tpushq %%rbp\n";
+          printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
+          printf "\t\t\t\t\t\t## stack room for temporaries: 1\n";
+          printf "\t\t\t\t\t\tmovq $8, %%r14\n";
+          printf "\t\t\t\t\t\tsubq %%r14, %%rsp\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\tmovq $3, %%r12\n";
+          printf "\t\t\t\t\t\tmovq $8, %%rsi\n";
+          printf "\t\t\t\t\t\tmovq %%r12, %%rdi\n";
+          printf "\t\t\t\t\t\tcall calloc\n";
+          printf "\t\t\t\t\t\tmovq %%rax, %%r12\n";
+          printf "\t\t\t\t\t\t## store class tag, object size and vtable pointer\n";
+          printf "\t\t\t\t\t\tmovq $10, %%r14\n";
+          printf "\t\t\t\t\t\tmovq %%r14, 0(%%r12)\n";
+          printf "\t\t\t\t\t\tmovq $3, %%r14\n";
+          printf "\t\t\t\t\t\tmovq %%r14, 8(%%r12)\n";
+          printf "\t\t\t\t\t\tmovq $IO..vtable, %%r14\n";
+          printf "\t\t\t\t\t\tmovq %%r14, 16(%%r12)\n";
+          printf "\t\t\t\t\t\tmovq %%r12, %%r13\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\tmovq %%rbp, %%rsp\n";
+          printf "\t\t\t\t\t\tpopq %%rbp\n";
+          printf "\t\t\t\t\t\tret\n";
+        in
+        let print_bool_new () =
+          printf "\t\t\t\t\t\tpushq %%rbp\n";
+          printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
+          printf "\t\t\t\t\t\t## stack room for temporaries: 1\n";
+          printf "\t\t\t\t\t\tmovq $8, %%r14\n";
+          printf "\t\t\t\t\t\tsubq %%r14, %%rsp\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\tmovq $4, %%r12\n";
+          printf "\t\t\t\t\t\tmovq $8, %%rsi\n";
+          printf "\t\t\t\t\t\tmovq %%r12, %%rdi\n";
+          printf "\t\t\t\t\t\tcall calloc\n";
+          printf "\t\t\t\t\t\tmovq %%rax, %%r12\n";
+          printf "\t\t\t\t\t\t## store class tag, object size and vtable pointer\n";
+          printf "\t\t\t\t\t\tmovq $0, %%r14\n";
+          printf "\t\t\t\t\t\tmovq %%r14, 0(%%r12)\n";
+          printf "\t\t\t\t\t\tmovq $4, %%r14\n";
+          printf "\t\t\t\t\t\tmovq %%r14, 8(%%r12)\n";
+          printf "\t\t\t\t\t\tmovq $Bool..vtable, %%r14\n";
+          printf "\t\t\t\t\t\tmovq %%r14, 16(%%r12)\n";
+          printf "\t\t\t\t\t\t## initialize attributes\n";
+          printf "\t\t\t\t\t\t## self[3] holds field (raw content) (Int)\n";
+          printf "\t\t\t\t\t\tmovq $0, %%r13\n";
+          printf "\t\t\t\t\t\tmovq %%r13, 24(%%r12)\n";
+          printf "\t\t\t\t\t\t## self[3] (raw content) initializer -- none \n";
+          printf "\t\t\t\t\t\tmovq %%r12, %%r13\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\tmovq %%rbp, %%rsp\n";
+          printf "\t\t\t\t\t\tpopq %%rbp\n";
+          printf "\t\t\t\t\t\tret\n";
+        in
+        let print_string_new () =
+          printf "\t\t\t\t\t\tpushq %%rbp\n";
+          printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
+          printf "\t\t\t\t\t\t## stack room for temporaries: 1\n";
+          printf "\t\t\t\t\t\tmovq $8, %%r14\n";
+          printf "\t\t\t\t\t\tsubq %%r14, %%rsp\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\tmovq $4, %%r12\n";
+          printf "\t\t\t\t\t\tmovq $8, %%rsi\n";
+          printf "\t\t\t\t\t\tmovq %%r12, %%rdi\n";
+          printf "\t\t\t\t\t\tcall calloc\n";
+          printf "\t\t\t\t\t\tmovq %%rax, %%r12\n";
+          printf "\t\t\t\t\t\t## store class tag, object size and vtable pointer\n";
+          printf "\t\t\t\t\t\tmovq $3, %%r14\n";
+          printf "\t\t\t\t\t\tmovq %%r14, 0(%%r12)\n";
+          printf "\t\t\t\t\t\tmovq $4, %%r14\n";
+          printf "\t\t\t\t\t\tmovq %%r14, 8(%%r12)\n";
+          printf "\t\t\t\t\t\tmovq $String..vtable, %%r14\n";
+          printf "\t\t\t\t\t\tmovq %%r14, 16(%%r12)\n";
+          printf "\t\t\t\t\t\t## initialize attributes\n";
+          printf "\t\t\t\t\t\t## self[3] holds field (raw content) (String)\n";
+          printf "\t\t\t\t\t\tmovq $the.empty.string, %%r13\n";
+          printf "\t\t\t\t\t\tmovq %%r13, 24(%%r12)\n";
+          printf "\t\t\t\t\t\t## self[3] (raw content) initializer -- none \n";
+          printf "\t\t\t\t\t\tmovq %%r12, %%r13\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\tmovq %%rbp, %%rsp\n";
+          printf "\t\t\t\t\t\tpopq %%rbp\n";
+          printf "\t\t\t\t\t\tret\n";
+        in
+        (* For now we will print the raw assemble for thing that never change*)
+        let new_base_class_build class_name = 
+          match class_name with
+          | "Int" ->
+            printf "\t\t\t\t\t\t## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
+            printf ".globl Int..new\n";
+            printf "Int..new:\t\t\t\t##constructor for Int\n";
+            print_int_new ();
+          | "Object" ->
+            printf "\t\t\t\t\t\t## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
+            printf ".globl Object..new\n";
+            printf "Object..new:\t\t\t\t##constructor for Object\n";
+            print_object_new ();
+          | "IO" ->
+            printf "\t\t\t\t\t\t## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
+            printf ".globl IO..new\n";
+            printf "IO..new:\t\t\t\t##constructor for IO\n";
+            print_io_new ();
+          | "Bool" ->
+            printf "\t\t\t\t\t\t## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
+            printf ".globl Bool..new\n";
+            printf "Bool..new:\t\t\t\t##constructor for Bool\n";
+            print_bool_new ();
+          | "String" -> 
+            printf "\t\t\t\t\t\t## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
+            printf ".globl String..new\n";
+            printf "String..new:\t\t\t\t##constructor for String\n";
+            print_string_new ();
+          | x -> 
+            printf "\t\t\t\t\t\t## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
+            printf ".globl %s..new\n" x;
+            printf "%s..new:\t\t\t\t##constructor for %s\n" x x;
+            printf " implement this %s later on\n" x; 
+        in
         (*TODO for next PA3full, change the hard set string to a referenced 
         mutable type and increment it*)
         let build_vtable class_name metho_definition = 
@@ -1483,7 +1655,7 @@ let main () = begin
           | "Object" -> 
             printf "\t\t\t\t\t.quad string5\n";
           | "String" -> 
-            printf "\t\t\t\t\t.quad string5\n";
+            printf "\t\t\t\t\t.quad string6\n";
           | x -> printf "Boss something happened with %s\n" x;);
           printf "\t\t\t\t\t.quad %s..new\n" class_name;
           List.iter (fun (method_name,formals, return_type, body_exp) ->
@@ -1499,7 +1671,9 @@ let main () = begin
         List.iter ( fun class_name ->
           build_vtable class_name (Hashtbl.find imp_map class_name))
         hashed_keys;
-
+        List.iter ( fun class_name ->
+          new_base_class_build class_name)
+        hashed_keys;
         end ;;
 main();;
 (* Create a hashtbl for class_tag per class name *)

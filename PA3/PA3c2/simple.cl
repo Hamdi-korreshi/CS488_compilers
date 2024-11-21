@@ -3,7 +3,7 @@ class Main inherits IO {
 	{
 		{
 		out_int(3+5);
-		out_string("\n");
+		out_string("\n");	
 		}
 	};
 };
