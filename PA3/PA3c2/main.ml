@@ -6,12 +6,74 @@ type static_type =  (*static type of cool expression*)
   | Class of string
   | SELF_TYPE of string
 
+let print_tab () = printf "\t\t\t\t\t\t"
+let global_start_comment () = printf "\t\t\t\t\t\t## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n"
+let global_setup classfunc = printf ".globl %s\n" classfunc 
+let constructor_setup classfunc classname = printf "%s\t\t## constructor for %s\n"  classfunc classname 
+let custom_setup classfunc msg = printf "%s:\t\t\t\t## %s\n" classfunc msg
+let ret_addr_handling () = printf "## return address handling\n" 
+let store_c_tag () = printf "## store class tag, object size and vtable pointer\n" 
+let stack_temps number = printf "## stack room for temporaries: %s\n" number 
+let init_attrs () = printf "## initialize attributes\n" 
+let self_holds pos varname vartype = printf "## self[%s] holds field %s (%s)\n" pos varname vartype 
+let push_stack reg = printf "push %s\n" reg
+let pop_stack reg = printf "pop %s\n" reg
+let mov_op src dest = printf "movq %s, %s\n" src dest 
+let add_op src dest = printf "addq %s, %s\n" src dest
+let sub_op src dest = printf "subq %s, %s\n" src dest 
+let multi_op src dest = printf "imull %s, %s\n" src dest
+let call_op op  = printf "call %s\n" op
+let return_op () = printf "ret\n"
+let custom_comment msg = printf "## %s\n" msg
+let actual_tbl classfunc = printf "%s:\t\t\t\t" classfunc
+let div_op src dest = printf "testing"
+let and_op src dest = printf "and %s, %s\n" src dest
+let or_op src dest = printf "or %s, %s\n" src dest
+let cmp_op src dest = printf "cmpq %s, %s\n" src dest
+let test_op src dest = printf "test %s, %s\n" src dest
+let jmp_op label = printf "jmp %s\n" label
+let je_op label = printf "je %s\n" label
+let jne_op label = printf "jne %s\n" label
+let jns_op label = printf "jns %s\n" label
+let jl_op label = printf "jl %s\n" label
+let jle_op label = printf "jle %s\n" label 
+let new_class_instance class_name stack_loc = printf "## new %s\n" class_name;
+        if (class_name == "Int" || class_name == "Bool" || class_name = "String") then 
+          (
+        push_stack "%rbp";
+        push_stack "%r12";
+        mov_op ("$"^class_name^"..new") "%r14";
+        call_op "*%r14";
+        pop_stack "%r12";
+        pop_stack "%rbp";
+        mov_op "%r13" (stack_loc ^ "(%r12)");
+          )
+      else
+          mov_op "$0" (stack_loc^"(%r12)");
+(* 
+let self_non_std stack_loc = mov_op "$0" (stack_loc ^ "(%r12)") 
+  let self_init pos varname varinfo = 
+    if varinfo == "none" then
+        printf "## self[%s] %s initializer -- none\n" pos varname
+    else 
+      printf "## self[%s] %s initializer <- %s\n" pos varname varinfo *)
+
 type tac_expr =
   | TAC_Variable of string
   | TAC_Int of int
   | TAC_String of string
   | TAC_Bool of bool
 
+let match_exp_to_string_T2A exp1 =
+  (* Used in tac-to-asm *)
+  let currexpr = 
+    (match exp1 with
+              | TAC_Variable v -> v
+              | TAC_Int i -> string_of_int i 
+              | TAC_Bool i -> string_of_bool i 
+              | TAC_String i -> i 
+    ) in 
+    currexpr
 let metho_count = ref 0 
 let safe_head lst =
   try Some (List.hd (List.rev lst))
@@ -1296,7 +1358,9 @@ let main () = begin
         let rec tac_to_asm instr =
         match instr with
         | TAC_Assign_String (var, value) ->
-          printf "%s <- string \n%s\n" var value
+          new_class_instance "String" var;
+          mov_op value var;
+          (* printf "%s <- string \n%s\n" var value *)
         | TAC_Jump_If_Not (cond_expr, label) ->
           printf "bt ";
           print_tac_expr cond_expr;
@@ -1309,26 +1373,97 @@ let main () = begin
         | TAC_Label label ->
           printf "label %s\n" label
         | TAC_Assign_Int (var, value) ->
-            printf "%s <- int %d\n" var value
+          new_class_instance "Int" var;
+          mov_op (string_of_int value) var;
         | TAC_Assign_Bool (var, value) ->
-              if value = true then
-                printf "%s <- bool true\n" var
-              else 
-                printf "%s <- bool false\n" var
+          new_class_instance "Bool" var;
+          if value = true then
+            mov_op "$1" var
+          else 
+            mov_op "$0" var
         | TAC_Assign_Var (var, src_var) ->
-            printf "%s <- %s\n" var src_var
+          mov_op src_var var;
+          (* printf "%s <- %s\n" var src_var *)
         | TAC_Assign_Plus (var, e1, e2) ->
-            let e1_str = match_exp e1 in
-            let e2_str = match_exp e2 in
-            printf "%s <- + %s %s\n" var e1_str e2_str
+          let e1_str = match_exp_to_string_T2A e1 in
+          let e2_str = match_exp_to_string_T2A e2 in
+          (* working with this style of pattern matching for if statements
+           match e1 with 
+          | TAC_Variable ->
+            match e2 with *)
+          (match e1 with 
+          | TAC_Variable v ->
+            (match e2 with
+            | TAC_Variable g ->
+                (* e1 = e2 = var *)
+                add_op e1_str e2_str;
+                mov_op e2_str var;
+            | TAC_Int x ->
+                (* e1 = var, e2 = int *)
+                new_class_instance "Int" "%r14";
+                mov_op ("$"^e2_str) "%r14";
+                add_op e1_str "%r14";
+                mov_op "%r14" var;
+            | _ -> printf "bruh\n";);
+          | TAC_Int g ->
+            (match e2 with
+            | TAC_Variable v ->
+              (* e1 = int, e2 = var *)
+              new_class_instance "Int" "%r14";
+              mov_op ("$"^e1_str) "%r14";
+              add_op e2_str "%r14";
+              mov_op "%r14" var;
+            | TAC_Int x ->
+              (* e1 = e2 = int *)
+              new_class_instance "Int" "%rax";
+              mov_op ("$"^e1_str) "%rax";
+              new_class_instance "Int" "%r14";
+              mov_op ("$"^e2_str) "%r14";
+              add_op "%r14" "%rax";
+              mov_op "%rax" var;
+            | _ -> printf "fix this problem: ")
+          | _ -> printf "fix this problem: ")
         | TAC_Assign_Minus (var, e1, e2) ->
-          let e1_str = match_exp e1 in
-          let e2_str = match_exp e2 in
-            printf "%s <- - %s %s\n" var e1_str e2_str
+          let e1_str = match_exp_to_string_T2A e1 in
+          let e2_str = match_exp_to_string_T2A e2 in
+          (match e1 with 
+          | TAC_Variable v ->
+            (match e2 with
+            | TAC_Variable g ->
+                (* e1 = e2 = var *)
+                sub_op e2_str e1_str;
+                mov_op e1_str var;
+            | TAC_Int x ->
+                (* e1 = var, e2 = int *)
+                new_class_instance "Int" "%r14";
+                mov_op ("$"^e2_str) "%r14";
+                sub_op "%r14" e1_str;
+                mov_op "%r14" var;
+            | _ -> printf "bruh\n";);
+          | TAC_Int g ->
+            (match e2 with
+            | TAC_Variable v ->
+              (* e1 = int, e2 = var *)
+              new_class_instance "Int" "%r14";
+              mov_op ("$"^e1_str) "%r14";
+              sub_op (e2_str) "%r14";
+              mov_op "%r14" var;
+            | TAC_Int x ->
+              (* e1 = e2 = int *)
+              new_class_instance "Int" "%rax";
+              mov_op ("$"^e1_str) "%rax";
+              new_class_instance "Int" "%r14";
+              mov_op ("$"^e2_str) "%r14";
+              sub_op "%r14" "%rax";
+              mov_op "%rax" var;
+            | _ -> printf "fix this problem: ")
+          | _ -> printf "fix this problem: ")
+            (* printf "%s <- - %s %s\n" var e1_str e2_str *)
         | TAC_Assign_Times (var, e1, e2) ->
           let e1_str = match_exp e1 in
           let e2_str = match_exp e2 in
-            printf "%s <- * %s %s\n" var e1_str e2_str
+          printf "%s <- * %s %s\n" var e1_str e2_str
+          (* multiplation is the divide*)
         | TAC_Assign_Divide (var, e1, e2) ->
           let e1_str = match_exp e1 in
           let e2_str = match_exp e2 in
@@ -1379,12 +1514,15 @@ let main () = begin
           printf "%s <- not %s\n" var e1_val
         | TAC_Negate (var, e1) ->
           (* Only for ints *)
+          new_class_instance "Int" "%rax";
+          mov_op "$0" "%rax";
           let e1_val = match e1 with
-                    | TAC_Variable v -> v
-                    | TAC_String i -> "string"
-                    | TAC_Int i -> "int" ^ string_of_int i
-                    | TAC_Bool i -> "bool" ^ string_of_bool i in
-          printf "%s <- ~ %s\n" var e1_val
+                    | TAC_Variable v -> sub_op v "%rax" 
+                    | TAC_String i -> mov_op "$0" "%rax"
+                    | TAC_Int i -> sub_op ("$"^string_of_int i) "%rax"
+                    | TAC_Bool i -> sub_op ("$"^string_of_bool i) "%rax" in
+          mov_op "%rax" var
+          (* printf "%s <- ~ %s\n" var e1_val *)
         | TAC_New (var, e1) ->
             let e1_val = match e1 with
                     | TAC_Variable v -> v
@@ -1411,7 +1549,8 @@ let main () = begin
           ) args;
           printf "\n"
         | TAC_Return result_var ->
-          printf "return %s\n" result_var
+          mov_op result_var "%rax";
+          return_op ();
         | TAC_Let (bingings, let_body) ->
           printf ""
       in
@@ -1453,7 +1592,7 @@ let main () = begin
                       | TAC_call_in (var, _)
                       | TAC_Self_Dispatch (var,_,_)) ->
                     printf "return %s\n" var
-                 | _ -> printf "")
+                 | _ -> printf "") 
             | Attribute ((_, _), (_, _), None) ->
                 printf ""
           ) feats;
@@ -1603,6 +1742,96 @@ let main () = begin
           printf "\t\t\t\t\t\tpopq %%rbp\n";
           printf "\t\t\t\t\t\tret\n";
         in
+        let initial_main_new () =
+          (* PA3-full take this code, use parameter cname and replace every instance to be modular *)
+          let myclass = "Main" in
+          let number_of_feats = 0 in (* Dynamically set *)
+          global_start_comment ();
+          global_setup (myclass^"..new");
+          custom_setup (myclass^"..new") ("constructor for "^myclass);
+          print_tab ();
+          push_stack "%rbp";
+          print_tab ();
+          stack_temps "1";
+          print_tab ();
+          sub_op "$8" "%rsp";
+          print_tab ();
+          ret_addr_handling ();
+          print_tab ();
+          mov_op ("$"^(string_of_int (3 + number_of_feats))) "%rsi" ;
+          print_tab ();
+          mov_op "$8" "%rdi";
+          print_tab ();
+          call_op "calloc";
+          print_tab ();
+          mov_op "%rax" "%r12";
+          print_tab ();
+          store_c_tag ();
+          let c_tag = 11 in (* Dynamically set || Have some sort of hashtbl that holds these tags *)
+          print_tab ();
+          mov_op ("$" ^ string_of_int c_tag) "0(%r12)"; 
+          print_tab ();
+          mov_op ("$"^(string_of_int number_of_feats)) "8(%r12)";
+          print_tab ();
+          let vtbl = (myclass^"..vtable") in (* Dynamically set *)
+          mov_op ("$" ^ vtbl) "16(%r12)";
+          if number_of_feats <> 0 then (
+            print_tab ();
+            init_attrs ();
+            let selfcount = 3 in
+            print_tab ();
+            custom_comment ("self["^(string_of_int selfcount) ^ "] holds field variable (type)");
+            (* 
+                Read through each feature in class in class_map
+                create the self comment with the info then either make an init or assign $0
+            *)
+            (* Once every feature for class is read
+              Read through each feature in class in class_map
+              Create comments if init'r is none or new Type
+                  if none then keep going
+                  else it is new type then create a new type
+            *)
+          );
+          print_tab ();
+          ret_addr_handling ();
+          print_tab ();
+          mov_op "%rbp" "%rsp";
+          print_tab ();
+          pop_stack "%rbp";
+          print_tab ();
+          return_op;
+      in
+      let initial_Main_main = (* Check the global table work *)
+          let classname = "Main" in
+          let classfunc = "main" in
+          global_setup (classname^"."^classfunc);
+          actual_tbl (classname^"."^classfunc);
+          custom_comment "method definition";
+          push_stack "%rbp";
+          mov_op "16(%rsp)" "%r12"; (* might need re-work *)
+          stack_temps "x"; (* dynamic setup *)
+          sub_op "$16" "%rsp";
+          ret_addr_handling ();
+          (* Read through the class_map
+              print out the self comments
+          *)
+          custom_comment "method body begins";
+          (* Read the AST and continue accordingly *)
+          (* Do body work *)
+          (* push new int, value and move to the stack *)
+          (* when doing conditional or methods go to a l3 *)
+          in
+
+          let initial_Main_main_end = 
+            let classname = "Main" in
+            let classfunc = "main" in
+            global_setup (classname^"."^classfunc^".end");
+            custom_setup (classname^"."^classfunc^".end") "## method body ends";
+            ret_addr_handling ();
+            mov_op "%rbp" "%rsp";
+            pop_stack "%rbp";
+            return_op;
+        in
         (* For now we will print the raw assemble for thing that never change*)
         let new_base_class_build class_name = 
           match class_name with
@@ -1632,10 +1861,7 @@ let main () = begin
             printf "String..new:\t\t\t\t##constructor for String\n";
             print_string_new ();
           | x -> 
-            printf "\t\t\t\t\t\t## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
-            printf ".globl %s..new\n" x;
-            printf "%s..new:\t\t\t\t##constructor for %s\n" x x;
-            printf " implement this %s later on\n" x; 
+            initial_main_new () ();
         in
         (*TODO for next PA3full, change the hard set string to a referenced 
         mutable type and increment it*)
@@ -1666,13 +1892,6 @@ let main () = begin
               printf "\t\t\t\t\t.quad %s.%s\n" class_name method_name;
           ) metho_definition;
         in
-        let grab_first_value_string class_map key =
-          match (Hashtbl.find_opt class_map) key with
-          | Some (Some ((str1, _, _) :: _)) -> str1
-          | Some (Some []) -> failwith "Value list is empty"
-          | Some None -> failwith "Key exists but value is None"
-          | None -> failwith "Key not found in class_map"
-        in
         let hashed_keys = sorted_keys imp_map in 
         List.iter ( fun class_name ->
           build_vtable class_name (Hashtbl.find imp_map class_name))
@@ -1680,63 +1899,9 @@ let main () = begin
         List.iter ( fun class_name ->
           new_base_class_build class_name)
         hashed_keys;
-        printf "HERE IS IT %s \n"  (grab_first_value_string cmap "Object");
-
         end ;;
 main();;
 (* Create a hashtbl for class_tag per class name *)
-let global_start_comment = printf "\t\t\t\t\t## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n" in
-let global_setup classfunc = printf ".globl %s\n" classfunc in
-let constructor_setup classfunc classname = printf "%s\t\t## constructor for %s\n"  classfunc classname in
-let custom_setup classfunc msg = printf "%s:\t\t%s\n" classfunc msg in
-let ret_addr_handling = printf "## return address handling\n" in
-let store_c_tag = printf "## store class tag, object size and vtable pointer\n" in
-let stack_temps number = printf "## stack room for temporaries: %s\n" number in
-let init_attrs = printf "## initialize attributes\n" in
-let self_holds pos varname vartype = printf "## self[%s] holds field %s (%s)\n" pos varname vartype in
-let push_stack reg = printf "push %s\n" reg in
-let pop_stack reg = printf "pop %s\n" reg in
-let mov_op src dest = printf "movq %s, %s\n" src dest in
-let add_op src dest = printf "addq %s, %s\n" src dest in
-let sub_op src dest = printf "subq %s, %s\n" src dest in
-let multi_op src dest = printf "imul %s, %s\n" src dest in
-let div_op src dest = printf "testing" in
-let and_op src dest = printf "and %s, %s\n" src dest in
-let or_op src dest = printf "or %s, %s\n" src dest in
-let cmp_op src dest = printf "cmpq %s, %s\n" src dest in 
-let test_op src dest = printf "test %s, %s\n" src dest in 
-let jmp_op label = printf "jmp %s\n" label in
-let je_op label = printf "je %s\n" label in
-let jne_op label = printf "jne %s\n" label in
-let jns_op label = printf "jns %s\n" label in
-let jl_op label = printf "jl %s\n" label in
-let jle_op label = printf "jle %s\n" label in
-let call_op op = printf "call %s\n" op in
-let return_op = printf "ret\n" in
-let new_class_instance class_name stack_loc = printf "## new %s\n" class_name;
-        if (class_name == "Int" || class_name == "Bool" || class_name = "String") then 
-          (
-        push_stack "%rbp";
-        push_stack "%r12";
-        mov_op ("$"^class_name^"..new") "%r14";
-        call_op "*%r14";
-        pop_stack "%r12";
-        pop_stack "%rbp";
-        mov_op "%r13" (stack_loc ^ "(%r12)");
-          )
-      else
-          mov_op "$0" (stack_loc^"(%r12)");
-      in
-  let self_non_std stack_loc = mov_op "$0" (stack_loc ^ "(%r12)") in 
-  let self_init pos varname varinfo = 
-    if varinfo == "none" then
-        printf "## self[%s] %s initializer -- none\n" pos varname
-    else 
-      printf "## self[%s] %s initializer <- %s\n" pos varname varinfo
-    in
-  let custom_comment msg = printf "## %s\n" msg in
-  let actual_tbl classfunc = printf "%s:\t\t\t\t" classfunc in
-  
 (* generating vtables
     read imp_map and extract all functions of class
     place string of map and class's new 
@@ -1860,46 +2025,6 @@ Int..new:               ## constructor for Int
     read class_map and extract all attributes for classes and push new types into them
     read class_map and inits on everything w/ $0s (not prims (string, bool, int))
 *)
-      let initial_main_new =
-        (* PA3-full take this code, use parameter cname and replace every instance to be modular *)
-        let myclass = "Main" in
-        let number_of_feats = 3 in (* Dynamically set *)
-        global_start_comment;
-        global_setup (myclass^"..new");
-        custom_setup (myclass^"..new") ("constructor for "^myclass);
-        push_stack "%rbp";
-        stack_temps "1";
-        sub_op "$8" "%rsp";
-        ret_addr_handling;
-        mov_op (string_of_int (3 + number_of_feats)) "%rsi" ;
-        mov_op "$8" "%rdi";
-        call_op "calloc";
-        mov_op "%rax" "%r12";
-        store_c_tag;
-        let c_tag = 10 in (* Dynamically set || Have some sort of hashtbl that holds these tags *)
-        mov_op ("$" ^ string_of_int c_tag) "%r12"; 
-        mov_op (string_of_int number_of_feats) "8(%r12)";
-        let vtbl = (myclass^"..vtable") in (* Dynamically set *)
-        mov_op ("$" ^ vtbl) "16(%r12)";
-        init_attrs;
-        let selfcount = 3 in
-        custom_comment ("self["^(string_of_int selfcount) ^ "] holds field variable (type)");
-        (* 
-            Read through each feature in class in class_map
-            create the self comment with the info then either make an init or assign $0
-        *)
-        (* Once every feature for class is read
-          Read through each feature in class in class_map
-          Create comments if init'r is none or new Type
-              if none then keep going
-              else it is new type then create a new type
-        *)
-        ret_addr_handling;
-        mov_op "%rbp" "%rsp";
-        pop_stack "%rbp";
-        return_op;
-
-    in
   let io_table = "                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl IO.in_int
 IO.in_int:              ## method definition
@@ -1980,37 +2105,6 @@ IO.out_int.end:         ## method body ends
     read through class_map and print out the self comments
     read through AST as normally, rewrite tac_to_asm to accommadate the correct asm instead of TAC
 *)
-let initial_Main_main = (* Check the global table work *)
-let classname = "Main" in
-let classfunc = "main" in
-global_setup (classname^"."^classfunc);
-actual_tbl (classname^"."^classfunc);
-custom_comment "method definition";
-push_stack "%rbp";
-mov_op "16(%rsp)" "%r12"; (* might need re-work *)
-stack_temps "x"; (* dynamic setup *)
-sub_op "$16" "%rsp";
-ret_addr_handling;
-(* Read through the class_map
-    print out the self comments
-*)
-custom_comment "method body begins";
-(* Read the AST and continue accordingly *)
-(* Do body work *)
-(* push new int, value and move to the stack *)
-(* when doing conditional or methods go to a l3 *)
-in
-
-let initial_Main_main_end = 
-  let classname = "Main" in
-  let classfunc = "main" in
-  global_setup (classname^"."^classfunc^".end");
-  custom_setup (classname^"."^classfunc^".end") "## method body ends";
-  ret_addr_handling;
-  mov_op "%rbp" "%rsp";
-  pop_stack "%rbp";
-  return_op;
-in
 
 let initial_vtable_after_main = "                        ## global string constants
 .globl string2
