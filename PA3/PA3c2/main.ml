@@ -1666,7 +1666,13 @@ let main () = begin
               printf "\t\t\t\t\t.quad %s.%s\n" class_name method_name;
           ) metho_definition;
         in
-
+        let grab_first_value_string class_map key =
+          match (Hashtbl.find_opt class_map) key with
+          | Some (Some ((str1, _, _) :: _)) -> str1
+          | Some (Some []) -> failwith "Value list is empty"
+          | Some None -> failwith "Key exists but value is None"
+          | None -> failwith "Key not found in class_map"
+        in
         let hashed_keys = sorted_keys imp_map in 
         List.iter ( fun class_name ->
           build_vtable class_name (Hashtbl.find imp_map class_name))
@@ -1674,6 +1680,8 @@ let main () = begin
         List.iter ( fun class_name ->
           new_base_class_build class_name)
         hashed_keys;
+        printf "HERE IS IT %s \n"  (grab_first_value_string cmap "Object");
+
         end ;;
 main();;
 (* Create a hashtbl for class_tag per class name *)
