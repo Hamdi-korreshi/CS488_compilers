@@ -27,7 +27,7 @@ let call_op op  = printf "call %s\n" op
 let return_op () = printf "ret\n"
 let custom_comment msg = printf "## %s\n" msg
 let actual_tbl classfunc = printf "%s:\t\t\t\t" classfunc
-let div_op src dest = printf "testing"
+let div_op src = printf "idivl %s\n" src
 let and_op src dest = printf "and %s, %s\n" src dest
 let or_op src dest = printf "or %s, %s\n" src dest
 let cmp_op src dest = printf "cmpq %s, %s\n" src dest
@@ -51,6 +51,16 @@ let new_class_instance class_name stack_loc = printf "## new %s\n" class_name;
           )
       else
           mov_op "$0" (stack_loc^"(%r12)");
+
+let cnd_operations hndl jmplabel =
+  push_stack "%r12";
+  call_op (hndl^"_handler");
+  add_op "$24" "%rsp";
+  pop_stack "%rbp";
+  pop_stack "%r12";
+  mov_op "24(%r13)" "%r13";
+  cmp_op "$0" "%r13";
+  je_op jmplabel ;
 (* 
 let self_non_std stack_loc = mov_op "$0" (stack_loc ^ "(%r12)") 
   let self_init pos varname varinfo = 
@@ -1363,16 +1373,26 @@ let main () = begin
           mov_op value var;
           (* printf "%s <- string \n%s\n" var value *)
         | TAC_Jump_If_Not (cond_expr, label) ->
-          printf "bt ";
-          print_tac_expr cond_expr;
-          printf " %s\n" label
+          (* create the table and  *)
+          currlabel = "l3" (* global variable that will hold current label value*)
+          (* make a global flag to set 0 to 1 and 1 to 0 to indicated T and F *)
+          global_setup currlabel;
+          custom_setup "l4" "some branch"
+
+          (* printf "bt "; *)
+          (* print_tac_expr cond_expr; *)
+          (* printf " %s\n" label *)
+          printf "";
         | TAC_Default (varname, sometype) ->
           print_tac_expr varname;
           printf " <- default %s\n" sometype
         | TAC_Jump label ->
             printf "jmp %s\n" label
         | TAC_Label label ->
-          printf "label %s\n" label
+          let currlabel = "l3"; (* Dynamically set *)
+          global_setup currlabel;
+          custom_comment currlabel "some branch";
+          (* printf "label %s\n" label *)
         | TAC_Assign_Int (var, value) ->
           new_class_instance "Int" var;
           mov_op (string_of_int value) var;
@@ -1461,8 +1481,8 @@ let main () = begin
           | _ -> printf "fix this problem: ")
             (* printf "%s <- - %s %s\n" var e1_str e2_str *)
         | TAC_Assign_Times (var, e1, e2) ->
-          let e1_str = match_exp e1 in
-          let e2_str = match_exp e2 in
+          let e1_str = match_exp_to_string_T2A e1 in
+          let e2_str = match_exp_to_string_T2A e2 in
           (match e1 with 
           | TAC_Variable v ->
             (match e2 with
@@ -1501,21 +1521,63 @@ let main () = begin
           (* printf "%s <- * %s %s\n" var e1_str e2_str *)
           (* multiplation is the divide*)
         | TAC_Assign_Divide (var, e1, e2) ->
-          let e1_str = match_exp e1 in
-          let e2_str = match_exp e2 in
-            printf "%s <- / %s %s\n" var e1_str e2_str
+          let e1_str = match_exp_to_string_T2A e1 in
+          let e2_str = match_exp_to_string_T2A e2 in
+          (* run-time err: cmp $0, e2 and to see if divisor is 0 if so then cooperate *)
+          jmp_op "l3";
+          global_setup "l3";
+          custom_setup "l3" "## division is OK";
+          
+          (* r13 = dividend || r14 = divisor *)
+          (match e1 with 
+          | TAC_Variable v ->
+            (match e2 with
+            | TAC_Variable g ->
+                (* e1 = e2 = var *)
+                mov_op e1_str "%r13";
+                mov_op e2_str "%r14";
+            | TAC_Int x ->
+                (* e1 = var, e2 = int *)
+                mov_op e1_str "%r13";
+                new_class_instance "Int" "%r14";
+                mov_op ("$"^e2_str) "%r14";
+            | _ -> printf "bruh\n";);
+          | TAC_Int g ->
+            (match e2 with
+            | TAC_Variable v ->
+              (* e1 = int, e2 = var *)
+              new_class_instance "Int" "%r13";
+              mov_op ("$"^e1_str) "%r13";
+              mov_op e2_str "%r14";
+            | TAC_Int x ->
+              (* e1 = e2 = int *)
+              new_class_instance "Int" "%r13";
+              mov_op ("$"^e1_str) "%r13";
+              new_class_instance "Int" "%r14";
+              mov_op ("$"^e2_str) "%r14";
+            | _ -> printf "fix this problem: ")
+          | _ -> printf "fix this problem: ");
+          mov_op "$0" "%rdx";
+          mov_op "%r14" "%rax";
+          printf "cdq\n";
+          div_op "%r13d";
+          mov_op "%rax" "%r13";
+          mov_op "%r13" var;
+          (* printf "%s <- / %s %s\n" var e1_str e2_str *)
         | TAC_Cnd_LessThan (var, e1, e2) ->
-            let e1_val = match e1 with
-                        | TAC_Variable v -> v
-                        | TAC_String i -> "string" 
-                        | TAC_Int i -> "int"
-                        | TAC_Bool i -> "bool" ^ string_of_bool i in
-            let e2_val = match e2 with
-                        | TAC_Variable v -> v
-                        | TAC_String i -> "string" 
-                        | TAC_Int i -> "int" ^ string_of_int i
-                        | TAC_Bool i -> "bool" ^ string_of_bool i in
-            printf "%s <- < %s %s\n" var e1_val e2_val
+          (* prep up ints and vars *)
+            let e1_str = match_exp_to_string_T2A e1 in
+            let e2_str = match_exp_to_string_T2A e2 in
+            let true_label = "l3"; (* dynamically set *)
+            (* if both are vars *)
+            custom_comment e1_str;
+            mov_op e1_str "%r13";
+            push_stack "%r13";
+            custom_comment e2_str;
+            mov_op e2_str "%r13";
+            push_stack "%r13";
+            cnd_operations "lt" true_label; (* Do the true branch then do the false branch *)
+            (* printf "%s <- < %s %s\n" var e1_val e2_val *)
         | TAC_Cnd_LessEqual (var, e1, e2) ->
             let e1_val = match e1 with
                       | TAC_Variable v -> v
@@ -1557,15 +1619,19 @@ let main () = begin
                     | TAC_String i -> mov_op "$0" "%rax"
                     | TAC_Int i -> sub_op ("$"^string_of_int i) "%rax"
                     | TAC_Bool i -> sub_op ("$"^string_of_bool i) "%rax" in
-          mov_op "%rax" var
+          mov_op "%rax" var;
           (* printf "%s <- ~ %s\n" var e1_val *)
         | TAC_New (var, e1) ->
-            let e1_val = match e1 with
-                    | TAC_Variable v -> v
-                    | TAC_String i -> "string"
-                    | TAC_Int i -> "int" ^ string_of_int i 
-                    | TAC_Bool i -> "bool" ^ string_of_bool i in
-              printf "%s <- new %s\n" var e1_val
+            let e1_val = match_exp_to_string_T2A e1 in
+            custom_comment ("new " ^ e1_val);
+            push_stack "%rbp";
+            push_stack "%r12";
+            mov_op ("$"^e1_val^"..new") "%r14";
+            call_op "*%r14";
+            pop_stack "%r12";
+            pop_stack "%rbp";
+            mov_op "%r13" var;
+            (* printf "%s <- new %s\n" var e1_val *)
         | TAC_isvoid (var, e1) ->
             let e1_val = match e1 with
                     | TAC_Variable v -> v

@@ -1,10 +1,45 @@
 comment start
 label Main_main_0
-t$3 <- int 3
-t$4 <- int 5
-t$2 <- + t$3 t$4
-t$1 <- call out_int t$2
-t$5 <- string
-\n
-t$0 <- call out_string t$5
+y <- int 4
+t$1 <- y
+x <- int 3
+t$2 <- x
+t$4 <- x
+t$5 <- y
+t$3 <- < t$4 t$5
+t$18 <- not t$3
+bt t$18 Main_main_2
+bt t$3 Main_main_1
+comment then branch
+label Main_main_1
+t$8 <- int 5
+t$9 <- int 3
+t$7 <- / t$8 t$9
+jmp Main_main_4
+comment else branch
+label Main_main_2
+t$14 <- int 2
+jmp Main_main_6
+comment if-join
+label Main_main_3
 return t$0
+comment fcall-pre to out_int
+label Main_main_4
+t$6 <- call out_int t$7
+x <- int 4
+t$10 <- x
+t$11 <- x
+t$12 <- int 1
+x <- + t$11 t$12
+t$0 <- x
+jmp Main_main_3
+comment fcall-pre to out_int
+label Main_main_6
+t$13 <- call out_int t$14
+x <- int 10
+t$15 <- x
+t$16 <- x
+t$17 <- int 1
+x <- + t$16 t$17
+t$0 <- x
+jmp Main_main_3
