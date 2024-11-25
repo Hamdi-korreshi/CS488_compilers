@@ -1366,6 +1366,19 @@ let main () = begin
             printf ""
         in *)
         (* TODO: Print asm instead of tac code *)
+        (* TODO: 
+        TAC_Jump_If_Not
+        TAC_Default
+        TAC_Jump
+        TAC_Label
+        TAC_New
+        TAC_isvoid
+        TAC_Cnd_*
+        TAC_call_out
+        TAC_call_in
+        TAC_Self_Dispatch
+        TAC_Let
+        *)
         let rec tac_to_asm instr =
         match instr with
         | TAC_Assign_String (var, value) ->
