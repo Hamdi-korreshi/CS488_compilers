@@ -479,10 +479,7 @@ Main.main:              ## method definition
                         movq $5, %r14
                         movq %r14, 24(%r13)
                         movq 24(%r13), %r13
-                        movq 0(%rbp), %r14
-                        
-                        Should I just do then immulq? since I will have to do 
-                        the doubleword version?!?
+                        movq 0(%rbp), %r1
                         movq %r14, %rax
                         imull %r13d, %eax
                         shlq $32, %rax

@@ -1555,7 +1555,7 @@ let main () = begin
           printf ""
       in
         (* Function to output the full list of TAC instructions for a method body *)
-        let output_tac target e =
+        (* let output_tac target e =
           let tac_instrs, _ = convert_expr e target in
           List.iter (tac_to_asm) tac_instrs;
           safe_head tac_instrs
@@ -1567,7 +1567,7 @@ let main () = begin
           List.iter (fun feat ->
             match feat with
             | Attribute ((name_loc, name), (dt_loc, dt_type), Some init_exp) ->
-                let last = output_tac (Some name) init_exp in 
+                let _ = output_tac (Some name) init_exp in 
                 printf ""
             | Method ((metho_loc, metho_name), forms, (metho_type_loc, metho_type), metho_bod) ->
                 curr_method := metho_name ;
@@ -1596,7 +1596,7 @@ let main () = begin
             | Attribute ((_, _), (_, _), None) ->
                 printf ""
           ) feats;
-        ) ast;
+        ) ast; *)
         let sorted_keys ht =
           let keys = Hashtbl.fold (fun key _ acc -> key :: acc) ht [] in
           List.sort String.compare keys
@@ -1742,6 +1742,328 @@ let main () = begin
           printf "\t\t\t\t\t\tpopq %%rbp\n";
           printf "\t\t\t\t\t\tret\n";
         in
+        let object_dot_abort () =
+          printf "\t\t\t\t\t\tpushq %%rbp\n";
+          printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
+          printf "\t\t\t\t\t\tmovq 16(%%rbp), %%r12\n";
+          printf "\t\t\t\t\t\t## stack room for temporaries: 1\n";
+          printf "\t\t\t\t\t\tmovq $8, %%r14\n";
+          printf "\t\t\t\t\t\tsubq %%r14, %%rsp\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\t## method body begins\n";
+          printf "\t\t\t\t\t\tmovq $string7, %%r13\n";
+          printf "\t\t\t\t\t\tmovq %%r13, %%rdi\n";
+          printf "\t\t\t\t\t\tcall cooloutstr\n";
+          printf "\t\t\t\t\t\tmovl $0, %%edi\n";
+          printf "\t\t\t\t\t\tcall exit\n";
+          printf ".globl Object.abort.end\n";
+          printf "Object.abort.end:\n";
+          printf "\t\t\t\t\t\t## method body ends\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\tmovq %%rbp, %%rsp\n";
+          printf "\t\t\t\t\t\tpopq %%rbp\n";
+          printf "\t\t\t\t\t\tret\n"
+        in
+        let object_dot_copy () =
+          printf "\t\t\t\t\t\tpushq %%rbp\n";
+          printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
+          printf "\t\t\t\t\t\tmovq 16(%%rbp), %%r12\n";
+          printf "\t\t\t\t\t\t## stack room for temporaries: 1\n";
+          printf "\t\t\t\t\t\tmovq $8, %%r14\n";
+          printf "\t\t\t\t\t\tsubq %%r14, %%rsp\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\t## method body begins\n";
+          printf "\t\t\t\t\t\tmovq 8(%%r12), %%r14\n";
+          printf "\t\t\t\t\t\tmovq $8, %%rsi\n";
+          printf "\t\t\t\t\t\tmovq %%r14, %%rdi\n";
+          printf "\t\t\t\t\t\tcall calloc\n";
+          printf "\t\t\t\t\t\tmovq %%rax, %%r13\n";
+          printf "\t\t\t\t\t\tpushq %%r13\n";
+          printf ".globl l1\n";
+          printf "l1:\t\t\t\t\t\tcmpq $0, %%r14\n";
+          printf "\t\t\t\t\t\tje l2\n";
+          printf "\t\t\t\t\t\tmovq 0(%%r12), %%r15\n";
+          printf "\t\t\t\t\t\tmovq %%r15, 0(%%r13)\n";
+          printf "\t\t\t\t\t\tmovq $8, %%r15\n";
+          printf "\t\t\t\t\t\taddq %%r15, %%r12\n";
+          printf "\t\t\t\t\t\taddq %%r15, %%r13\n";
+          printf "\t\t\t\t\t\tmovq $1, %%r15\n";
+          printf "\t\t\t\t\t\tsubq %%r15, %%r14\n";
+          printf "\t\t\t\t\t\tjmp l1\n";
+          printf ".globl l2\n";
+          printf "l2:\t\t\t\t\t\t## done with Object.copy loop\n";
+          printf "\t\t\t\t\t\tpopq %%r13\n";
+          printf ".globl Object.copy.end\n";
+          printf "Object.copy.end:\t\t\t\t\t\t## method body ends\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\tmovq %%rbp, %%rsp\n";
+          printf "\t\t\t\t\t\tpopq %%rbp\n";
+          printf "\t\t\t\t\t\tret\n"
+        in
+        let object_dot_typename () =
+          printf "\t\t\t\t\t\tpushq %%rbp\n";
+          printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
+          printf "\t\t\t\t\t\tmovq 16(%%rbp), %%r12\n";
+          printf "\t\t\t\t\t\t## stack room for temporaries: 1\n";
+          printf "\t\t\t\t\t\tmovq $8, %%r14\n";
+          printf "\t\t\t\t\t\tsubq %%r14, %%rsp\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\t## method body begins\n";
+          printf "\t\t\t\t\t\t## new String\n";
+          printf "\t\t\t\t\t\tpushq %%rbp\n";
+          printf "\t\t\t\t\t\tpushq %%r12\n";
+          printf "\t\t\t\t\t\tmovq $String..new, %%r14\n";
+          printf "\t\t\t\t\t\tcall *%%r14\n";
+          printf "\t\t\t\t\t\tpopq %%r12\n";
+          printf "\t\t\t\t\t\tpopq %%rbp\n";
+          printf "\t\t\t\t\t\t## obtain vtable for self object\n";
+          printf "\t\t\t\t\t\tmovq 16(%%r12), %%r14\n";
+          printf "\t\t\t\t\t\t## look up type name at offset 0 in vtable\n";
+          printf "\t\t\t\t\t\tmovq 0(%%r14), %%r14\n";
+          printf "\t\t\t\t\t\tmovq %%r14, 24(%%r13)\n";
+          printf ".globl Object.type_name.end\n";
+          printf "Object.type_name.end:\t\t\t\t\t\t## method body ends\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\tmovq %%rbp, %%rsp\n";
+          printf "\t\t\t\t\t\tpopq %%rbp\n";
+          printf "\t\t\t\t\t\tret\n"
+        in
+        let io_dot_inint () =
+          printf "\t\t\t\t\t\tpushq %%rbp\n";
+          printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
+          printf "\t\t\t\t\t\tmovq 16(%%rbp), %%r12\n";
+          printf "\t\t\t\t\t\t## stack room for temporaries: 1\n";
+          printf "\t\t\t\t\t\tmovq $8, %%r14\n";
+          printf "\t\t\t\t\t\tsubq %%r14, %%rsp\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\t## method body begins\n";
+          printf "\t\t\t\t\t\t## new Int\n";
+          printf "\t\t\t\t\t\tpushq %%rbp\n";
+          printf "\t\t\t\t\t\tpushq %%r12\n";
+          printf "\t\t\t\t\t\tmovq $Int..new, %%r14\n";
+          printf "\t\t\t\t\t\tcall *%%r14\n";
+          printf "\t\t\t\t\t\tpopq %%r12\n";
+          printf "\t\t\t\t\t\tpopq %%rbp\n";
+          printf "\t\t\t\t\t\tmovq %%r13, %%r14\n";
+          printf "\t\t\t\t\t\tmovl $1, %%esi\n";
+          printf "\t\t\t\t\t\tmovl $4096, %%edi\n";
+          printf "\t\t\t\t\t\tcall calloc\n";
+          printf "\t\t\t\t\t\tpushq %%rax\n";
+          printf "\t\t\t\t\t\tmovq %%rax, %%rdi\n";
+          printf "\t\t\t\t\t\tmovq $4096, %%rsi\n";
+          printf "\t\t\t\t\t\tmovq stdin(%%rip), %%rdx\n";
+          printf "\t\t\t\t\t\tcall fgets\n";
+          printf "\t\t\t\t\t\tpopq %%rdi\n";
+          printf "\t\t\t\t\t\tmovl $0, %%eax\n";
+          printf "\t\t\t\t\t\tpushq %%rax\n";
+          printf "\t\t\t\t\t\tmovq %%rsp, %%rdx\n";
+          printf "\t\t\t\t\t\tmovq $percent.ld, %%rsi\n";
+          printf "\t\t\t\t\t\tcall sscanf\n";
+          printf "\t\t\t\t\t\tpopq %%rax\n";
+          printf "\t\t\t\t\t\tmovq $0, %%rsi\n";
+          printf "\t\t\t\t\t\tcmpq $2147483647, %%rax\n";
+          printf "\t\t\t\t\t\tcmovg %%rsi, %%rax\n";
+          printf "\t\t\t\t\t\tcmpq $-2147483648, %%rax\n";
+          printf "\t\t\t\t\t\tcmovl %%rsi, %%rax\n";
+          printf "\t\t\t\t\t\tmovq %%rax, %%r13\n";
+          printf "\t\t\t\t\t\tmovq %%r13, 24(%%r14)\n";
+          printf "\t\t\t\t\t\tmovq %%r14, %%r13\n";
+          printf ".globl IO.in_int.end\n";
+          printf "IO.in_int.end:\t\t\t\t\t\t## method body ends\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\tmovq %%rbp, %%rsp\n";
+          printf "\t\t\t\t\t\tpopq %%rbp\n";
+          printf "\t\t\t\t\t\tret\n"
+        in
+        let io_dot_instring () =
+          printf "\t\t\t\t\t\tpushq %%rbp\n";
+          printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
+          printf "\t\t\t\t\t\tmovq 16(%%rbp), %%r12\n";
+          printf "\t\t\t\t\t\t## stack room for temporaries: 1\n";
+          printf "\t\t\t\t\t\tmovq $8, %%r14\n";
+          printf "\t\t\t\t\t\tsubq %%r14, %%rsp\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\t## method body begins\n";
+          printf "\t\t\t\t\t\t## new String\n";
+          printf "\t\t\t\t\t\tpushq %%rbp\n";
+          printf "\t\t\t\t\t\tpushq %%r12\n";
+          printf "\t\t\t\t\t\tmovq $String..new, %%r14\n";
+          printf "\t\t\t\t\t\tcall *%%r14\n";
+          printf "\t\t\t\t\t\tpopq %%r12\n";
+          printf "\t\t\t\t\t\tpopq %%rbp\n";
+          printf "\t\t\t\t\t\tmovq %%r13, %%r14\n";
+          printf "\t\t\t\t\t\tcall coolgetstr\n";
+          printf "\t\t\t\t\t\tmovq %%rax, %%r13\n";
+          printf "\t\t\t\t\t\tmovq %%r13, 24(%%r14)\n";
+          printf "\t\t\t\t\t\tmovq %%r14, %%r13\n";
+          printf ".globl IO.in_string.end\n";
+          printf "IO.in_string.end:\t\t\t\t\t\t## method body ends\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\tmovq %%rbp, %%rsp\n";
+          printf "\t\t\t\t\t\tpopq %%rbp\n";
+          printf "\t\t\t\t\t\tret\n"
+        in
+        let io_dot_outint () =
+          printf ".globl IO.out_int\n";
+          printf "IO.out_int:\t\t\t\t\t\t## method definition\n";
+          printf "\t\t\t\t\t\tpushq %%rbp\n";
+          printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
+          printf "\t\t\t\t\t\tmovq 16(%%rbp), %%r12\n";
+          printf "\t\t\t\t\t\t## stack room for temporaries: 1\n";
+          printf "\t\t\t\t\t\tmovq $8, %%r14\n";
+          printf "\t\t\t\t\t\tsubq %%r14, %%rsp\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\t## fp[3] holds argument x (Int)\n";
+          printf "\t\t\t\t\t\t## method body begins\n";
+          printf "\t\t\t\t\t\tmovq 24(%%rbp), %%r14\n";
+          printf "\t\t\t\t\t\tmovq 24(%%r14), %%r13\n";
+          printf "\t\t\t\t\t\tmovq $percent.d, %%rdi\n";
+          printf "\t\t\t\t\t\tmovl %%r13d, %%eax\n";
+          printf "\t\t\t\t\t\tcdqe\n";
+          printf "\t\t\t\t\t\tmovq %%rax, %%rsi\n";
+          printf "\t\t\t\t\t\tmovl $0, %%eax\n";
+          printf "\t\t\t\t\t\tcall printf\n";
+          printf "\t\t\t\t\t\tmovq %%r12, %%r13\n";
+          printf ".globl IO.out_int.end\n";
+          printf "IO.out_int.end:\t\t\t\t\t\t## method body ends\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\tmovq %%rbp, %%rsp\n";
+          printf "\t\t\t\t\t\tpopq %%rbp\n";
+          printf "\t\t\t\t\t\tret\n"
+        in
+        let io_dot_outstring () =
+          printf "\t\t\t\t\t\tpushq %%rbp\n";
+          printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
+          printf "\t\t\t\t\t\tmovq 16(%%rbp), %%r12\n";
+          printf "\t\t\t\t\t\t## stack room for temporaries: 1\n";
+          printf "\t\t\t\t\t\tmovq $8, %%r14\n";
+          printf "\t\t\t\t\t\tsubq %%r14, %%rsp\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\t## fp[3] holds argument x (String)\n";
+          printf "\t\t\t\t\t\t## method body begins\n";
+          printf "\t\t\t\t\t\tmovq 24(%%rbp), %%r14\n";
+          printf "\t\t\t\t\t\tmovq 24(%%r14), %%r13\n";
+          printf "\t\t\t\t\t\tmovq %%r13, %%rdi\n";
+          printf "\t\t\t\t\t\tcall cooloutstr\n";
+          printf "\t\t\t\t\t\tmovq %%r12, %%r13\n";
+          printf ".globl IO.out_string.end\n";
+          printf "IO.out_string.end:\t\t\t\t\t\t## method body ends\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\tmovq %%rbp, %%rsp\n";
+          printf "\t\t\t\t\t\tpopq %%rbp\n";
+          printf "\t\t\t\t\t\tret\n"
+        in
+        let str_concat () =
+          printf "\t\t\t\t\t\tpushq %%rbp\n";
+          printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
+          printf "\t\t\t\t\t\tmovq 16(%%rbp), %%r12\n";
+          printf "\t\t\t\t\t\t## stack room for temporaries: 1\n";
+          printf "\t\t\t\t\t\tmovq $8, %%r14\n";
+          printf "\t\t\t\t\t\tsubq %%r14, %%rsp\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\t## fp[3] holds argument s (String)\n";
+          printf "\t\t\t\t\t\t## method body begins\n";
+          printf "\t\t\t\t\t\t## new String\n";
+          printf "\t\t\t\t\t\tpushq %%rbp\n";
+          printf "\t\t\t\t\t\tpushq %%r12\n";
+          printf "\t\t\t\t\t\tmovq $String..new, %%r14\n";
+          printf "\t\t\t\t\t\tcall *%%r14\n";
+          printf "\t\t\t\t\t\tpopq %%r12\n";
+          printf "\t\t\t\t\t\tpopq %%rbp\n";
+          printf "\t\t\t\t\t\tmovq %%r13, %%r15\n";
+          printf "\t\t\t\t\t\tmovq 24(%%rbp), %%r14\n";
+          printf "\t\t\t\t\t\tmovq 24(%%r14), %%r14\n";
+          printf "\t\t\t\t\t\tmovq 24(%%r12), %%r13\n";
+          printf "\t\t\t\t\t\tmovq %%r13, %%rdi\n";
+          printf "\t\t\t\t\t\tmovq %%r14, %%rsi\n";
+          printf "\t\t\t\t\t\tcall coolstrcat\n";
+          printf "\t\t\t\t\t\tmovq %%rax, %%r13\n";
+          printf "\t\t\t\t\t\tmovq %%r13, 24(%%r15)\n";
+          printf "\t\t\t\t\t\tmovq %%r15, %%r13\n";
+          printf ".globl String.concat.end\n";
+          printf "String.concat.end:\t\t\t\t\t\t## method body ends\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\tmovq %%rbp, %%rsp\n";
+          printf "\t\t\t\t\t\tpopq %%rbp\n";
+          printf "\t\t\t\t\t\tret\n"
+        in
+        let str_length () =
+          printf "\t\t\t\t\t\tpushq %%rbp\n";
+          printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
+          printf "\t\t\t\t\t\tmovq 16(%%rbp), %%r12\n";
+          printf "\t\t\t\t\t\t## stack room for temporaries: 1\n";
+          printf "\t\t\t\t\t\tmovq $8, %%r14\n";
+          printf "\t\t\t\t\t\tsubq %%r14, %%rsp\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\t## method body begins\n";
+          printf "\t\t\t\t\t\t## new Int\n";
+          printf "\t\t\t\t\t\tpushq %%rbp\n";
+          printf "\t\t\t\t\t\tpushq %%r12\n";
+          printf "\t\t\t\t\t\tmovq $Int..new, %%r14\n";
+          printf "\t\t\t\t\t\tcall *%%r14\n";
+          printf "\t\t\t\t\t\tpopq %%r12\n";
+          printf "\t\t\t\t\t\tpopq %%rbp\n";
+          printf "\t\t\t\t\t\tmovq %%r13, %%r14\n";
+          printf "\t\t\t\t\t\tmovq 24(%%r12), %%r13\n";
+          printf "\t\t\t\t\t\tmovq %%r13, %%rdi\n";
+          printf "\t\t\t\t\t\tmovl $0, %%eax\n";
+          printf "\t\t\t\t\t\tcall coolstrlen\n";
+          printf "\t\t\t\t\t\tmovq %%rax, %%r13\n";
+          printf "\t\t\t\t\t\tmovq %%r13, 24(%%r14)\n";
+          printf "\t\t\t\t\t\tmovq %%r14, %%r13\n";
+          printf ".globl String.length.end\n";
+          printf "String.length.end:\t\t\t\t\t\t## method body ends\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\tmovq %%rbp, %%rsp\n";
+          printf "\t\t\t\t\t\tpopq %%rbp\n";
+          printf "\t\t\t\t\t\tret\n"
+        in
+        let str_substr () =
+          printf "\t\t\t\t\t\tpushq %%rbp\n";
+          printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
+          printf "\t\t\t\t\t\tmovq 16(%%rbp), %%r12\n";
+          printf "\t\t\t\t\t\t## stack room for temporaries: 1\n";
+          printf "\t\t\t\t\t\tmovq $8, %%r14\n";
+          printf "\t\t\t\t\t\tsubq %%r14, %%rsp\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\t## fp[4] holds argument i (Int)\n";
+          printf "\t\t\t\t\t\t## fp[3] holds argument l (Int)\n";
+          printf "\t\t\t\t\t\t## method body begins\n";
+          printf "\t\t\t\t\t\t## new String\n";
+          printf "\t\t\t\t\t\tpushq %%rbp\n";
+          printf "\t\t\t\t\t\tpushq %%r12\n";
+          printf "\t\t\t\t\t\tmovq $String..new, %%r14\n";
+          printf "\t\t\t\t\t\tcall *%%r14\n";
+          printf "\t\t\t\t\t\tpopq %%r12\n";
+          printf "\t\t\t\t\t\tpopq %%rbp\n";
+          printf "\t\t\t\t\t\tmovq %%r13, %%r15\n";
+          printf "\t\t\t\t\t\tmovq 24(%%rbp), %%r14\n";
+          printf "\t\t\t\t\t\tmovq 24(%%r14), %%r14\n";
+          printf "\t\t\t\t\t\tmovq 32(%%rbp), %%r13\n";
+          printf "\t\t\t\t\t\tmovq 24(%%r13), %%r13\n";
+          printf "\t\t\t\t\t\tmovq 24(%%r12), %%r12\n";
+          printf "\t\t\t\t\t\tmovq %%r12, %%rdi\n";
+          printf "\t\t\t\t\t\tmovq %%r13, %%rsi\n";
+          printf "\t\t\t\t\t\tmovq %%r14, %%rdx\n";
+          printf "\t\t\t\t\t\tcall coolsubstr\n";
+          printf "\t\t\t\t\t\tmovq %%rax, %%r13\n";
+          printf "\t\t\t\t\t\tcmpq $0, %%r13\n";
+          printf "\t\t\t\t\t\tjne l3\n";
+          printf "\t\t\t\t\t\tmovq $string8, %%r13\n";
+          printf "\t\t\t\t\t\tmovq %%r13, %%rdi\n";
+          printf "\t\t\t\t\t\tcall cooloutstr\n";
+          printf "\t\t\t\t\t\tmovl $0, %%edi\n";
+          printf "\t\t\t\t\t\tcall exit\n";
+          printf ".globl l3\n";
+          printf "l3:\t\t\t\t\t\tmovq %%r13, 24(%%r15)\n";
+          printf "\t\t\t\t\t\tmovq %%r15, %%r13\n";
+          printf ".globl String.substr.end\n";
+          printf "String.substr.end:\t\t\t\t\t\t## method body ends\n";
+          printf "\t\t\t\t\t\t## return address handling\n";
+          printf "\t\t\t\t\t\tmovq %%rbp, %%rsp\n";
+          printf "\t\t\t\t\t\tpopq %%rbp\n";
+          printf "\t\t\t\t\t\tret\n"
+        in
         let initial_main_new () =
           (* PA3-full take this code, use parameter cname and replace every instance to be modular *)
           let myclass = "Main" in
@@ -1801,7 +2123,34 @@ let main () = begin
           print_tab ();
           return_op;
       in
-      let initial_Main_main = (* Check the global table work *)
+      let generate_tac_for_method class_dot_method ast =
+        (* Split class_dot_method into class_name and method_name *)
+        let class_name, method_name =
+          match String.split_on_char '.' class_dot_method with
+          | [cls; meth] -> cls, meth
+          | _ -> failwith "Invalid format for class_dot_method; expected class_name.method_name"
+        in
+      
+        (* Mutable reference to collect TAC instructions *)
+        let tac_instructions = ref [] in
+      
+        (* Traverse the AST and find the matching method *)
+        List.iter (fun ((_, cname), _, feats) ->
+          if cname = class_name then
+            List.iter (fun feat ->
+              match feat with
+              | Method ((_, metho_name), forms, (_, metho_type), metho_bod) when metho_name = method_name ->
+                  (* Found the method; generate TAC *)
+                  let instr,__= convert_expr metho_bod None in 
+                  tac_instructions := instr
+              | _ -> ()
+            ) feats
+        ) ast;
+      
+        (* Return the collected TAC instructions *)
+        !tac_instructions
+      in
+      let initial_Main_main () = (* Check the global table work *)
           let classname = "Main" in
           let classfunc = "main" in
           global_setup (classname^"."^classfunc);
@@ -1816,21 +2165,18 @@ let main () = begin
               print out the self comments
           *)
           custom_comment "method body begins";
+          List.iter (tac_to_asm) (generate_tac_for_method (classname^"."^classfunc) ast);
           (* Read the AST and continue accordingly *)
           (* Do body work *)
           (* push new int, value and move to the stack *)
           (* when doing conditional or methods go to a l3 *)
-          in
-
-          let initial_Main_main_end = 
-            let classname = "Main" in
-            let classfunc = "main" in
-            global_setup (classname^"."^classfunc^".end");
-            custom_setup (classname^"."^classfunc^".end") "## method body ends";
-            ret_addr_handling ();
-            mov_op "%rbp" "%rsp";
-            pop_stack "%rbp";
-            return_op;
+          (* changed for the end label of every function *)
+          global_setup (classname^"."^classfunc^".end");
+          custom_setup (classname^"."^classfunc^".end") "## method body ends";
+          ret_addr_handling ();
+          mov_op "%rbp" "%rsp";
+          pop_stack "%rbp";
+          return_op;
         in
         (* For now we will print the raw assemble for thing that never change*)
         let new_base_class_build class_name = 
@@ -1892,6 +2238,37 @@ let main () = begin
               printf "\t\t\t\t\t.quad %s.%s\n" class_name method_name;
           ) metho_definition;
         in
+        (* hard coded for now needs to be fixed later on*)
+        let build_methods class_dot_method = 
+          printf "\t\t\t\t\t## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
+          printf ".globl %s\n" class_dot_method;
+          printf "%s:\t\t\t## method definition\n" class_dot_method;
+          (match class_dot_method with 
+          | "Object.abort" -> 
+            object_dot_abort ();
+          | "Object.copy" ->
+            object_dot_copy ();
+          | "Object.type_name" ->
+            object_dot_typename ();
+          | "IO.in_int" ->
+            io_dot_inint ();
+          | "IO.in_string" ->
+            io_dot_instring ();
+          | "IO.out_int" ->
+            io_dot_outint ();
+          | "IO.out_string" ->
+            io_dot_outstring ();
+          | "Main.main" ->
+            initial_Main_main () ();
+          | "String.concat" ->
+            str_concat ();
+          | "String.length" ->
+            str_length ();
+          | "String.substr" ->
+            str_substr ();
+          | x -> printf "that wasn't supposed to happen %s\n" x;
+            )
+        in
         let hashed_keys = sorted_keys imp_map in 
         List.iter ( fun class_name ->
           build_vtable class_name (Hashtbl.find imp_map class_name))
@@ -1899,214 +2276,9 @@ let main () = begin
         List.iter ( fun class_name ->
           new_base_class_build class_name)
         hashed_keys;
-        end ;;
-main();;
-(* Create a hashtbl for class_tag per class name *)
-(* generating vtables
-    read imp_map and extract all functions of class
-    place string of map and class's new 
- *)
-
-let initial_vtable_before_main = "                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-.globl Bool..vtable
-Bool..vtable:           ## virtual function table for Bool
-                        .quad string2
-                        .quad Bool..new
-                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-.globl IO..vtable
-IO..vtable:             ## virtual function table for IO
-                        .quad string3
-                        .quad IO..new
-                        .quad IO.in_int
-                        .quad IO.out_int
-                        .quad IO.out_string
-                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-.globl Int..vtable
-Int..vtable:            ## virtual function table for Int
-                        .quad string4
-                        .quad Int..new
-                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-.globl Main..vtable
-Main..vtable:           ## virtual function table for Main
-                        .quad string5
-                        .quad Main..new
-                        .quad IO.in_int
-                        .quad IO.out_int
-                        .quad Main.main
-                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-.globl Bool..new
-Bool..new:              ## constructor for Bool
-                        pushq %rbp
-                        movq %rsp, %rbp
-                        ## stack room for temporaries: 1
-                        movq $8, %r14
-                        subq %r14, %rsp
-                        ## return address handling
-                        movq $4, %r12
-                        movq $8, %rsi
-			movq %r12, %rdi
-			call calloc
-			movq %rax, %r12
-                        ## store class tag, object size and vtable pointer
-                        movq $0, %r14
-                        movq %r14, 0(%r12)
-                        movq $4, %r14
-                        movq %r14, 8(%r12)
-                        movq $Bool..vtable, %r14
-                        movq %r14, 16(%r12)
-                        ## initialize attributes
-                        ## self[3] holds field (raw content) (Int)
-                        movq $0, %r13
-                        movq %r13, 24(%r12)
-                        ## self[3] (raw content) initializer -- none 
-                        movq %r12, %r13
-                        ## return address handling
-                        movq %rbp, %rsp
-                        popq %rbp
-                        ret
-                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-.globl IO..new
-IO..new:                ## constructor for IO
-                        pushq %rbp
-                        movq %rsp, %rbp
-                        ## stack room for temporaries: 1
-                        movq $8, %r14
-                        subq %r14, %rsp
-                        ## return address handling
-                        movq $3, %r12
-                        movq $8, %rsi
-			movq %r12, %rdi
-			call calloc
-			movq %rax, %r12
-                        ## store class tag, object size and vtable pointer
-                        movq $11, %r14
-                        movq %r14, 0(%r12)
-                        movq $3, %r14
-                        movq %r14, 8(%r12)
-                        movq $IO..vtable, %r14
-                        movq %r14, 16(%r12)
-                        movq %r12, %r13
-                        ## return address handling
-                        movq %rbp, %rsp
-                        popq %rbp
-                        ret
-                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-.globl Int..new
-Int..new:               ## constructor for Int
-                        pushq %rbp
-                        movq %rsp, %rbp
-                        ## stack room for temporaries: 1
-                        movq $8, %r14
-                        subq %r14, %rsp
-                        ## return address handling
-                        movq $4, %r12
-                        movq $8, %rsi
-			movq %r12, %rdi
-			call calloc
-			movq %rax, %r12
-                        ## store class tag, object size and vtable pointer
-                        movq $1, %r14
-                        movq %r14, 0(%r12)
-                        movq $4, %r14
-                        movq %r14, 8(%r12)
-                        movq $Int..vtable, %r14
-                        movq %r14, 16(%r12)
-                        ## initialize attributes
-                        ## self[3] holds field (raw content) (Int)
-                        movq $0, %r13
-                        movq %r13, 24(%r12)
-                        ## self[3] (raw content) initializer -- none 
-                        movq %r12, %r13
-                        ## return address handling
-                        movq %rbp, %rsp
-                        popq %rbp
-                        ret" in
-(* generating ..new classes
-    read class_map and extract all attributes for classes and push new types into them
-    read class_map and inits on everything w/ $0s (not prims (string, bool, int))
-*)
-  let io_table = "                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-.globl IO.in_int
-IO.in_int:              ## method definition
-                        pushq %rbp
-                        movq %rsp, %rbp
-                        movq 16(%rbp), %r12
-                        ## stack room for temporaries: 1
-                        movq $8, %r14
-                        subq %r14, %rsp
-                        ## return address handling
-                        ## method body begins
-                        ## new Int
-                        pushq %rbp
-                        pushq %r12
-                        movq $Int..new, %r14
-                        call *%r14
-                        popq %r12
-                        popq %rbp
-                        movq %r13, %r14
-                        movl	$1, %esi
-			movl $4096, %edi
-			call calloc
-			pushq %rax
-			movq %rax, %rdi
-			movq $4096, %rsi 
-			movq stdin(%rip), %rdx
-			call fgets 
-			popq %rdi 
-			movl $0, %eax
-			pushq %rax
-			movq %rsp, %rdx
-			movq $percent.ld, %rsi
-			call sscanf
-			popq %rax
-			movq $0, %rsi 
-			cmpq $2147483647, %rax 
-			cmovg %rsi, %rax
-			cmpq $-2147483648, %rax 
-			cmovl %rsi, %rax
-			movq %rax, %r13
-                        movq %r13, 24(%r14)
-                        movq %r14, %r13
-.globl IO.in_int.end
-IO.in_int.end:          ## method body ends
-                        ## return address handling
-                        movq %rbp, %rsp
-                        popq %rbp
-                        ret
-                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-.globl IO.out_int
-IO.out_int:             ## method definition
-                        pushq %rbp
-                        movq %rsp, %rbp
-                        movq 16(%rbp), %r12
-                        ## stack room for temporaries: 1
-                        movq $8, %r14
-                        subq %r14, %rsp
-                        ## return address handling
-                        ## fp[3] holds argument x (Int)
-                        ## method body begins
-                        movq 24(%rbp), %r14
-                        movq 24(%r14), %r13
-                        movq $percent.d, %rdi
-		movl %r13d, %eax
-		cdqe
-		movq %rax, %rsi
-			movl $0, %eax
-			call printf
-                        movq %r12, %r13
-.globl IO.out_int.end
-IO.out_int.end:         ## method body ends
-                        ## return address handling
-                        movq %rbp, %rsp
-                        popq %rbp
-                        ret" in
-(* generating class functions
-    setup the foundational asm cmds
-    read through class_map and print out the self comments
-    read through AST as normally, rewrite tac_to_asm to accommadate the correct asm instead of TAC
-*)
-
-let initial_vtable_after_main = "                        ## global string constants
+        let base_methods = ["Object.abort"; "Object.copy"; "Object.type_name"; "IO.in_int"; "IO.in_string"; "IO.out_int"; "IO.out_string"; "Main.main"; "String.concat"; "String.length"; "String.substr"] in
+        List.iter (fun bruh -> build_methods bruh ) base_methods;
+        let initial_vtable_after_main = {|                      ## global string constants
 .globl string2
 string2:                # 'Bool'
 .byte  66 # 'B'
@@ -2338,5 +2510,297 @@ lt_end:                 ## return address handling
 .globl start
 start:                  ## program begins here
                         .globl main
-			.type main, @function" in
-printf "sample text";
+			.type main, @function|} in
+      let cool_outstr = {|
+      .globl cooloutstr
+	.type	cooloutstr, @function
+cooloutstr:
+.LFB0:
+	.cfi_startproc
+	pushq	%rbp
+	.cfi_def_cfa_offset 16
+	.cfi_offset 6, -16
+	movq	%rsp, %rbp
+	.cfi_def_cfa_register 6
+	subq	$32, %rsp
+	movq	%rdi, -24(%rbp)
+	movl	$0, -4(%rbp)
+	jmp	.L2
+.L5:
+	movl	-4(%rbp), %eax
+	cltq
+	addq	-24(%rbp), %rax
+	movzbl	(%rax), %eax
+	cmpb	$92, %al
+	jne	.L3
+	movl	-4(%rbp), %eax
+	cltq
+	addq	$1, %rax
+	addq	-24(%rbp), %rax
+	movzbl	(%rax), %eax
+	cmpb	$110, %al
+	jne	.L3
+	movq	stdout(%rip), %rax
+	movq	%rax, %rsi
+	movl	$10, %edi
+	call	fputc
+	addl	$2, -4(%rbp)
+	jmp	.L2
+.L3:
+	movl	-4(%rbp), %eax
+	cltq
+	addq	-24(%rbp), %rax
+	movzbl	(%rax), %eax
+	cmpb	$92, %al
+	jne	.L4
+	movl	-4(%rbp), %eax
+	cltq
+	addq	$1, %rax
+	addq	-24(%rbp), %rax
+	movzbl	(%rax), %eax
+	cmpb	$116, %al
+	jne	.L4
+	movq	stdout(%rip), %rax
+	movq	%rax, %rsi
+	movl	$9, %edi
+	call	fputc
+	addl	$2, -4(%rbp)
+	jmp	.L2
+.L4:
+	movq	stdout(%rip), %rdx
+	movl	-4(%rbp), %eax
+	cltq
+	addq	-24(%rbp), %rax
+	movzbl	(%rax), %eax
+	movsbl	%al, %eax
+	movq	%rdx, %rsi
+	movl	%eax, %edi
+	call	fputc
+	addl	$1, -4(%rbp)
+.L2:
+	movl	-4(%rbp), %eax
+	cltq
+	addq	-24(%rbp), %rax
+	movzbl	(%rax), %eax
+	testb	%al, %al
+	jne	.L5
+	movq	stdout(%rip), %rax
+	movq	%rax, %rdi
+	call	fflush
+	leave
+	.cfi_def_cfa 7, 8
+	ret
+	.cfi_endproc
+.LFE0:
+	.size	cooloutstr, .-cooloutstr
+.globl coolstrlen
+	.type	coolstrlen, @function
+coolstrlen:
+.LFB1:
+	.cfi_startproc
+	pushq	%rbp
+	.cfi_def_cfa_offset 16
+	.cfi_offset 6, -16
+	movq	%rsp, %rbp
+	.cfi_def_cfa_register 6
+	movq	%rdi, -24(%rbp)
+	movl	$0, -4(%rbp)
+	jmp	.L7
+.L8:
+	movl	-4(%rbp), %eax
+	addl	$1, %eax
+	movl	%eax, -4(%rbp)
+.L7:
+	movl	-4(%rbp), %eax
+	mov	%eax, %eax
+	addq	-24(%rbp), %rax
+	movzbl	(%rax), %eax
+	testb	%al, %al
+	jne	.L8
+	movl	-4(%rbp), %eax
+	leave
+	.cfi_def_cfa 7, 8
+	ret
+	.cfi_endproc
+.LFE1:
+	.size	coolstrlen, .-coolstrlen
+	.section	.rodata
+.LC0:
+	.string	"%s%s"
+	.text
+.globl coolstrcat
+	.type	coolstrcat, @function
+coolstrcat:
+.LFB2:
+	.cfi_startproc
+	pushq	%rbp
+	.cfi_def_cfa_offset 16
+	.cfi_offset 6, -16
+	movq	%rsp, %rbp
+	.cfi_def_cfa_register 6
+	pushq	%rbx
+	subq	$40, %rsp
+	movq	%rdi, -40(%rbp)
+	movq	%rsi, -48(%rbp)
+	cmpq	$0, -40(%rbp)
+	jne	.L10
+	.cfi_offset 3, -24
+	movq	-48(%rbp), %rax
+	jmp	.L11
+.L10:
+	cmpq	$0, -48(%rbp)
+	jne	.L12
+	movq	-40(%rbp), %rax
+	jmp	.L11
+.L12:
+	movq	-40(%rbp), %rax
+	movq	%rax, %rdi
+	call	coolstrlen
+	movl	%eax, %ebx
+	movq	-48(%rbp), %rax
+	movq	%rax, %rdi
+	call	coolstrlen
+	leal	(%rbx,%rax), %eax
+	addl	$1, %eax
+	movl	%eax, -20(%rbp)
+	movl	-20(%rbp), %eax
+	cltq
+	movl	$1, %esi
+	movq	%rax, %rdi
+	call	calloc
+	movq	%rax, -32(%rbp)
+	movl	$.LC0, %edx
+	movl	-20(%rbp), %eax
+	movslq	%eax, %rbx
+	movq	-48(%rbp), %rsi
+	movq	-40(%rbp), %rcx
+	movq	-32(%rbp), %rax
+	movq	%rsi, %r8
+	movq	%rbx, %rsi
+	movq	%rax, %rdi
+	movl	$0, %eax
+	call	snprintf
+	movq	-32(%rbp), %rax
+.L11:
+	addq	$40, %rsp
+	popq	%rbx
+	leave
+	.cfi_def_cfa 7, 8
+	ret
+	.cfi_endproc
+.LFE2:
+	.size	coolstrcat, .-coolstrcat
+	.section	.rodata
+.LC1:
+	.string	""
+	.text
+.globl coolgetstr
+	.type	coolgetstr, @function
+coolgetstr:
+.LFB3:
+	.cfi_startproc
+	pushq	%rbp
+	.cfi_def_cfa_offset 16
+	.cfi_offset 6, -16
+	movq	%rsp, %rbp
+	.cfi_def_cfa_register 6
+	subq	$32, %rsp
+	movl	$1, %esi
+	movl	$40960, %edi
+	call	calloc
+	movq	%rax, -16(%rbp)
+	movl	$0, -4(%rbp)
+.L20:
+	movq	stdin(%rip), %rax
+	movq	%rax, %rdi
+	call	fgetc
+	movl	%eax, -20(%rbp)
+	cmpl	$-1, -20(%rbp)
+	je	.L14
+	cmpl	$10, -20(%rbp)
+	jne	.L15
+.L14:
+	cmpl	$0, -4(%rbp)
+	je	.L16
+	movl	$.LC1, %eax
+	jmp	.L17
+.L16:
+	movq	-16(%rbp), %rax
+	jmp	.L17
+.L15:
+	cmpl	$0, -20(%rbp)
+	jne	.L18
+	movl	$1, -4(%rbp)
+	jmp	.L20
+.L18:
+	movq	-16(%rbp), %rax
+	movq	%rax, %rdi
+	call	coolstrlen
+	mov	%eax, %eax
+	addq	-16(%rbp), %rax
+	movl	-20(%rbp), %edx
+	movb	%dl, (%rax)
+	jmp	.L20
+.L17:
+	leave
+	.cfi_def_cfa 7, 8
+	ret
+	.cfi_endproc
+.LFE3:
+	.size	coolgetstr, .-coolgetstr
+.globl coolsubstr
+	.type	coolsubstr, @function
+coolsubstr:
+.LFB4:
+	.cfi_startproc
+	pushq	%rbp
+	.cfi_def_cfa_offset 16
+	.cfi_offset 6, -16
+	movq	%rsp, %rbp
+	.cfi_def_cfa_register 6
+	subq	$48, %rsp
+	movq	%rdi, -24(%rbp)
+	movq	%rsi, -32(%rbp)
+	movq	%rdx, -40(%rbp)
+	movq	-24(%rbp), %rax
+	movq	%rax, %rdi
+	call	coolstrlen
+	movl	%eax, -4(%rbp)
+	cmpq	$0, -32(%rbp)
+	js	.L22
+	cmpq	$0, -40(%rbp)
+	js	.L22
+	movq	-40(%rbp), %rax
+	movq	-32(%rbp), %rdx
+	addq	%rax, %rdx
+	movl	-4(%rbp), %eax
+	cltq
+	cmpq	%rax, %rdx
+	jle	.L23
+.L22:
+	movl	$0, %eax
+	jmp	.L24
+.L23:
+	movq	-40(%rbp), %rdx
+	movq	-32(%rbp), %rax
+	addq	-24(%rbp), %rax
+	movq	%rdx, %rsi
+	movq	%rax, %rdi
+	call	strndup
+.L24:
+	leave
+	.cfi_def_cfa 7, 8
+	ret
+	.cfi_endproc
+.LFE4:
+	.size	coolsubstr, .-coolsubstr
+|} in
+      printf "%s\n" initial_vtable_after_main;
+      printf "%s\n" cool_outstr;
+        end ;;
+main();;
+(* Create a hashtbl for class_tag per class name *)
+(* generating vtables
+    read imp_map and extract all functions of class
+    place string of map and class's new 
+ *)
