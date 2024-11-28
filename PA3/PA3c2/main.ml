@@ -19,6 +19,7 @@ let self_holds pos varname vartype = printf "## self[%s] holds field %s (%s)\n" 
 let push_stack reg = printf "push %s\n" reg
 let pop_stack reg = printf "pop %s\n" reg
 let mov_op src dest = printf "movq %s, %s\n" src dest 
+let movl_op src dest = printf "movl %s, %s\n" src dest 
 let add_op src dest = printf "addq %s, %s\n" src dest
 let sub_op src dest = printf "subq %s, %s\n" src dest 
 let multi_op src dest = printf "imull %s, %s\n" src dest
@@ -1462,7 +1463,42 @@ let main () = begin
         | TAC_Assign_Times (var, e1, e2) ->
           let e1_str = match_exp e1 in
           let e2_str = match_exp e2 in
-          printf "%s <- * %s %s\n" var e1_str e2_str
+          (match e1 with 
+          | TAC_Variable v ->
+            (match e2 with
+            | TAC_Variable g ->
+                (* e1 = e2 = var *)
+                movl_op e2_str "%eax";
+                multi_op ("%"^e1_str^"d") "%eax";
+                movl_op "%eax" var;
+            | TAC_Int x ->
+                (* e1 = var, e2 = int *)
+                new_class_instance "Int" "%r14";
+                mov_op ("$"^e2_str) "%r14";
+                movl_op "%r14d" "%eax";
+                multi_op "%eax" e1_str;
+                mov_op e1_str var;
+            | _ -> printf "bruh\n";);
+          | TAC_Int g ->
+            (match e2 with
+            | TAC_Variable v ->
+              (* e1 = int, e2 = var *)
+              new_class_instance "Int" "%r14";
+              mov_op ("$"^e1_str) "%r14";
+              movl_op "%r14d" "%eax";
+              multi_op "%eax" e2_str;
+              mov_op e2_str var;
+            | TAC_Int x ->
+              (* e1 = e2 = int *)
+              new_class_instance "Int" "%rax";
+              mov_op ("$"^e1_str) "%rax";
+              new_class_instance "Int" "%r14";
+              mov_op ("$"^e2_str) "%r14";
+              multi_op "%r14d" "%eax";
+              movl_op "%eax" var;
+            | _ -> printf "fix this problem: ")
+          | _ -> printf "fix this problem: ")
+          (* printf "%s <- * %s %s\n" var e1_str e2_str *)
           (* multiplation is the divide*)
         | TAC_Assign_Divide (var, e1, e2) ->
           let e1_str = match_exp e1 in
