@@ -479,12 +479,8 @@ Main.main:              ## method definition
                         movq $5, %r14
                         movq %r14, 24(%r13)
                         movq 24(%r13), %r13
-                        movq 0(%rbp), %r1
-                        movq %r14, %rax
-                        imull %r13d, %eax
-                        shlq $32, %rax
-                        shrq $32, %rax
-                        movl %eax, %r13d
+                        movq 0(%rbp), %r14
+                        addq %r14, %r13
                         movq %r13, 0(%rbp)
                         ## new Int
                         pushq %rbp

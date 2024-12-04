@@ -444,29 +444,60 @@ IO.out_string.end:						## method body ends
 					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Main.main
 Main.main:			## method definition
-.globl Main.main
-Main.main:				## method definition
 push %rbp
+movq %rsp, %rbp
 movq 16(%rsp), %r12
 ## stack room for temporaries: x
-subq $16, %rsp
-## return address handling
-## method body begins
-## new Int
-movq $0, t0(%r12)
-movq 3, t0
-## new Int
-movq $0, t1(%r12)
-movq 5, t1
-addq t0, t1
-movq t1, t2
-t3 <- call out_int t2
-.globl Main.main.end
-Main.main.end:				## ## method body ends
-## return address handling
-movq %rbp, %rsp
-pop %rbp
-ret
+                        movq $16, %r14
+                        subq %r14, %rsp
+                        ## return address handling
+                        ## method body begins
+                        ## out_int(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $3, %r14
+                        movq %r14, 24(%r13)
+                        movq 24(%r13), %r13
+                        movq %r13, 0(%rbp)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $5, %r14
+                        movq %r14, 24(%r13)
+                        movq 24(%r13), %r13
+                        movq 0(%rbp), %r14
+                        addq %r14, %r13
+                        movq %r13, 0(%rbp)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq 0(%rbp), %r14
+                        movq %r14, 24(%r13)
+                        pushq %r13
+                        pushq %r12
+                        ## obtain vtable for self object of type Main
+                        movq 16(%r12), %r14
+                        ## look up out_int() at offset 7 in vtable
+                        movq 56(%r14), %r14
+                        call *%r14
+                        addq $16, %rsp
+                        popq %rbp
+                        popq %r12
 					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl String.concat
 String.concat:			## method definition
@@ -582,32 +613,135 @@ String.substr.end:						## method body ends
 						popq %rbp
 						ret
                       ## global string constants
-.globl string2
-string2:                # 'Bool'
+.globl the.empty.string
+the.empty.string:       # ""
+.byte 0
+
+.globl percent.d
+percent.d:              # "%ld"
+.byte  37 # '%'
+.byte 108 # 'l'
+.byte 100 # 'd'
+.byte 0
+
+.globl percent.ld
+percent.ld:             # " %ld"
+.byte  32 # ' '
+.byte  37 # '%'
+.byte 108 # 'l'
+.byte 100 # 'd'
+.byte 0
+
+.globl string1
+string1:                # "Bool"
 .byte  66 # 'B'
 .byte 111 # 'o'
 .byte 111 # 'o'
 .byte 108 # 'l'
 .byte 0
 
-.globl string3
-string3:                # 'IO'
+.globl string2
+string2:                # "IO"
 .byte  73 # 'I'
 .byte  79 # 'O'
 .byte 0
 
-.globl string4
-string4:                # 'Int'
+.globl string3
+string3:                # "Int"
 .byte  73 # 'I'
 .byte 110 # 'n'
 .byte 116 # 't'
 .byte 0
 
-.globl string5
-string5:                # 'Main'
+.globl string4
+string4:                # "Main"
 .byte  77 # 'M'
 .byte  97 # 'a'
 .byte 105 # 'i'
+.byte 110 # 'n'
+.byte 0
+
+.globl string5
+string5:                # "Object"
+.byte  79 # 'O'
+.byte  98 # 'b'
+.byte 106 # 'j'
+.byte 101 # 'e'
+.byte  99 # 'c'
+.byte 116 # 't'
+.byte 0
+
+.globl string6
+string6:                # "String"
+.byte  83 # 'S'
+.byte 116 # 't'
+.byte 114 # 'r'
+.byte 105 # 'i'
+.byte 110 # 'n'
+.byte 103 # 'g'
+.byte 0
+
+.globl string7
+string7:                # "abort\\n"
+.byte  97 # 'a'
+.byte  98 # 'b'
+.byte 111 # 'o'
+.byte 114 # 'r'
+.byte 116 # 't'
+.byte  92 # '\\'
+.byte 110 # 'n'
+.byte 0
+
+.globl string8
+string8:                # "ERROR: 0: Exception: String.substr out of range\\n"
+.byte  69 # 'E'
+.byte  82 # 'R'
+.byte  82 # 'R'
+.byte  79 # 'O'
+.byte  82 # 'R'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  48 # '0'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  69 # 'E'
+.byte 120 # 'x'
+.byte  99 # 'c'
+.byte 101 # 'e'
+.byte 112 # 'p'
+.byte 116 # 't'
+.byte 105 # 'i'
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  83 # 'S'
+.byte 116 # 't'
+.byte 114 # 'r'
+.byte 105 # 'i'
+.byte 110 # 'n'
+.byte 103 # 'g'
+.byte  46 # '.'
+.byte 115 # 's'
+.byte 117 # 'u'
+.byte  98 # 'b'
+.byte 115 # 's'
+.byte 116 # 't'
+.byte 114 # 'r'
+.byte  32 # ' '
+.byte 111 # 'o'
+.byte 117 # 'u'
+.byte 116 # 't'
+.byte  32 # ' '
+.byte 111 # 'o'
+.byte 102 # 'f'
+.byte  32 # ' '
+.byte 114 # 'r'
+.byte  97 # 'a'
+.byte 110 # 'n'
+.byte 103 # 'g'
+.byte 101 # 'e'
+.byte  92 # '\\'
 .byte 110 # 'n'
 .byte 0
 
@@ -811,12 +945,19 @@ lt_end:                 ## return address handling
                         ret
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl start
-start:                  ## program begins here
+tart:                  ## program begins here
                         .globl main
 			.type main, @function
-
-      .globl cooloutstr
-	.type	cooloutstr, @function
+main:
+                        movq $Main..new, %r14
+                        pushq %rbp
+                        call *%r14
+                        pushq %rbp
+                        pushq %r13
+                        movq $Main.main, %r14
+                        call *%r14
+                        movl $0, %edi
+			call exit
 cooloutstr:
 .LFB0:
 	.cfi_startproc
