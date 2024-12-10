@@ -1,0 +1,9 @@
+comment start
+label Main_main_0
+t0 <- int 4
+t1 <- int 5
+t2 <- + t0 t1
+t3 <- int 4
+t4 <- + t2 t3
+t5 <- call out_int t4
+return t5

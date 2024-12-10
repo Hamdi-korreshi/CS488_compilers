@@ -1,0 +1,21 @@
+comment start
+t0 <- new A
+label Main_main_0
+t1 <- int 3
+t2 <- ~ t1
+t3 <- < y t2
+t4 <- not t3
+t5 <- not t4
+bt t5 else_label_1
+label then_label_1
+t7 <- string 
+A
+t8 <- call out_string t7
+t6 <- t8
+jmp end_label_1
+label else_label_1
+t9 <- string 
+B
+t10 <- call out_string t9
+t6 <- t10
+label end_label_1
