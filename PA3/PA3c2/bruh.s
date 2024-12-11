@@ -150,16 +150,17 @@ Int..new:				##constructor for Int
 .globl Main..new
 Main..new:				## constructor for Main
 						push %rbp
+						movq %rsp, %rbp
 						## stack room for temporaries: 1
 						subq $8, %rsp
 						## return address handling
-						movq $3, %rsi
-						movq $8, %rdi
+						movq $3, %rdi
+						movq $8, %rsi
 						call calloc
 						movq %rax, %r12
 						## store class tag, object size and vtable pointer
 						movq $11, 0(%r12)
-						movq $0, 8(%r12)
+						movq $3, 8(%r12)
 						movq $Main..vtable, 16(%r12)
 						## return address handling
 						movq %rbp, %rsp
@@ -225,7 +226,7 @@ String..new:				##constructor for String
 						ret
 					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Object.abort
-Object.abort:			## method definition
+Object.abort:						## method definition
 						pushq %rbp
 						movq %rsp, %rbp
 						movq 16(%rbp), %r12
@@ -248,7 +249,7 @@ Object.abort.end:
 						ret
 					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Object.copy
-Object.copy:			## method definition
+Object.copy:						## method definition
 						pushq %rbp
 						movq %rsp, %rbp
 						movq 16(%rbp), %r12
@@ -285,7 +286,7 @@ Object.copy.end:						## method body ends
 						ret
 					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Object.type_name
-Object.type_name:			## method definition
+Object.type_name:						## method definition
 						pushq %rbp
 						movq %rsp, %rbp
 						movq 16(%rbp), %r12
@@ -314,7 +315,7 @@ Object.type_name.end:						## method body ends
 						ret
 					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl IO.in_int
-IO.in_int:			## method definition
+IO.in_int:						## method definition
 						pushq %rbp
 						movq %rsp, %rbp
 						movq 16(%rbp), %r12
@@ -362,7 +363,7 @@ IO.in_int.end:						## method body ends
 						ret
 					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl IO.in_string
-IO.in_string:			## method definition
+IO.in_string:						## method definition
 						pushq %rbp
 						movq %rsp, %rbp
 						movq 16(%rbp), %r12
@@ -391,8 +392,6 @@ IO.in_string.end:						## method body ends
 						ret
 					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl IO.out_int
-IO.out_int:			## method definition
-.globl IO.out_int
 IO.out_int:						## method definition
 						pushq %rbp
 						movq %rsp, %rbp
@@ -420,7 +419,7 @@ IO.out_int.end:						## method body ends
 						ret
 					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl IO.out_string
-IO.out_string:			## method definition
+IO.out_string:						## method definition
 						pushq %rbp
 						movq %rsp, %rbp
 						movq 16(%rbp), %r12
@@ -443,68 +442,84 @@ IO.out_string.end:						## method body ends
 						ret
 					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Main.main
-Main.main:			## method definition
-push %rbp
-movq %rsp, %rbp
-movq 16(%rsp), %r12
-## stack room for temporaries: x
-                        movq $16, %r14
-                        subq %r14, %rsp
-                        ## return address handling
-                        ## method body begins
-                        ## out_int(...)
-                        pushq %r12
-                        pushq %rbp
-                        ## new Int
-                        pushq %rbp
-                        pushq %r12
-                        movq $Int..new, %r14
-                        call *%r14
-                        popq %r12
-                        popq %rbp
-                        movq $3, %r14
-                        movq %r14, 24(%r13)
-                        movq 24(%r13), %r13
-                        movq %r13, 0(%rbp)
-                        ## new Int
-                        pushq %rbp
-                        pushq %r12
-                        movq $Int..new, %r14
-                        call *%r14
-                        popq %r12
-                        popq %rbp
-                        movq $5, %r14
-                        movq %r14, 24(%r13)
-                        movq 24(%r13), %r13
-                        movq 0(%rbp), %r14
-                        addq %r14, %r13
-                        movq %r13, 0(%rbp)
-                        ## new Int
-                        pushq %rbp
-                        pushq %r12
-                        movq $Int..new, %r14
-                        call *%r14
-                        popq %r12
-                        popq %rbp
-                        movq 0(%rbp), %r14
-                        movq %r14, 24(%r13)
-                        pushq %r13
-                        pushq %r12
-                        ## obtain vtable for self object of type Main
-                        movq 16(%r12), %r14
-                        ## look up out_int() at offset 7 in vtable
-                        movq 56(%r14), %r14
-                        call *%r14
-                        addq $16, %rsp
-                        popq %rbp
-                        popq %r12
+Main.main:						## method definition
+			pushq %rbp
+			movq %rsp, %rbp
+			movq 16(%rbp), %r12
+			##stack room for temporaries: 2
+			movq $16,%r14
+			subq %r14, %rsp
+			## return address handling
+			## method body begins
+			## new Int
+			pushq %rbp
+			pushq %r12
+			movq $Int..new, %r14
+			call *%r14
+			popq %r12
+			popq %rbp
+			movq $3, %r14
+			movq %r14, 24(%r13)
+			## new Int
+			pushq %rbp
+			pushq %r12
+			movq $Int..new, %r14
+			call *%r14
+			popq %r12
+			popq %rbp
+			movq $5, %r14
+			movq %r14, 24(%r13)
+			movq 0(%rbp), %r14
+			addq %r14, %r13
+			movq %r13, 0(%rbp)
+			## new Int
+			pushq %rbp
+			pushq %r12
+			movq $Int..new, %r14
+			call *%r14
+			popq %r12
+			popq %rbp
+			movq $4, %r14
+			movq %r14, 24(%r13)
+			movq 0(%rbp), %r14
+			addq %r14, %r13
+			movq %r13, 0(%rbp)
+			## new Int
+			pushq %rbp
+			pushq %r12
+			movq $Int..new, %r14
+			call *%r14
+			popq %r12
+			popq %rbp
+			movq $7, %r14
+			movq %r14, 24(%r13)
+			movq 0(%rbp), %r14
+			addq %r14, %r13
+			movq %r13, 0(%rbp)
+			## need to fix the self dispatch
+			pushq %r13
+			pushq %r12
+			## obtain vtable for self object of type Main
+			movq 16(%r12), %r14
+			## look upt out_int at offest 7 in vtable
+			movq 56(%r14), %r14
+			call *%r14
+			addq $16, %rsp
+			popq %rbp
+			popq %r12
+.globl Main.main.end
+Main.main.end:		## method body ends
+			## return address handling
+			movq %rbp, %rsp
+			popq %rbp
+			ret
 					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl String.concat
-String.concat:			## method definition
+String.concat:						## method definition
 						pushq %rbp
 						movq %rsp, %rbp
 						movq 16(%rbp), %r12
-						## stack room for temporaries: 1 temp values for sotring pointersa 
+						## stack room for temporaries: 1
 						movq $8, %r14
 						subq %r14, %rsp
 						## return address handling
@@ -535,7 +550,7 @@ String.concat.end:						## method body ends
 						ret
 					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl String.length
-String.length:			## method definition
+String.length:						## method definition
 						pushq %rbp
 						movq %rsp, %rbp
 						movq 16(%rbp), %r12
@@ -567,7 +582,7 @@ String.length.end:						## method body ends
 						ret
 					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl String.substr
-String.substr:			## method definition
+String.substr:						## method definition
 						pushq %rbp
 						movq %rsp, %rbp
 						movq 16(%rbp), %r12
@@ -773,6 +788,11 @@ eq_handler:             ## helper function for =
 			je eq_int
                         movq $6, %r14
                         cmpq %r14, %r13
+			je eq_string
+                        ## otherwise, use pointer comparison
+                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14
+                        cmpq %r14, %r13
 			je eq_true
 .globl eq_false
 eq_false:               ## not equal
@@ -807,6 +827,19 @@ eq_int:                 ## two Ints
                         cmpq %r14, %r13
 			je eq_true
                         jmp eq_false
+.globl eq_string
+eq_string:              ## two Strings
+                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14
+                        movq 24(%r13), %r13
+                        movq 24(%r14), %r14
+                        
+  movq %r13, %rdi
+  movq %r14, %rsi
+  call strcmp 
+  cmp $0, %eax
+  je eq_true
+                        jmp eq_false
 .globl eq_end
 eq_end:                 ## return address handling
                         movq %rbp, %rsp
@@ -839,6 +872,11 @@ le_handler:             ## helper function for <=
                         cmpq %r14, %r13
 			je le_int
                         movq $6, %r14
+                        cmpq %r14, %r13
+			je le_string
+                        ## for non-primitives, equality is our only hope
+                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14
                         cmpq %r14, %r13
 			je le_true
 .globl le_false
@@ -874,6 +912,19 @@ le_int:                 ## two Ints
                         cmpl %r14d, %r13d
 			jle le_true
                         jmp le_false
+.globl le_string
+le_string:              ## two Strings
+                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14
+                        movq 24(%r13), %r13
+                        movq 24(%r14), %r14
+                        
+  movq %r13, %rdi
+  movq %r14, %rsi
+  call strcmp 
+  cmp $0, %eax
+  jle le_true
+                        jmp le_false
 .globl le_end
 le_end:                 ## return address handling
                         movq %rbp, %rsp
@@ -905,6 +956,8 @@ lt_handler:             ## helper function for <
 			je lt_int
                         movq $6, %r14
                         cmpq %r14, %r13
+			je lt_string
+                        ## for non-primitives, < is always false
 .globl lt_false
 lt_false:               ## not less than
                         ## new Bool
@@ -938,6 +991,19 @@ lt_int:                 ## two Ints
                         cmpl %r14d, %r13d
 			jl lt_true
                         jmp lt_false
+.globl lt_string
+lt_string:              ## two Strings
+                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14
+                        movq 24(%r13), %r13
+                        movq 24(%r14), %r14
+                        
+  movq %r13, %rdi
+  movq %r14, %rsi
+  call strcmp 
+  cmp $0, %eax
+  jl lt_true
+                        jmp lt_false
 .globl lt_end
 lt_end:                 ## return address handling
                         movq %rbp, %rsp
@@ -945,7 +1011,7 @@ lt_end:                 ## return address handling
                         ret
                         ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl start
-tart:                  ## program begins here
+start:                  ## program begins here
                         .globl main
 			.type main, @function
 main:
@@ -958,6 +1024,9 @@ main:
                         call *%r14
                         movl $0, %edi
 			call exit
+      
+.globl cooloutstr
+	.type	cooloutstr, @function
 cooloutstr:
 .LFB0:
 	.cfi_startproc

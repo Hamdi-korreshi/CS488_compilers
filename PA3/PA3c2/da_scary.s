@@ -2424,8 +2424,6 @@ Bazz.printh:            ## method definition
                         ## self[11] holds field d (Object)
                         ## method body begins
                         ## out_int(...)
-                        pushq %r12
-                        pushq %rbp
                         ## h
                         movq 24(%r12), %r13
                         pushq %r13
@@ -2436,8 +2434,6 @@ Bazz.printh:            ## method definition
                         movq 56(%r14), %r14
                         call *%r14
                         addq $16, %rsp
-                        popq %rbp
-                        popq %r12
                         ## new Int
                         pushq %rbp
                         pushq %r12

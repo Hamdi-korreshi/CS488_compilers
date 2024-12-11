@@ -38,19 +38,58 @@ let jne_op label = printf "jne %s\n" label
 let jns_op label = printf "jns %s\n" label
 let jl_op label = printf "jl %s\n" label
 let jle_op label = printf "jle %s\n" label 
-let new_class_instance class_name stack_loc = printf "## new %s\n" class_name;
-        if (class_name == "Int" || class_name == "Bool" || class_name = "String") then 
-          (
-        push_stack "%rbp";
-        push_stack "%r12";
-        mov_op ("$"^class_name^"..new") "%r14";
-        call_op "*%r14";
-        pop_stack "%r12";
-        pop_stack "%rbp";
-        mov_op "%r13" (stack_loc ^ "(%r12)");
-          )
-      else
-          mov_op "$0" (stack_loc^"(%r12)");
+
+type asm_tree = asm list
+and asm = 
+  | Push of string
+  | Pop of string
+  | Add of string
+  | Sub of string
+  | Div of string
+  | Mult of string
+  | Mov of string
+  | Call of string 
+  | Ret of string 
+  | Jmp of string
+  | Start_label of string
+  | End_label of string 
+  | Comment of string
+
+let string_of_asm asm =
+  match asm with
+  | Push s -> s
+  | Pop s -> s
+  | Add s -> s
+  | Sub s -> s
+  | Div s -> s
+  | Mult s -> s
+  | Mov s -> s
+  | Call s -> s
+  | Ret s -> s
+  | Jmp s -> s
+  | Start_label s -> s
+  | End_label s ->  s
+  | Comment s -> s
+let new_class_instance class_name stack_loc =
+  let asm_converted = 
+    (match class_name with 
+    | "Int" | "Bool" | "String" -> 
+      [Comment("\t\t\t## new "^class_name^"\n");
+      Push("\t\t\tpushq %rbp\n");
+      Push("\t\t\tpushq %r12\n");
+      Mov("\t\t\tmovq $"^class_name^"..new, %r14\n");
+      Call("\t\t\tcall *%r14\n");
+      Pop("\t\t\tpopq %r12\n");
+      Pop("\t\t\tpopq %rbp\n");]
+    | x -> 
+      [Comment("\t\t\t## new "^class_name^"\n");
+      Push("\t\t\tpushq %rbp\n");
+      Push("\t\t\tpushq %r12\n");
+      Mov("\t\t\tmovq $"^class_name^"..new, %r14\n");
+      Call("\t\t\tcall *%r14\n");
+      Pop("\t\t\tpopq %r12\n");
+      Pop("\t\t\tpopq %rbp\n")]) in
+  asm_converted
 (* 
 let self_non_std stack_loc = mov_op "$0" (stack_loc ^ "(%r12)") 
   let self_init pos varname varinfo = 
@@ -962,7 +1001,6 @@ let main () = begin
             printf "bruh";
           ) feats; 
         ) ast; *)
-
         let rec convert_expr (e : exp) (target : string option) : (tac_instr list * tac_expr) =
           match e.exp_kind with
           | Integer value ->
@@ -1359,236 +1397,72 @@ let main () = begin
         let rec tac_to_asm instr =
         match instr with
         | TAC_Assign_String (var, value) ->
-          new_class_instance "String" var;
-          mov_op value var;
-          (* printf "%s <- string \n%s\n" var value *)
+          let class_inst = new_class_instance "String" var in
+          let stror_to_mem = 
+            [Mov("\t\t\tmovq $String8, %r14\n");
+            Mov("\t\t\tmovq %r14, 24(%r13)\n");
+            Mov("\t\t\tmovq %r13, 0(%rbp)\n")] in
+          class_inst @ stror_to_mem;
         | TAC_Jump_If_Not (cond_expr, label) ->
-          printf "bt ";
-          print_tac_expr cond_expr;
-          printf " %s\n" label
+          [Mov("\t\t\tneed to fix jump if not\n")]
         | TAC_Default (varname, sometype) ->
           print_tac_expr varname;
-          printf " <- default %s\n" sometype
+          [Mov("\t\t\tneed to fix defaultt\n")]
         | TAC_Jump label ->
-            printf "jmp %s\n" label
+          [Jmp("\t\t\tneed to fix jump label\n")]
         | TAC_Label label ->
-          printf "label %s\n" label
+          [Comment(label^"\n")]
         | TAC_Assign_Int (var, value) ->
-          new_class_instance "Int" var;
-          mov_op (string_of_int value) var;
+          let class_inst = new_class_instance "Int" var in
+          let stror_to_mem = 
+            [Mov("\t\t\tmovq $"^string_of_int value^", %r14\n");
+            Mov("\t\t\tmovq %r14, 24(%r13)\n");] in
+          class_inst @ stror_to_mem;
         | TAC_Assign_Bool (var, value) ->
-          new_class_instance "Bool" var;
-          if value = true then
-            mov_op "$1" var
-          else 
-            mov_op "$0" var
+          let class_inst = new_class_instance "String" var in
+          let stror_to_mem = 
+            [Mov("\t\t\tmovq $String8, %r14\n");
+            Mov("\t\t\tmovq %r14, 24(%r13)\n");] in
+          class_inst @ stror_to_mem;
         | TAC_Assign_Var (var, src_var) ->
-          mov_op src_var var;
-          (* printf "%s <- %s\n" var src_var *)
+          [Mov("\t\t\tneed to fix assign\n")]
         | TAC_Assign_Plus (var, e1, e2) ->
-          let e1_str = match_exp_to_string_T2A e1 in
-          let e2_str = match_exp_to_string_T2A e2 in
-          (* working with this style of pattern matching for if statements
-           match e1 with 
-          | TAC_Variable ->
-            match e2 with *)
-          (match e1 with 
-          | TAC_Variable v ->
-            (match e2 with
-            | TAC_Variable g ->
-                (* e1 = e2 = var *)
-                add_op e1_str e2_str;
-                mov_op e2_str var;
-            | TAC_Int x ->
-                (* e1 = var, e2 = int *)
-                new_class_instance "Int" "%r14";
-                mov_op ("$"^e2_str) "%r14";
-                add_op e1_str "%r14";
-                mov_op "%r14" var;
-            | _ -> printf "bruh\n";);
-          | TAC_Int g ->
-            (match e2 with
-            | TAC_Variable v ->
-              (* e1 = int, e2 = var *)
-              new_class_instance "Int" "%r14";
-              mov_op ("$"^e1_str) "%r14";
-              add_op e2_str "%r14";
-              mov_op "%r14" var;
-            | TAC_Int x ->
-              (* e1 = e2 = int *)
-              new_class_instance "Int" "%rax";
-              mov_op ("$"^e1_str) "%rax";
-              new_class_instance "Int" "%r14";
-              mov_op ("$"^e2_str) "%r14";
-              add_op "%r14" "%rax";
-              mov_op "%rax" var;
-            | _ -> printf "fix this problem: ")
-          | _ -> printf "fix this problem: ")
+          [Mov("\t\t\tmovq 0(%rbp), %r14\n");
+          Add("\t\t\taddq %r14, %r13\n");
+          Mov("\t\t\tmovq %r13, 0(%rbp)\n");]
         | TAC_Assign_Minus (var, e1, e2) ->
-          let e1_str = match_exp_to_string_T2A e1 in
-          let e2_str = match_exp_to_string_T2A e2 in
-          (match e1 with 
-          | TAC_Variable v ->
-            (match e2 with
-            | TAC_Variable g ->
-                (* e1 = e2 = var *)
-                sub_op e2_str e1_str;
-                mov_op e1_str var;
-            | TAC_Int x ->
-                (* e1 = var, e2 = int *)
-                new_class_instance "Int" "%r14";
-                mov_op ("$"^e2_str) "%r14";
-                sub_op "%r14" e1_str;
-                mov_op "%r14" var;
-            | _ -> printf "bruh\n";);
-          | TAC_Int g ->
-            (match e2 with
-            | TAC_Variable v ->
-              (* e1 = int, e2 = var *)
-              new_class_instance "Int" "%r14";
-              mov_op ("$"^e1_str) "%r14";
-              sub_op (e2_str) "%r14";
-              mov_op "%r14" var;
-            | TAC_Int x ->
-              (* e1 = e2 = int *)
-              new_class_instance "Int" "%rax";
-              mov_op ("$"^e1_str) "%rax";
-              new_class_instance "Int" "%r14";
-              mov_op ("$"^e2_str) "%r14";
-              sub_op "%r14" "%rax";
-              mov_op "%rax" var;
-            | _ -> printf "fix this problem: ")
-          | _ -> printf "fix this problem: ")
-            (* printf "%s <- - %s %s\n" var e1_str e2_str *)
+          [Mov("\t\t\tneed to fix times\n")]
         | TAC_Assign_Times (var, e1, e2) ->
-          let e1_str = match_exp e1 in
-          let e2_str = match_exp e2 in
-          (match e1 with 
-          | TAC_Variable v ->
-            (match e2 with
-            | TAC_Variable g ->
-                (* e1 = e2 = var *)
-                movl_op e2_str "%eax";
-                multi_op ("%"^e1_str^"d") "%eax";
-                movl_op "%eax" var;
-            | TAC_Int x ->
-                (* e1 = var, e2 = int *)
-                new_class_instance "Int" "%r14";
-                mov_op ("$"^e2_str) "%r14";
-                movl_op "%r14d" "%eax";
-                multi_op "%eax" e1_str;
-                mov_op e1_str var;
-            | _ -> printf "bruh\n";);
-          | TAC_Int g ->
-            (match e2 with
-            | TAC_Variable v ->
-              (* e1 = int, e2 = var *)
-              new_class_instance "Int" "%r14";
-              mov_op ("$"^e1_str) "%r14";
-              movl_op "%r14d" "%eax";
-              multi_op "%eax" e2_str;
-              mov_op e2_str var;
-            | TAC_Int x ->
-              (* e1 = e2 = int *)
-              new_class_instance "Int" "%rax";
-              mov_op ("$"^e1_str) "%rax";
-              new_class_instance "Int" "%r14";
-              mov_op ("$"^e2_str) "%r14";
-              multi_op "%r14d" "%eax";
-              movl_op "%eax" var;
-            | _ -> printf "fix this problem: ")
-          | _ -> printf "fix this problem: ")
-          (* printf "%s <- * %s %s\n" var e1_str e2_str *)
-          (* multiplation is the divide*)
+          [Mov("\t\t\tneed to fix times\n")]
         | TAC_Assign_Divide (var, e1, e2) ->
-          let e1_str = match_exp e1 in
-          let e2_str = match_exp e2 in
-            printf "%s <- / %s %s\n" var e1_str e2_str
+          [Mov("\t\t\tneed to fix divide\n")]
         | TAC_Cnd_LessThan (var, e1, e2) ->
-            let e1_val = match e1 with
-                        | TAC_Variable v -> v
-                        | TAC_String i -> "string" 
-                        | TAC_Int i -> "int"
-                        | TAC_Bool i -> "bool" ^ string_of_bool i in
-            let e2_val = match e2 with
-                        | TAC_Variable v -> v
-                        | TAC_String i -> "string" 
-                        | TAC_Int i -> "int" ^ string_of_int i
-                        | TAC_Bool i -> "bool" ^ string_of_bool i in
-            printf "%s <- < %s %s\n" var e1_val e2_val
+          [Mov("\t\t\tneed to fix lees than\n")]
         | TAC_Cnd_LessEqual (var, e1, e2) ->
-            let e1_val = match e1 with
-                      | TAC_Variable v -> v
-                      | TAC_String i -> "string" 
-                      | TAC_Int i -> "int" ^ string_of_int i
-                      | TAC_Bool i -> "bool" ^ string_of_bool i in
-            let e2_val = match e2 with
-                      | TAC_Variable v -> v
-                      | TAC_String i -> "string" 
-                      | TAC_Int i -> "int" ^ string_of_int i
-                      | TAC_Bool i -> "bool" ^ string_of_bool i in
-            printf "%s <- <= %s  %s\n" var e1_val e2_val
+          [Mov("\t\t\tneed to fix lees eq\n")]
         | TAC_Cnd_Equal (var, e1, e2) ->
-          let e1_val = match e1 with
-                    | TAC_Variable v -> v
-                    | TAC_String i -> "string" 
-                    | TAC_Int i -> "int" ^ string_of_int i
-                    | TAC_Bool i -> "bool" ^ string_of_bool i in
-          let e2_val = match e2 with
-                    | TAC_Variable v -> v
-                    | TAC_String i -> "string" 
-                    | TAC_Int i -> "int" ^ string_of_int i
-                    | TAC_Bool i -> "bool" ^ string_of_bool i in
-          printf "%s <- = %s %s\n" var e1_val e2_val
+          [Mov("\t\t\tneed to fix cnd eq\n")]
         | TAC_Cnd_Not (var, e1) ->
           (* Just for Booleans *)
-          let e1_val = match e1 with
-                    | TAC_Variable v -> v
-                    | TAC_String i -> "string" 
-                    | TAC_Int i -> "int" ^ string_of_int i
-                    | TAC_Bool i -> "bool" ^ string_of_bool i in
-          printf "%s <- not %s\n" var e1_val
+          [Mov("\t\t\tneed to fix cnd not\n")]
         | TAC_Negate (var, e1) ->
-          (* Only for ints *)
-          new_class_instance "Int" "%rax";
-          mov_op "$0" "%rax";
-          let e1_val = match e1 with
-                    | TAC_Variable v -> sub_op v "%rax" 
-                    | TAC_String i -> mov_op "$0" "%rax"
-                    | TAC_Int i -> sub_op ("$"^string_of_int i) "%rax"
-                    | TAC_Bool i -> sub_op ("$"^string_of_bool i) "%rax" in
-          mov_op "%rax" var
+          [Mov("\t\t\tneed to fix the negatation\n")]
           (* printf "%s <- ~ %s\n" var e1_val *)
         | TAC_New (var, e1) ->
-            let e1_val = match e1 with
-                    | TAC_Variable v -> v
-                    | TAC_String i -> "string"
-                    | TAC_Int i -> "int" ^ string_of_int i 
-                    | TAC_Bool i -> "bool" ^ string_of_bool i in
-              printf "%s <- new %s\n" var e1_val
+          [Mov("\t\t\tneed to fix the new\n")]
         | TAC_isvoid (var, e1) ->
-            let e1_val = match e1 with
-                    | TAC_Variable v -> v
-                    | TAC_String i -> "string"
-                    | TAC_Int i -> "int"
-                    | TAC_Bool i -> "bool" in
-              printf "%s <- isvoid %s\n" var e1_val
+          [Mov("\t\t\tneed to fix the isvoid \n")]
         | TAC_call_out (var, e1, e2) ->
-              printf "%s <- call %s %s\n" var e1 e2;
+          [Mov("\t\t\tneed to fix the call out\n")]
         | TAC_call_in (var, e1) ->
-              printf "%s <- call %s\n" var e1;
+          [Mov("\t\t\tneed to fix the call in\n")]        
         | TAC_Self_Dispatch (result_var, (method_name, loc), args) ->
-          printf "%s <- call %s " result_var method_name;
-          List.iteri (fun i arg ->
-            if i > 0 then printf " ";
-            print_tac_expr arg
-          ) args;
-          printf "\n"
+          [Comment("\t\t\t## need to fix the self dispatch\n")]
         | TAC_Return result_var ->
-          mov_op result_var "%rax";
-          return_op ();
+          [Mov("\t\t\tneed to fix the return\n")]
         | TAC_Let (bingings, let_body) ->
-          printf ""
+          [Mov("\t\t\tneed to fix let\n")]
+
       in
         (* Function to output the full list of TAC instructions for a method body *)
         (* let output_tac target e =
@@ -1779,6 +1653,8 @@ let main () = begin
           printf "\t\t\t\t\t\tret\n";
         in
         let object_dot_abort () =
+          printf ".globl Object.abort\n";
+          printf "Object.abort:\t\t\t\t\t\t## method definition\n";
           printf "\t\t\t\t\t\tpushq %%rbp\n";
           printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
           printf "\t\t\t\t\t\tmovq 16(%%rbp), %%r12\n";
@@ -1801,6 +1677,8 @@ let main () = begin
           printf "\t\t\t\t\t\tret\n"
         in
         let object_dot_copy () =
+          printf ".globl Object.copy\n";
+          printf "Object.copy:\t\t\t\t\t\t## method definition\n";
           printf "\t\t\t\t\t\tpushq %%rbp\n";
           printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
           printf "\t\t\t\t\t\tmovq 16(%%rbp), %%r12\n";
@@ -1837,6 +1715,8 @@ let main () = begin
           printf "\t\t\t\t\t\tret\n"
         in
         let object_dot_typename () =
+          printf ".globl Object.type_name\n";
+          printf "Object.type_name:\t\t\t\t\t\t## method definition\n";
           printf "\t\t\t\t\t\tpushq %%rbp\n";
           printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
           printf "\t\t\t\t\t\tmovq 16(%%rbp), %%r12\n";
@@ -1865,6 +1745,8 @@ let main () = begin
           printf "\t\t\t\t\t\tret\n"
         in
         let io_dot_inint () =
+          printf ".globl IO.in_int\n";
+          printf "IO.in_int:\t\t\t\t\t\t## method definition\n";
           printf "\t\t\t\t\t\tpushq %%rbp\n";
           printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
           printf "\t\t\t\t\t\tmovq 16(%%rbp), %%r12\n";
@@ -1912,6 +1794,8 @@ let main () = begin
           printf "\t\t\t\t\t\tret\n"
         in
         let io_dot_instring () =
+          printf ".globl IO.in_string\n";
+          printf "IO.in_string:\t\t\t\t\t\t## method definition\n";
           printf "\t\t\t\t\t\tpushq %%rbp\n";
           printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
           printf "\t\t\t\t\t\tmovq 16(%%rbp), %%r12\n";
@@ -1968,6 +1852,8 @@ let main () = begin
           printf "\t\t\t\t\t\tret\n"
         in
         let io_dot_outstring () =
+          printf ".globl IO.out_string\n";
+          printf "IO.out_string:\t\t\t\t\t\t## method definition\n";
           printf "\t\t\t\t\t\tpushq %%rbp\n";
           printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
           printf "\t\t\t\t\t\tmovq 16(%%rbp), %%r12\n";
@@ -1990,6 +1876,8 @@ let main () = begin
           printf "\t\t\t\t\t\tret\n"
         in
         let str_concat () =
+          printf ".globl String.concat\n";
+          printf "String.concat:\t\t\t\t\t\t## method definition\n";
           printf "\t\t\t\t\t\tpushq %%rbp\n";
           printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
           printf "\t\t\t\t\t\tmovq 16(%%rbp), %%r12\n";
@@ -2024,6 +1912,8 @@ let main () = begin
           printf "\t\t\t\t\t\tret\n"
         in
         let str_length () =
+          printf ".globl String.length\n";
+          printf "String.length:\t\t\t\t\t\t## method definition\n";
           printf "\t\t\t\t\t\tpushq %%rbp\n";
           printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
           printf "\t\t\t\t\t\tmovq 16(%%rbp), %%r12\n";
@@ -2055,6 +1945,8 @@ let main () = begin
           printf "\t\t\t\t\t\tret\n"
         in
         let str_substr () =
+          printf ".globl String.substr\n";
+          printf "String.substr:\t\t\t\t\t\t## method definition\n";
           printf "\t\t\t\t\t\tpushq %%rbp\n";
           printf "\t\t\t\t\t\tmovq %%rsp, %%rbp\n";
           printf "\t\t\t\t\t\tmovq 16(%%rbp), %%r12\n";
@@ -2110,15 +2002,17 @@ let main () = begin
           print_tab ();
           push_stack "%rbp";
           print_tab ();
+          mov_op "%rsp" "%rbp";
+          print_tab ();
           stack_temps "1";
           print_tab ();
           sub_op "$8" "%rsp";
           print_tab ();
           ret_addr_handling ();
           print_tab ();
-          mov_op ("$"^(string_of_int (3 + number_of_feats))) "%rsi" ;
+          mov_op ("$"^(string_of_int (3 + number_of_feats))) "%rdi" ;
           print_tab ();
-          mov_op "$8" "%rdi";
+          mov_op "$8" "%rsi";
           print_tab ();
           call_op "calloc";
           print_tab ();
@@ -2129,7 +2023,7 @@ let main () = begin
           print_tab ();
           mov_op ("$" ^ string_of_int c_tag) "0(%r12)"; 
           print_tab ();
-          mov_op ("$"^(string_of_int number_of_feats)) "8(%r12)";
+          mov_op "$3" "8(%r12)";
           print_tab ();
           let vtbl = (myclass^"..vtable") in (* Dynamically set *)
           mov_op ("$" ^ vtbl) "16(%r12)";
@@ -2159,7 +2053,7 @@ let main () = begin
           print_tab ();
           return_op;
       in
-      let generate_tac_for_method class_dot_method ast =
+      let generate_tac_for_method class_dot_method ast () =
         (* Split class_dot_method into class_name and method_name *)
         let class_name, method_name =
           match String.split_on_char '.' class_dot_method with
@@ -2178,7 +2072,7 @@ let main () = begin
               | Method ((_, metho_name), forms, (_, metho_type), metho_bod) when metho_name = method_name ->
                   (* Found the method; generate TAC *)
                   let instr,__= convert_expr metho_bod None in 
-                  tac_instructions := instr
+                  tac_instructions := !tac_instructions @ instr
               | _ -> ()
             ) feats
         ) ast;
@@ -2186,34 +2080,59 @@ let main () = begin
         (* Return the collected TAC instructions *)
         !tac_instructions
       in
-      let initial_Main_main () = (* Check the global table work *)
-          let classname = "Main" in
-          let classfunc = "main" in
-          global_setup (classname^"."^classfunc);
-          actual_tbl (classname^"."^classfunc);
-          custom_comment "method definition";
-          push_stack "%rbp";
-          mov_op "16(%rsp)" "%r12"; (* might need re-work *)
-          stack_temps "x"; (* dynamic setup *)
-          sub_op "$16" "%rsp";
-          ret_addr_handling ();
-          (* Read through the class_map
-              print out the self comments
-          *)
-          custom_comment "method body begins";
-          List.iter (tac_to_asm) (generate_tac_for_method (classname^"."^classfunc) ast);
-          (* Read the AST and continue accordingly *)
-          (* Do body work *)
-          (* push new int, value and move to the stack *)
-          (* when doing conditional or methods go to a l3 *)
-          (* changed for the end label of every function *)
-          global_setup (classname^"."^classfunc^".end");
-          custom_setup (classname^"."^classfunc^".end") "## method body ends";
-          ret_addr_handling ();
-          mov_op "%rbp" "%rsp";
-          pop_stack "%rbp";
-          return_op;
+      let initial_Main_main check = (* Check the global table work *)(
+      let rec process_instr_set instr_set =
+        match instr_set with
+        | [] -> [] (* Base case: an empty list returns an empty list *)
+        | instr :: rest -> 
+            let current_asm = tac_to_asm instr in
+            current_asm @ process_instr_set rest
         in
+        let classname = "Main" in
+        let classfunc = "main" in
+        let main_starting_labels  = [Comment(".globl "^classname^"."^classfunc^"\n");
+          Comment(classname^"."^classfunc^":\t\t\t\t\t\t## method definition\n")]
+        in
+        let setup = 
+          [Push("\t\t\tpushq %rbp\n");
+            Mov("\t\t\tmovq %rsp, %rbp\n");
+            Mov("\t\t\tmovq 16(%rbp), %r12\n");
+            Comment("\t\t\t##stack room for temporaries: 2\n");
+            Mov("\t\t\tmovq $16,%r14\n");
+            Sub("\t\t\tsubq %r14, %rsp\n");
+            Comment("\t\t\t## return address handling\n");
+            Comment("\t\t\t## method body begins\n")] in
+        let instr_set = generate_tac_for_method (classname^"."^classfunc) ast () in
+        let processed = process_instr_set instr_set in
+        (* Read the AST and continue accordingly *)
+        (* Do body work *)
+        (* push new int, value and move to the stack *)
+        (* when doing conditional or methods go to a l3 *)
+        (* changed for the end label of every function *)
+        let offset_vtable =
+          [Push("\t\t\tpushq %r13\n");
+          Push("\t\t\tpushq %r12\n");
+          Comment("\t\t\t## obtain vtable for self object of type Main\n");
+          Mov("\t\t\tmovq 16(%r12), %r14\n");
+          (*has to be change for dynamic disptach*)
+          Comment("\t\t\t## look upt out_int at offest 7 in vtable\n");
+          Mov("\t\t\tmovq 56(%r14), %r14\n");
+          Call("\t\t\tcall *%r14\n");
+          Add("\t\t\taddq $16, %rsp\n");
+          Pop("\t\t\tpopq %rbp\n");
+          Pop("\t\t\tpopq %r12\n");]in
+        let main_end = 
+          [End_label(".globl Main.main.end\n");
+          End_label("Main.main.end:\t\t## method body ends\n");
+          Comment("\t\t\t## return address handling\n");
+          Mov("\t\t\tmovq %rbp, %rsp\n");
+          Pop("\t\t\tpopq %rbp\n");
+          Ret("\t\t\tret\n");
+          ] in
+        let printing = main_starting_labels @ setup @ processed @ offset_vtable @ main_end in
+        (* Treat comments differently *)
+        printing
+        ) in
         (* For now we will print the raw assemble for thing that never change*)
         let new_base_class_build class_name = 
           match class_name with
@@ -2277,8 +2196,6 @@ let main () = begin
         (* hard coded for now needs to be fixed later on*)
         let build_methods class_dot_method = 
           printf "\t\t\t\t\t## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
-          printf ".globl %s\n" class_dot_method;
-          printf "%s:\t\t\t## method definition\n" class_dot_method;
           (match class_dot_method with 
           | "Object.abort" -> 
             object_dot_abort ();
@@ -2295,7 +2212,8 @@ let main () = begin
           | "IO.out_string" ->
             io_dot_outstring ();
           | "Main.main" ->
-            initial_Main_main () ();
+            let bruh = initial_Main_main 0 in 
+            List.iter (fun x -> printf "%s" (string_of_asm x) ) bruh
           | "String.concat" ->
             str_concat ();
           | "String.length" ->
@@ -2475,6 +2393,11 @@ eq_handler:             ## helper function for =
 			je eq_int
                         movq $6, %r14
                         cmpq %r14, %r13
+			je eq_string
+                        ## otherwise, use pointer comparison
+                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14
+                        cmpq %r14, %r13
 			je eq_true
 .globl eq_false
 eq_false:               ## not equal
@@ -2509,6 +2432,19 @@ eq_int:                 ## two Ints
                         cmpq %r14, %r13
 			je eq_true
                         jmp eq_false
+.globl eq_string
+eq_string:              ## two Strings
+                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14
+                        movq 24(%r13), %r13
+                        movq 24(%r14), %r14
+                        
+  movq %r13, %rdi
+  movq %r14, %rsi
+  call strcmp 
+  cmp $0, %eax
+  je eq_true
+                        jmp eq_false
 .globl eq_end
 eq_end:                 ## return address handling
                         movq %rbp, %rsp
@@ -2541,6 +2477,11 @@ le_handler:             ## helper function for <=
                         cmpq %r14, %r13
 			je le_int
                         movq $6, %r14
+                        cmpq %r14, %r13
+			je le_string
+                        ## for non-primitives, equality is our only hope
+                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14
                         cmpq %r14, %r13
 			je le_true
 .globl le_false
@@ -2576,6 +2517,19 @@ le_int:                 ## two Ints
                         cmpl %r14d, %r13d
 			jle le_true
                         jmp le_false
+.globl le_string
+le_string:              ## two Strings
+                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14
+                        movq 24(%r13), %r13
+                        movq 24(%r14), %r14
+                        
+  movq %r13, %rdi
+  movq %r14, %rsi
+  call strcmp 
+  cmp $0, %eax
+  jle le_true
+                        jmp le_false
 .globl le_end
 le_end:                 ## return address handling
                         movq %rbp, %rsp
@@ -2607,6 +2561,8 @@ lt_handler:             ## helper function for <
 			je lt_int
                         movq $6, %r14
                         cmpq %r14, %r13
+			je lt_string
+                        ## for non-primitives, < is always false
 .globl lt_false
 lt_false:               ## not less than
                         ## new Bool
@@ -2640,6 +2596,19 @@ lt_int:                 ## two Ints
                         cmpl %r14d, %r13d
 			jl lt_true
                         jmp lt_false
+.globl lt_string
+lt_string:              ## two Strings
+                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14
+                        movq 24(%r13), %r13
+                        movq 24(%r14), %r14
+                        
+  movq %r13, %rdi
+  movq %r14, %rsi
+  call strcmp 
+  cmp $0, %eax
+  jl lt_true
+                        jmp lt_false
 .globl lt_end
 lt_end:                 ## return address handling
                         movq %rbp, %rsp
@@ -2649,9 +2618,19 @@ lt_end:                 ## return address handling
 .globl start
 start:                  ## program begins here
                         .globl main
-			.type main, @function|} in
-      let cool_outstr = {|
-      .globl cooloutstr
+			.type main, @function
+main:
+                        movq $Main..new, %r14
+                        pushq %rbp
+                        call *%r14
+                        pushq %rbp
+                        pushq %r13
+                        movq $Main.main, %r14
+                        call *%r14
+                        movl $0, %edi
+			call exit
+      |} in
+      let cool_outstr = {|.globl cooloutstr
 	.type	cooloutstr, @function
 cooloutstr:
 .LFB0:

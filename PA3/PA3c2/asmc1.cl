@@ -11,6 +11,6 @@ class Main inherits IO {
 		x <- 5;
 		out_int(x+5);
 		out_string("\n");
-		}
+		}7 9 
 	};
 };
