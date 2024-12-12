@@ -472,30 +472,6 @@ Main.main:						## method definition
 			movq 0(%rbp), %r14
 			addq %r14, %r13
 			movq %r13, 0(%rbp)
-			## new Int
-			pushq %rbp
-			pushq %r12
-			movq $Int..new, %r14
-			call *%r14
-			popq %r12
-			popq %rbp
-			movq $4, %r14
-			movq %r14, 24(%r13)
-			movq 0(%rbp), %r14
-			addq %r14, %r13
-			movq %r13, 0(%rbp)
-			## new Int
-			pushq %rbp
-			pushq %r12
-			movq $Int..new, %r14
-			call *%r14
-			popq %r12
-			popq %rbp
-			movq $7, %r14
-			movq %r14, 24(%r13)
-			movq 0(%rbp), %r14
-			addq %r14, %r13
-			movq %r13, 0(%rbp)
 			## need to fix the self dispatch
 			pushq %r13
 			pushq %r12

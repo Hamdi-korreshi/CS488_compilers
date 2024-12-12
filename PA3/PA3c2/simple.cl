@@ -2,8 +2,7 @@ class Main inherits IO {
 	main() : Object
 	{
 		{
-		out_int(3+5+4+6+7);
-		8;
+		out_int(3+5);
 		}
 	};
 };
