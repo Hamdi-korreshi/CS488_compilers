@@ -457,6 +457,8 @@ Main.main:						## method definition
 			subq %r14, %rsp
 			## return address handling
 			## method body begins
+			pushq %r12
+            pushq %rbp
 			## new Int
 			pushq %rbp
 			pushq %r12
@@ -489,7 +491,6 @@ Main.main:						## method definition
 			movq $Int..new, %r14
 			call *%r14
 			popq %r12
-			popq %rbp
 			movq 0(%rbp), %r14
 			movq %r14, 24(%r13)
 			## need to fix the self dispatch
@@ -501,6 +502,8 @@ Main.main:						## method definition
 			movq 56(%r14), %r14
 			call *%r14
 			addq $16, %rsp
+			popq %rbp
+			popq %r12
 .globl Main.main.end
 Main.main.end:		## method body ends
 			## return address handling

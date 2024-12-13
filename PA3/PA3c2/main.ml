@@ -1,5 +1,5 @@
 (* Keywords:
-TODO
+TODO - fix main..new the optimzations we put in make it unstable
 generating *)
 open Printf
 type static_type =  (*static type of cool expression*)
@@ -1394,6 +1394,7 @@ let main () = begin
             printf ""
         in *)
         (* TODO: Print asm instead of tac code *)
+        let offset = ref 8 in
         let rec tac_to_asm instr =
         match instr with
         | TAC_Assign_String (var, value) ->
@@ -1416,20 +1417,29 @@ let main () = begin
           let class_inst = new_class_instance "Int" var in
           let stror_to_mem = 
             [Mov("\t\t\tmovq $"^string_of_int value^", %r14\n");
-            Mov("\t\t\tmovq %r14, 24(%r13)\n");] in
+            Mov("\t\t\tmovq %r14, 24(%r13)\n");
+            Mov("\t\t\tmovq 24(%r13), %r13\n");
+            Mov("\t\t\tmovq %r13, "^string_of_int(!offset*(-1))^"(%rbp)\n");] in
+          offset := !offset + 8; 
           class_inst @ stror_to_mem;
         | TAC_Assign_Bool (var, value) ->
-          let class_inst = new_class_instance "String" var in
+          let class_inst = new_class_instance "Bool" var in
           let stror_to_mem = 
             [Mov("\t\t\tmovq $String8, %r14\n");
             Mov("\t\t\tmovq %r14, 24(%r13)\n");] in
           class_inst @ stror_to_mem;
         | TAC_Assign_Var (var, src_var) ->
-          [Mov("\t\t\tneed to fix assign\n")]
+          [Mov("\t\t\t## need to fix assign\n")]
         | TAC_Assign_Plus (var, e1, e2) ->
-          [Mov("\t\t\tmovq 0(%rbp), %r14\n");
+          let assign_plus = [Mov("\t\t\tmovq "^string_of_int((!offset-8)*(-1))^"(%rbp), %r14\n");
+          Mov("\t\t\tmovq "^string_of_int((!offset-16)*(-1))^"(%rbp), %r13\n");
           Add("\t\t\taddq %r14, %r13\n");
-          Mov("\t\t\tmovq %r13, 0(%rbp)\n");]
+          Mov("\t\t\tmovq %r13, "^string_of_int((!offset-24)*(-1))^"(%rbp)\n");] in
+          offset := !offset - 24;
+          let class_inst = new_class_instance "Int" var in
+          let place_temp = [Mov("\t\t\tmovq 0(%rbp), %r14\n");
+          Mov("\t\t\tmovq %r14, 24(%r13)\n");] in
+          assign_plus @ class_inst @ place_temp
         | TAC_Assign_Minus (var, e1, e2) ->
           [Mov("\t\t\tneed to fix times\n")]
         | TAC_Assign_Times (var, e1, e2) ->
@@ -2118,9 +2128,7 @@ let main () = begin
           Comment("\t\t\t## look upt out_int at offest 7 in vtable\n");
           Mov("\t\t\tmovq 56(%r14), %r14\n");
           Call("\t\t\tcall *%r14\n");
-          Add("\t\t\taddq $16, %rsp\n");
-          Pop("\t\t\tpopq %rbp\n");
-          Pop("\t\t\tpopq %r12\n");]in
+          Add("\t\t\taddq $16, %rsp\n");]in
         let main_end = 
           [End_label(".globl Main.main.end\n");
           End_label("Main.main.end:\t\t## method body ends\n");
