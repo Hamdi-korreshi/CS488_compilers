@@ -1,0 +1,1309 @@
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |						## ;;;;;;;;;;;;;;;;;;
+.globl Bool..vtable						.globl Bool..vtable
+Bool..vtable:           ## virtual function table for Bool    |	Bool..vtable:		 ## virtual function table for Bool
+                        .quad string1			      |						.quad string1
+                        .quad Bool..new			      |						.quad Bool..new
+                        .quad Object.abort		      |						.quad Object.abort
+                        .quad Object.copy		      |						.quad Object.copy
+                        .quad Object.type_name		      |						.quad Object.type_nam
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |						## ;;;;;;;;;;;;;;;;;;
+.globl IO..vtable						.globl IO..vtable
+IO..vtable:             ## virtual function table for IO      |	IO..vtable:		 ## virtual function table for IO
+                        .quad string2			      |						.quad string2
+                        .quad IO..new			      |						.quad IO..new
+                        .quad Object.abort		      |						.quad Object.abort
+                        .quad Object.copy		      |						.quad Object.copy
+                        .quad Object.type_name		      |						.quad Object.type_nam
+                        .quad IO.in_int			      |						.quad IO.in_int
+                        .quad IO.in_string		      |						.quad IO.in_string
+                        .quad IO.out_int		      |						.quad IO.out_int
+                        .quad IO.out_string		      |						.quad IO.out_string
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |						## ;;;;;;;;;;;;;;;;;;
+.globl Int..vtable						.globl Int..vtable
+Int..vtable:            ## virtual function table for Int     |	Int..vtable:		 ## virtual function table for Int
+                        .quad string3			      |						.quad string3
+                        .quad Int..new			      |						.quad Int..new
+                        .quad Object.abort		      |						.quad Object.abort
+                        .quad Object.copy		      |						.quad Object.copy
+                        .quad Object.type_name		      |						.quad Object.type_nam
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |						## ;;;;;;;;;;;;;;;;;;
+.globl Main..vtable						.globl Main..vtable
+Main..vtable:           ## virtual function table for Main    |	Main..vtable:		 ## virtual function table for Main
+                        .quad string4			      |						.quad string4
+                        .quad Main..new			      |						.quad Main..new
+                        .quad Object.abort		      |						.quad Object.abort
+                        .quad Object.copy		      |						.quad Object.copy
+                        .quad Object.type_name		      |						.quad Object.type_nam
+                        .quad IO.in_int			      |						.quad IO.in_int
+                        .quad IO.in_string		      |						.quad IO.in_string
+                        .quad IO.out_int		      |						.quad IO.out_int
+                        .quad IO.out_string		      |						.quad IO.out_string
+                        .quad Main.main			      |						.quad Main.main
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |						## ;;;;;;;;;;;;;;;;;;
+.globl Object..vtable						.globl Object..vtable
+Object..vtable:         ## virtual function table for Object  |	Object..vtable:		 ## virtual function table for Object
+                        .quad string5			      |						.quad string5
+                        .quad Object..new		      |						.quad Object..new
+                        .quad Object.abort		      |						.quad Object.abort
+                        .quad Object.copy		      |						.quad Object.copy
+                        .quad Object.type_name		      |						.quad Object.type_nam
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |						## ;;;;;;;;;;;;;;;;;;
+.globl String..vtable						.globl String..vtable
+String..vtable:         ## virtual function table for String  |	String..vtable:		 ## virtual function table for String
+                        .quad string6			      |						.quad string6
+                        .quad String..new		      |						.quad String..new
+                        .quad Object.abort		      |						.quad Object.abort
+                        .quad Object.copy		      |						.quad Object.copy
+                        .quad Object.type_name		      |						.quad Object.type_nam
+                        .quad String.concat		      |						.quad String.concat
+                        .quad String.length		      |						.quad String.length
+                        .quad String.substr		      |						.quad String.substr
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |							## ;;;;;;;;;;
+.globl Bool..new						.globl Bool..new
+Bool..new:              ## constructor for Bool		      |	Bool..new:				##constructor for Boo
+                        pushq %rbp			      |							pushq %rbp
+                        movq %rsp, %rbp			      |							movq %rsp, %r
+                        ## stack room for temporaries: 1      |							## stack room
+                        movq $8, %r14			      |							movq $8, %r14
+                        subq %r14, %rsp			      |							subq %r14, %r
+                        ## return address handling	      |							## return add
+                        movq $4, %r12			      |							movq $4, %r12
+                        movq $8, %rsi			      |							movq $8, %rsi
+			movq %r12, %rdi			      |							movq %r12, %r
+			call calloc			      |							call calloc
+			movq %rax, %r12			      |							movq %rax, %r
+                        ## store class tag, object size and v |							## store clas
+                        movq $0, %r14			      |							movq $0, %r14
+                        movq %r14, 0(%r12)		      |							movq %r14, 0(
+                        movq $4, %r14			      |							movq $4, %r14
+                        movq %r14, 8(%r12)		      |							movq %r14, 8(
+                        movq $Bool..vtable, %r14	      |							movq $Bool..v
+                        movq %r14, 16(%r12)		      |							movq %r14, 16
+                        ## initialize attributes	      |							## initialize
+                        ## self[3] holds field (raw content)  |							## self[3] ho
+                        movq $0, %r13			      |							movq $0, %r13
+                        movq %r13, 24(%r12)		      |							movq %r13, 24
+                        ## self[3] (raw content) initializer  |							## self[3] (r
+                        movq %r12, %r13			      |							movq %r12, %r
+                        ## return address handling	      |							## return add
+                        movq %rbp, %rsp			      |							movq %rbp, %r
+                        popq %rbp			      |							popq %rbp
+                        ret				      |							ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |							## ;;;;;;;;;;
+.globl IO..new							.globl IO..new
+IO..new:                ## constructor for IO		      |	IO..new:				##constructor for IO
+                        pushq %rbp			      |							pushq %rbp
+                        movq %rsp, %rbp			      |							movq %rsp, %r
+                        ## stack room for temporaries: 1      |							## stack room
+                        movq $8, %r14			      |							movq $8, %r14
+                        subq %r14, %rsp			      |							subq %r14, %r
+                        ## return address handling	      |							## return add
+                        movq $3, %r12			      |							movq $3, %r12
+                        movq $8, %rsi			      |							movq $8, %rsi
+			movq %r12, %rdi			      |							movq %r12, %r
+			call calloc			      |							call calloc
+			movq %rax, %r12			      |							movq %rax, %r
+                        ## store class tag, object size and v |							## store clas
+                        movq $10, %r14			      |							movq $10, %r1
+                        movq %r14, 0(%r12)		      |							movq %r14, 0(
+                        movq $3, %r14			      |							movq $3, %r14
+                        movq %r14, 8(%r12)		      |							movq %r14, 8(
+                        movq $IO..vtable, %r14		      |							movq $IO..vta
+                        movq %r14, 16(%r12)		      |							movq %r14, 16
+                        movq %r12, %r13			      |							movq %r12, %r
+                        ## return address handling	      |							## return add
+                        movq %rbp, %rsp			      |							movq %rbp, %r
+                        popq %rbp			      |							popq %rbp
+                        ret				      |							ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |							## ;;;;;;;;;;
+.globl Int..new							.globl Int..new
+Int..new:               ## constructor for Int		      |	Int..new:				##constructor for Int
+                        pushq %rbp			      |							pushq %rbp
+                        movq %rsp, %rbp			      |							movq %rsp, %r
+                        ## stack room for temporaries: 1      |							## stack room
+                        movq $8, %r14			      |							movq $8, %r14
+                        subq %r14, %rsp			      |							subq %r14, %r
+                        ## return address handling	      |							## return add
+                        movq $4, %r12			      |							movq $4, %r12
+                        movq $8, %rsi			      |							movq $8, %rsi
+			movq %r12, %rdi			      |							movq %r12, %r
+			call calloc			      |							call calloc
+			movq %rax, %r12			      |							movq %rax, %r
+                        ## store class tag, object size and v |							## store clas
+                        movq $1, %r14			      |							movq $1, %r14
+                        movq %r14, 0(%r12)		      |							movq %r14, 0(
+                        movq $4, %r14			      |							movq $4, %r14
+                        movq %r14, 8(%r12)		      |							movq %r14, 8(
+                        movq $Int..vtable, %r14		      |							movq $Int..vt
+                        movq %r14, 16(%r12)		      |							movq %r14, 16
+                        ## initialize attributes	      |							## initialize
+                        ## self[3] holds field (raw content)  |							## self[3] ho
+                        movq $0, %r13			      |							movq $0, %r13
+                        movq %r13, 24(%r12)		      |							movq %r13, 24
+                        ## self[3] (raw content) initializer  |							## self[3] (r
+                        movq %r12, %r13			      |							movq %r12, %r
+                        ## return address handling	      |							## return add
+                        movq %rbp, %rsp			      |							movq %rbp, %r
+                        popq %rbp			      |							popq %rbp
+                        ret				      |							ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |							## ;;;;;;;;;;
+.globl Main..new						.globl Main..new
+Main..new:              ## constructor for Main		      |	Main..new:				## constructor for Ma
+                        pushq %rbp			      |							push %rbp
+                        movq %rsp, %rbp			      |							movq %rsp, %r
+                        ## stack room for temporaries: 1      |							## stack room
+                        movq $8, %r14			      |							subq $8, %rsp
+                        subq %r14, %rsp			      |							## return add
+                        ## return address handling	      |							movq $3, %rdi
+                        movq $3, %r12			      |							movq $8, %rsi
+                        movq $8, %rsi			      |							call calloc
+			movq %r12, %rdi			      |							movq %rax, %r
+			call calloc			      |							## store clas
+			movq %rax, %r12			      |							movq $11, 0(%
+                        ## store class tag, object size and v |							movq $3, 8(%r
+                        movq $11, %r14			      |							movq $Main..v
+                        movq %r14, 0(%r12)		      |							## return add
+                        movq $3, %r14			      |							movq %rbp, %r
+                        movq %r14, 8(%r12)		      |							pop %rbp
+                        movq $Main..vtable, %r14	      |							ret
+                        movq %r14, 16(%r12)		      |							## ;;;;;;;;;;
+                        movq %r12, %r13			      <
+                        ## return address handling	      <
+                        movq %rbp, %rsp			      <
+                        popq %rbp			      <
+                        ret				      <
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; <
+.globl Object..new						.globl Object..new
+Object..new:            ## constructor for Object	      |	Object..new:				##constructor for Obj
+                        pushq %rbp			      |							## constructo
+                        movq %rsp, %rbp			      |							pushq %rbp
+                        ## stack room for temporaries: 1      |							movq %rsp, %r
+                        movq $8, %r14			      |							## stack room
+                        subq %r14, %rsp			      |							movq $8, %r14
+                        ## return address handling	      |							subq %r14, %r
+                        movq $3, %r12			      |							## return add
+                        movq $8, %rsi			      |							movq $3, %r12
+			movq %r12, %rdi			      |							movq $8, %rsi
+			call calloc			      |							movq %r12, %r
+			movq %rax, %r12			      |							call calloc
+                        ## store class tag, object size and v |							movq %rax, %r
+                        movq $12, %r14			      |							## store clas
+                        movq %r14, 0(%r12)		      |							movq $12, %r1
+                        movq $3, %r14			      |							movq %r14, 0(
+                        movq %r14, 8(%r12)		      |							movq $3, %r14
+                        movq $Object..vtable, %r14	      |							movq %r14, 8(
+                        movq %r14, 16(%r12)		      |							movq $Object.
+                        movq %r12, %r13			      |							movq %r14, 16
+                        ## return address handling	      |							movq %r12, %r
+                        movq %rbp, %rsp			      |							## return add
+                        popq %rbp			      |							movq %rbp, %r
+                        ret				      |							popq %rbp
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |							ret
+							      >							## ;;;;;;;;;;
+.globl String..new						.globl String..new
+String..new:            ## constructor for String	      |	String..new:				##constructor for Str
+                        pushq %rbp			      |							pushq %rbp
+                        movq %rsp, %rbp			      |							movq %rsp, %r
+                        ## stack room for temporaries: 1      |							## stack room
+                        movq $8, %r14			      |							movq $8, %r14
+                        subq %r14, %rsp			      |							subq %r14, %r
+                        ## return address handling	      |							## return add
+                        movq $4, %r12			      |							movq $4, %r12
+                        movq $8, %rsi			      |							movq $8, %rsi
+			movq %r12, %rdi			      |							movq %r12, %r
+			call calloc			      |							call calloc
+			movq %rax, %r12			      |							movq %rax, %r
+                        ## store class tag, object size and v |							## store clas
+                        movq $3, %r14			      |							movq $3, %r14
+                        movq %r14, 0(%r12)		      |							movq %r14, 0(
+                        movq $4, %r14			      |							movq $4, %r14
+                        movq %r14, 8(%r12)		      |							movq %r14, 8(
+                        movq $String..vtable, %r14	      |							movq $String.
+                        movq %r14, 16(%r12)		      |							movq %r14, 16
+                        ## initialize attributes	      |							## initialize
+                        ## self[3] holds field (raw content)  |							## self[3] ho
+                        movq $the.empty.string, %r13	      |							movq $the.emp
+                        movq %r13, 24(%r12)		      |							movq %r13, 24
+                        ## self[3] (raw content) initializer  |							## self[3] (r
+                        movq %r12, %r13			      |							movq %r12, %r
+                        ## return address handling	      |							## return add
+                        movq %rbp, %rsp			      |							movq %rbp, %r
+                        popq %rbp			      |							popq %rbp
+                        ret				      |							ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |						## ;;;;;;;;;;;;;;;;;;
+.globl Object.abort						.globl Object.abort
+Object.abort:           ## method definition		      |	Object.abort:						## me
+                        pushq %rbp			      |							pushq %rbp
+                        movq %rsp, %rbp			      |							movq %rsp, %r
+                        movq 16(%rbp), %r12		      |							movq 16(%rbp)
+                        ## stack room for temporaries: 1      |							## stack room
+                        movq $8, %r14			      |							movq $8, %r14
+                        subq %r14, %rsp			      |							subq %r14, %r
+                        ## return address handling	      |							## return add
+                        ## method body begins		      |							## method bod
+                        movq $string7, %r13		      |							movq $string7
+                        movq %r13, %rdi			      |							movq %r13, %r
+			call cooloutstr			      |							call coolouts
+                        movl $0, %edi			      |							movl $0, %edi
+			call exit			      |							call exit
+.globl Object.abort.end						.globl Object.abort.end
+Object.abort.end:       ## method body ends		      |	Object.abort.end:
+                        ## return address handling	      |							## method bod
+                        movq %rbp, %rsp			      |							## return add
+                        popq %rbp			      |							movq %rbp, %r
+                        ret				      |							popq %rbp
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |							ret
+							      >						## ;;;;;;;;;;;;;;;;;;
+.globl Object.copy						.globl Object.copy
+Object.copy:            ## method definition		      |	Object.copy:						## me
+                        pushq %rbp			      |							pushq %rbp
+                        movq %rsp, %rbp			      |							movq %rsp, %r
+                        movq 16(%rbp), %r12		      |							movq 16(%rbp)
+                        ## stack room for temporaries: 1      |							## stack room
+                        movq $8, %r14			      |							movq $8, %r14
+                        subq %r14, %rsp			      |							subq %r14, %r
+                        ## return address handling	      |							## return add
+                        ## method body begins		      |							## method bod
+                        movq 8(%r12), %r14		      |							movq 8(%r12),
+                        movq $8, %rsi			      |							movq $8, %rsi
+			movq %r14, %rdi			      |							movq %r14, %r
+			call calloc			      |							call calloc
+			movq %rax, %r13			      |							movq %rax, %r
+                        pushq %r13			      |							pushq %r13
+.globl l1							.globl l1
+l1:                     cmpq $0, %r14			      |	l1:						cmpq $0, %r14
+			je l2				      |							je l2
+                        movq 0(%r12), %r15		      |							movq 0(%r12),
+                        movq %r15, 0(%r13)		      |							movq %r15, 0(
+                        movq $8, %r15			      |							movq $8, %r15
+                        addq %r15, %r12			      |							addq %r15, %r
+                        addq %r15, %r13			      |							addq %r15, %r
+                        movq $1, %r15			      |							movq $1, %r15
+                        subq %r15, %r14			      |							subq %r15, %r
+                        jmp l1				      |							jmp l1
+.globl l2							.globl l2
+l2:                     ## done with Object.copy loop	      |	l2:						## done with 
+                        popq %r13			      |							popq %r13
+.globl Object.copy.end						.globl Object.copy.end
+Object.copy.end:        ## method body ends		      |	Object.copy.end:					
+                        ## return address handling	      |							## return add
+                        movq %rbp, %rsp			      |							movq %rbp, %r
+                        popq %rbp			      |							popq %rbp
+                        ret				      |							ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |						## ;;;;;;;;;;;;;;;;;;
+.globl Object.type_name						.globl Object.type_name
+Object.type_name:       ## method definition		      |	Object.type_name:					
+                        pushq %rbp			      |							pushq %rbp
+                        movq %rsp, %rbp			      |							movq %rsp, %r
+                        movq 16(%rbp), %r12		      |							movq 16(%rbp)
+                        ## stack room for temporaries: 1      |							## stack room
+                        movq $8, %r14			      |							movq $8, %r14
+                        subq %r14, %rsp			      |							subq %r14, %r
+                        ## return address handling	      |							## return add
+                        ## method body begins		      |							## method bod
+                        ## new String			      |							## new String
+                        pushq %rbp			      |							pushq %rbp
+                        pushq %r12			      |							pushq %r12
+                        movq $String..new, %r14		      |							movq $String.
+                        call *%r14			      |							call *%r14
+                        popq %r12			      |							popq %r12
+                        popq %rbp			      |							popq %rbp
+                        ## obtain vtable for self object      |							## obtain vta
+                        movq 16(%r12), %r14		      |							movq 16(%r12)
+                        ## look up type name at offset 0 in v |							## look up ty
+                        movq 0(%r14), %r14		      |							movq 0(%r14),
+                        movq %r14, 24(%r13)		      |							movq %r14, 24
+.globl Object.type_name.end					.globl Object.type_name.end
+Object.type_name.end:   ## method body ends		      |	Object.type_name.end:					
+                        ## return address handling	      |							## return add
+                        movq %rbp, %rsp			      |							movq %rbp, %r
+                        popq %rbp			      |							popq %rbp
+                        ret				      |							ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |						## ;;;;;;;;;;;;;;;;;;
+.globl IO.in_int						.globl IO.in_int
+IO.in_int:              ## method definition		      |	IO.in_int:						## me
+                        pushq %rbp			      |							pushq %rbp
+                        movq %rsp, %rbp			      |							movq %rsp, %r
+                        movq 16(%rbp), %r12		      |							movq 16(%rbp)
+                        ## stack room for temporaries: 1      |							## stack room
+                        movq $8, %r14			      |							movq $8, %r14
+                        subq %r14, %rsp			      |							subq %r14, %r
+                        ## return address handling	      |							## return add
+                        ## method body begins		      |							## method bod
+                        ## new Int			      |							## new Int
+                        pushq %rbp			      |							pushq %rbp
+                        pushq %r12			      |							pushq %r12
+                        movq $Int..new, %r14		      |							movq $Int..ne
+                        call *%r14			      |							call *%r14
+                        popq %r12			      |							popq %r12
+                        popq %rbp			      |							popq %rbp
+                        movq %r13, %r14			      |							movq %r13, %r
+                        movl	$1, %esi		      |							movl $1, %esi
+			movl $4096, %edi		      |							movl $4096, %
+			call calloc			      |							call calloc
+			pushq %rax			      |							pushq %rax
+			movq %rax, %rdi			      |							movq %rax, %r
+			movq $4096, %rsi 		      |							movq $4096, %
+			movq stdin(%rip), %rdx		      |							movq stdin(%r
+			call fgets 			      |							call fgets
+			popq %rdi 			      |							popq %rdi
+			movl $0, %eax			      |							movl $0, %eax
+			pushq %rax			      |							pushq %rax
+			movq %rsp, %rdx			      |							movq %rsp, %r
+			movq $percent.ld, %rsi		      |							movq $percent
+			call sscanf			      |							call sscanf
+			popq %rax			      |							popq %rax
+			movq $0, %rsi 			      |							movq $0, %rsi
+			cmpq $2147483647, %rax 		      |							cmpq $2147483
+			cmovg %rsi, %rax		      |							cmovg %rsi, %
+			cmpq $-2147483648, %rax 	      |							cmpq $-214748
+			cmovl %rsi, %rax		      |							cmovl %rsi, %
+			movq %rax, %r13			      |							movq %rax, %r
+                        movq %r13, 24(%r14)		      |							movq %r13, 24
+                        movq %r14, %r13			      |							movq %r14, %r
+.globl IO.in_int.end						.globl IO.in_int.end
+IO.in_int.end:          ## method body ends		      |	IO.in_int.end:						## me
+                        ## return address handling	      |							## return add
+                        movq %rbp, %rsp			      |							movq %rbp, %r
+                        popq %rbp			      |							popq %rbp
+                        ret				      |							ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |						## ;;;;;;;;;;;;;;;;;;
+.globl IO.in_string						.globl IO.in_string
+IO.in_string:           ## method definition		      |	IO.in_string:						## me
+                        pushq %rbp			      |							pushq %rbp
+                        movq %rsp, %rbp			      |							movq %rsp, %r
+                        movq 16(%rbp), %r12		      |							movq 16(%rbp)
+                        ## stack room for temporaries: 1      |							## stack room
+                        movq $8, %r14			      |							movq $8, %r14
+                        subq %r14, %rsp			      |							subq %r14, %r
+                        ## return address handling	      |							## return add
+                        ## method body begins		      |							## method bod
+                        ## new String			      |							## new String
+                        pushq %rbp			      |							pushq %rbp
+                        pushq %r12			      |							pushq %r12
+                        movq $String..new, %r14		      |							movq $String.
+                        call *%r14			      |							call *%r14
+                        popq %r12			      |							popq %r12
+                        popq %rbp			      |							popq %rbp
+                        movq %r13, %r14			      |							movq %r13, %r
+                        call coolgetstr 		      |							call coolgets
+			movq %rax, %r13			      |							movq %rax, %r
+                        movq %r13, 24(%r14)		      |							movq %r13, 24
+                        movq %r14, %r13			      |							movq %r14, %r
+.globl IO.in_string.end						.globl IO.in_string.end
+IO.in_string.end:       ## method body ends		      |	IO.in_string.end:					
+                        ## return address handling	      |							## return add
+                        movq %rbp, %rsp			      |							movq %rbp, %r
+                        popq %rbp			      |							popq %rbp
+                        ret				      |							ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |						## ;;;;;;;;;;;;;;;;;;
+.globl IO.out_int						.globl IO.out_int
+IO.out_int:             ## method definition		      |	IO.out_int:						## me
+                        pushq %rbp			      |							pushq %rbp
+                        movq %rsp, %rbp			      |							movq %rsp, %r
+                        movq 16(%rbp), %r12		      |							movq 16(%rbp)
+                        ## stack room for temporaries: 1      |							## stack room
+                        movq $8, %r14			      |							movq $8, %r14
+                        subq %r14, %rsp			      |							subq %r14, %r
+                        ## return address handling	      |							## return add
+                        ## fp[3] holds argument x (Int)	      |							## fp[3] hold
+                        ## method body begins		      |							## method bod
+                        movq 24(%rbp), %r14		      |							movq 24(%rbp)
+                        movq 24(%r14), %r13		      |							movq 24(%r14)
+                        movq $percent.d, %rdi		      |							movq $percent
+		movl %r13d, %eax			      |							movl %r13d, %
+		cdqe					      |							cdqe
+		movq %rax, %rsi				      |							movq %rax, %r
+			movl $0, %eax			      |							movl $0, %eax
+			call printf			      |							call printf
+                        movq %r12, %r13			      |							movq %r12, %r
+.globl IO.out_int.end						.globl IO.out_int.end
+IO.out_int.end:         ## method body ends		      |	IO.out_int.end:						## me
+                        ## return address handling	      |							## return add
+                        movq %rbp, %rsp			      |							movq %rbp, %r
+                        popq %rbp			      |							popq %rbp
+                        ret				      |							ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |						## ;;;;;;;;;;;;;;;;;;
+.globl IO.out_string						.globl IO.out_string
+IO.out_string:          ## method definition		      |	IO.out_string:						## me
+                        pushq %rbp			      |							pushq %rbp
+                        movq %rsp, %rbp			      |							movq %rsp, %r
+                        movq 16(%rbp), %r12		      |							movq 16(%rbp)
+                        ## stack room for temporaries: 1      |							## stack room
+                        movq $8, %r14			      |							movq $8, %r14
+                        subq %r14, %rsp			      |							subq %r14, %r
+                        ## return address handling	      |							## return add
+                        ## fp[3] holds argument x (String)    |							## fp[3] hold
+                        ## method body begins		      |							## method bod
+                        movq 24(%rbp), %r14		      |							movq 24(%rbp)
+                        movq 24(%r14), %r13		      |							movq 24(%r14)
+                        movq %r13, %rdi			      |							movq %r13, %r
+			call cooloutstr			      |							call coolouts
+                        movq %r12, %r13			      |							movq %r12, %r
+.globl IO.out_string.end					.globl IO.out_string.end
+IO.out_string.end:      ## method body ends		      |	IO.out_string.end:					
+                        ## return address handling	      |							## return add
+                        movq %rbp, %rsp			      |							movq %rbp, %r
+                        popq %rbp			      |							popq %rbp
+                        ret				      |							ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |						## ;;;;;;;;;;;;;;;;;;
+.globl Main.main						.globl Main.main
+Main.main:              ## method definition		      |	Main.main:						## me
+                        pushq %rbp			      |				pushq %rbp
+                        movq %rsp, %rbp			      |				movq %rsp, %rbp
+                        movq 16(%rbp), %r12		      |				movq 16(%rbp), %r12
+                        ## stack room for temporaries: 2      |				##stack room for temporaries: 2
+                        movq $16, %r14			      |				movq $16,%r14
+                        subq %r14, %rsp			      |				subq %r14, %rsp
+                        ## return address handling	      |				## return address handling
+                        ## method body begins		      |				## method body begins
+                        ## out_int(...)			      |				pushq %r12
+                        pushq %r12			      |				pushq %rbp
+                        pushq %rbp			      |				## new Int
+                        ## new Int			      |				pushq %rbp
+                        pushq %rbp			      |				pushq %r12
+                        pushq %r12			      |				movq $Int..new, %r14
+                        movq $Int..new, %r14		      |				call *%r14
+                        call *%r14			      |				popq %r12
+                        popq %r12			      |				popq %rbp
+                        popq %rbp			      |				movq 3, %r14
+                        movq $3, %r14			      |				movq %r14, 24(%r13)
+                        movq %r14, 24(%r13)		      |				movq 24(%r13), %r13
+                        movq 24(%r13), %r13		      |				movq %r13, -8(%rbp)
+                        movq %r13, 0(%rbp)		      |				## new Int
+                        ## new Int			      |				pushq %rbp
+                        pushq %rbp			      |				pushq %r12
+                        pushq %r12			      |				movq $Int..new, %r14
+                        movq $Int..new, %r14		      |				call *%r14
+                        call *%r14			      |				popq %r12
+                        popq %r12			      |				popq %rbp
+                        popq %rbp			      |				movq 5, %r14
+                        movq $5, %r14			      |				movq %r14, 24(%r13)
+                        movq %r14, 24(%r13)		      |				movq 24(%r13), %r13
+                        movq 24(%r13), %r13		      |				movq %r13, -16(%rbp)
+                        movq 0(%rbp), %r14		      |				movq -16(%rbp), %r14
+                        addq %r14, %r13			      |				movq -8(%rbp), %r13
+                        movq %r13, 0(%rbp)		      |				addq %r14, %r13
+                        ## new Int			      |				movq %r13, 0(%rbp)
+                        pushq %rbp			      |				## new Int
+                        pushq %r12			      |				pushq %rbp
+                        movq $Int..new, %r14		      |				pushq %r12
+                        call *%r14			      |				movq $Int..new, %r14
+                        popq %r12			      |				call *%r14
+                        popq %rbp			      |				popq %r12
+                        movq 0(%rbp), %r14		      |				popq %rbp
+                        movq %r14, 24(%r13)		      |				movq 0(%rbp), %r14
+                        pushq %r13			      |				movq %r14, 24(%r13)
+                        pushq %r12			      |				## need to fix the self dispatch
+                        ## obtain vtable for self object of t |				pushq %r13
+                        movq 16(%r12), %r14		      |				pushq %r12
+                        ## look up out_int() at offset 7 in v |				## obtain vtable for self object of t
+                        movq 56(%r14), %r14		      |				movq 16(%r12), %r14
+                        call *%r14			      |				## look upt out_int at offest 7 in vt
+                        addq $16, %rsp			      |				movq 56(%r14), %r14
+                        popq %rbp			      |				call *%r14
+                        popq %r12			      |				addq $16, %rsp
+							      >				popq %rbp
+							      >				popq %r12
+.globl Main.main.end						.globl Main.main.end
+Main.main.end:          ## method body ends		      |	Main.main.end:		## method body ends
+                        ## return address handling	      |				## return address handling
+                        movq %rbp, %rsp			      |				movq %rbp, %rsp
+                        popq %rbp			      |				popq %rbp
+                        ret				      |				ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |						## ;;;;;;;;;;;;;;;;;;
+.globl String.concat						.globl String.concat
+String.concat:          ## method definition		      |	String.concat:						## me
+                        pushq %rbp			      |							pushq %rbp
+                        movq %rsp, %rbp			      |							movq %rsp, %r
+                        movq 16(%rbp), %r12		      |							movq 16(%rbp)
+                        ## stack room for temporaries: 1      |							## stack room
+                        movq $8, %r14			      |							movq $8, %r14
+                        subq %r14, %rsp			      |							subq %r14, %r
+                        ## return address handling	      |							## return add
+                        ## fp[3] holds argument s (String)    |							## fp[3] hold
+                        ## method body begins		      |							## method bod
+                        ## new String			      |							## new String
+                        pushq %rbp			      |							pushq %rbp
+                        pushq %r12			      |							pushq %r12
+                        movq $String..new, %r14		      |							movq $String.
+                        call *%r14			      |							call *%r14
+                        popq %r12			      |							popq %r12
+                        popq %rbp			      |							popq %rbp
+                        movq %r13, %r15			      |							movq %r13, %r
+                        movq 24(%rbp), %r14		      |							movq 24(%rbp)
+                        movq 24(%r14), %r14		      |							movq 24(%r14)
+                        movq 24(%r12), %r13		      |							movq 24(%r12)
+                        movq %r13, %rdi			      |							movq %r13, %r
+			movq %r14, %rsi			      |							movq %r14, %r
+			call coolstrcat			      |							call coolstrc
+			movq %rax, %r13			      |							movq %rax, %r
+                        movq %r13, 24(%r15)		      |							movq %r13, 24
+                        movq %r15, %r13			      |							movq %r15, %r
+.globl String.concat.end					.globl String.concat.end
+String.concat.end:      ## method body ends		      |	String.concat.end:					
+                        ## return address handling	      |							## return add
+                        movq %rbp, %rsp			      |							movq %rbp, %r
+                        popq %rbp			      |							popq %rbp
+                        ret				      |							ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |						## ;;;;;;;;;;;;;;;;;;
+.globl String.length						.globl String.length
+String.length:          ## method definition		      |	String.length:						## me
+                        pushq %rbp			      |							pushq %rbp
+                        movq %rsp, %rbp			      |							movq %rsp, %r
+                        movq 16(%rbp), %r12		      |							movq 16(%rbp)
+                        ## stack room for temporaries: 1      |							## stack room
+                        movq $8, %r14			      |							movq $8, %r14
+                        subq %r14, %rsp			      |							subq %r14, %r
+                        ## return address handling	      |							## return add
+                        ## method body begins		      |							## method bod
+                        ## new Int			      |							## new Int
+                        pushq %rbp			      |							pushq %rbp
+                        pushq %r12			      |							pushq %r12
+                        movq $Int..new, %r14		      |							movq $Int..ne
+                        call *%r14			      |							call *%r14
+                        popq %r12			      |							popq %r12
+                        popq %rbp			      |							popq %rbp
+                        movq %r13, %r14			      |							movq %r13, %r
+                        movq 24(%r12), %r13		      |							movq 24(%r12)
+                        movq %r13, %rdi			      |							movq %r13, %r
+			movl $0, %eax			      |							movl $0, %eax
+			call coolstrlen			      |							call coolstrl
+			movq %rax, %r13			      |							movq %rax, %r
+                        movq %r13, 24(%r14)		      |							movq %r13, 24
+                        movq %r14, %r13			      |							movq %r14, %r
+.globl String.length.end					.globl String.length.end
+String.length.end:      ## method body ends		      |	String.length.end:					
+                        ## return address handling	      |							## return add
+                        movq %rbp, %rsp			      |							movq %rbp, %r
+                        popq %rbp			      |							popq %rbp
+                        ret				      |							ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |						## ;;;;;;;;;;;;;;;;;;
+.globl String.substr						.globl String.substr
+String.substr:          ## method definition		      |	String.substr:						## me
+                        pushq %rbp			      |							pushq %rbp
+                        movq %rsp, %rbp			      |							movq %rsp, %r
+                        movq 16(%rbp), %r12		      |							movq 16(%rbp)
+                        ## stack room for temporaries: 1      |							## stack room
+                        movq $8, %r14			      |							movq $8, %r14
+                        subq %r14, %rsp			      |							subq %r14, %r
+                        ## return address handling	      |							## return add
+                        ## fp[4] holds argument i (Int)	      |							## fp[4] hold
+                        ## fp[3] holds argument l (Int)	      |							## fp[3] hold
+                        ## method body begins		      |							## method bod
+                        ## new String			      |							## new String
+                        pushq %rbp			      |							pushq %rbp
+                        pushq %r12			      |							pushq %r12
+                        movq $String..new, %r14		      |							movq $String.
+                        call *%r14			      |							call *%r14
+                        popq %r12			      |							popq %r12
+                        popq %rbp			      |							popq %rbp
+                        movq %r13, %r15			      |							movq %r13, %r
+                        movq 24(%rbp), %r14		      |							movq 24(%rbp)
+                        movq 24(%r14), %r14		      |							movq 24(%r14)
+                        movq 32(%rbp), %r13		      |							movq 32(%rbp)
+                        movq 24(%r13), %r13		      |							movq 24(%r13)
+                        movq 24(%r12), %r12		      |							movq 24(%r12)
+                        movq %r12, %rdi			      |							movq %r12, %r
+			movq %r13, %rsi			      |							movq %r13, %r
+			movq %r14, %rdx			      |							movq %r14, %r
+			call coolsubstr			      |							call coolsubs
+			movq %rax, %r13			      |							movq %rax, %r
+                        cmpq $0, %r13			      |							cmpq $0, %r13
+			jne l3				      |							jne l3
+                        movq $string8, %r13		      |							movq $string8
+                        movq %r13, %rdi			      |							movq %r13, %r
+			call cooloutstr			      |							call coolouts
+                        movl $0, %edi			      |							movl $0, %edi
+			call exit			      |							call exit
+.globl l3							.globl l3
+l3:                     movq %r13, 24(%r15)		      |	l3:						movq %r13, 24
+                        movq %r15, %r13			      |							movq %r15, %r
+.globl String.substr.end					.globl String.substr.end
+String.substr.end:      ## method body ends		      |	String.substr.end:					
+                        ## return address handling	      |							## return add
+                        movq %rbp, %rsp			      |							movq %rbp, %r
+                        popq %rbp			      |							popq %rbp
+                        ret				      |							ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; |	                      ## global string constants
+                        ## global string constants	      <
+.globl the.empty.string						.globl the.empty.string
+the.empty.string:       # ""					the.empty.string:       # ""
+.byte 0								.byte 0
+
+.globl percent.d						.globl percent.d
+percent.d:              # "%ld"					percent.d:              # "%ld"
+.byte  37 # '%'							.byte  37 # '%'
+.byte 108 # 'l'							.byte 108 # 'l'
+.byte 100 # 'd'							.byte 100 # 'd'
+.byte 0								.byte 0
+
+.globl percent.ld						.globl percent.ld
+percent.ld:             # " %ld"				percent.ld:             # " %ld"
+.byte  32 # ' '							.byte  32 # ' '
+.byte  37 # '%'							.byte  37 # '%'
+.byte 108 # 'l'							.byte 108 # 'l'
+.byte 100 # 'd'							.byte 100 # 'd'
+.byte 0								.byte 0
+
+.globl string1							.globl string1
+string1:                # "Bool"				string1:                # "Bool"
+.byte  66 # 'B'							.byte  66 # 'B'
+.byte 111 # 'o'							.byte 111 # 'o'
+.byte 111 # 'o'							.byte 111 # 'o'
+.byte 108 # 'l'							.byte 108 # 'l'
+.byte 0								.byte 0
+
+.globl string2							.globl string2
+string2:                # "IO"					string2:                # "IO"
+.byte  73 # 'I'							.byte  73 # 'I'
+.byte  79 # 'O'							.byte  79 # 'O'
+.byte 0								.byte 0
+
+.globl string3							.globl string3
+string3:                # "Int"					string3:                # "Int"
+.byte  73 # 'I'							.byte  73 # 'I'
+.byte 110 # 'n'							.byte 110 # 'n'
+.byte 116 # 't'							.byte 116 # 't'
+.byte 0								.byte 0
+
+.globl string4							.globl string4
+string4:                # "Main"				string4:                # "Main"
+.byte  77 # 'M'							.byte  77 # 'M'
+.byte  97 # 'a'							.byte  97 # 'a'
+.byte 105 # 'i'							.byte 105 # 'i'
+.byte 110 # 'n'							.byte 110 # 'n'
+.byte 0								.byte 0
+
+.globl string5							.globl string5
+string5:                # "Object"				string5:                # "Object"
+.byte  79 # 'O'							.byte  79 # 'O'
+.byte  98 # 'b'							.byte  98 # 'b'
+.byte 106 # 'j'							.byte 106 # 'j'
+.byte 101 # 'e'							.byte 101 # 'e'
+.byte  99 # 'c'							.byte  99 # 'c'
+.byte 116 # 't'							.byte 116 # 't'
+.byte 0								.byte 0
+
+.globl string6							.globl string6
+string6:                # "String"				string6:                # "String"
+.byte  83 # 'S'							.byte  83 # 'S'
+.byte 116 # 't'							.byte 116 # 't'
+.byte 114 # 'r'							.byte 114 # 'r'
+.byte 105 # 'i'							.byte 105 # 'i'
+.byte 110 # 'n'							.byte 110 # 'n'
+.byte 103 # 'g'							.byte 103 # 'g'
+.byte 0								.byte 0
+
+.globl string7							.globl string7
+string7:                # "abort\\n"				string7:                # "abort\\n"
+.byte  97 # 'a'							.byte  97 # 'a'
+.byte  98 # 'b'							.byte  98 # 'b'
+.byte 111 # 'o'							.byte 111 # 'o'
+.byte 114 # 'r'							.byte 114 # 'r'
+.byte 116 # 't'							.byte 116 # 't'
+.byte  92 # '\\'						.byte  92 # '\\'
+.byte 110 # 'n'							.byte 110 # 'n'
+.byte 0								.byte 0
+
+.globl string8							.globl string8
+string8:                # "ERROR: 0: Exception: String.substr	string8:                # "ERROR: 0: Exception: String.substr
+.byte  69 # 'E'							.byte  69 # 'E'
+.byte  82 # 'R'							.byte  82 # 'R'
+.byte  82 # 'R'							.byte  82 # 'R'
+.byte  79 # 'O'							.byte  79 # 'O'
+.byte  82 # 'R'							.byte  82 # 'R'
+.byte  58 # ':'							.byte  58 # ':'
+.byte  32 # ' '							.byte  32 # ' '
+.byte  48 # '0'							.byte  48 # '0'
+.byte  58 # ':'							.byte  58 # ':'
+.byte  32 # ' '							.byte  32 # ' '
+.byte  69 # 'E'							.byte  69 # 'E'
+.byte 120 # 'x'							.byte 120 # 'x'
+.byte  99 # 'c'							.byte  99 # 'c'
+.byte 101 # 'e'							.byte 101 # 'e'
+.byte 112 # 'p'							.byte 112 # 'p'
+.byte 116 # 't'							.byte 116 # 't'
+.byte 105 # 'i'							.byte 105 # 'i'
+.byte 111 # 'o'							.byte 111 # 'o'
+.byte 110 # 'n'							.byte 110 # 'n'
+.byte  58 # ':'							.byte  58 # ':'
+.byte  32 # ' '							.byte  32 # ' '
+.byte  83 # 'S'							.byte  83 # 'S'
+.byte 116 # 't'							.byte 116 # 't'
+.byte 114 # 'r'							.byte 114 # 'r'
+.byte 105 # 'i'							.byte 105 # 'i'
+.byte 110 # 'n'							.byte 110 # 'n'
+.byte 103 # 'g'							.byte 103 # 'g'
+.byte  46 # '.'							.byte  46 # '.'
+.byte 115 # 's'							.byte 115 # 's'
+.byte 117 # 'u'							.byte 117 # 'u'
+.byte  98 # 'b'							.byte  98 # 'b'
+.byte 115 # 's'							.byte 115 # 's'
+.byte 116 # 't'							.byte 116 # 't'
+.byte 114 # 'r'							.byte 114 # 'r'
+.byte  32 # ' '							.byte  32 # ' '
+.byte 111 # 'o'							.byte 111 # 'o'
+.byte 117 # 'u'							.byte 117 # 'u'
+.byte 116 # 't'							.byte 116 # 't'
+.byte  32 # ' '							.byte  32 # ' '
+.byte 111 # 'o'							.byte 111 # 'o'
+.byte 102 # 'f'							.byte 102 # 'f'
+.byte  32 # ' '							.byte  32 # ' '
+.byte 114 # 'r'							.byte 114 # 'r'
+.byte  97 # 'a'							.byte  97 # 'a'
+.byte 110 # 'n'							.byte 110 # 'n'
+.byte 103 # 'g'							.byte 103 # 'g'
+.byte 101 # 'e'							.byte 101 # 'e'
+.byte  92 # '\\'						.byte  92 # '\\'
+.byte 110 # 'n'							.byte 110 # 'n'
+.byte 0								.byte 0
+
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl eq_handler						.globl eq_handler
+eq_handler:             ## helper function for =		eq_handler:             ## helper function for =
+                        pushq %rbp				                        pushq %rbp
+                        movq %rsp, %rbp				                        movq %rsp, %rbp
+                        movq 32(%rbp), %r12			                        movq 32(%rbp), %r12
+                        ## return address handling		                        ## return address handling
+                        movq 32(%rbp), %r13			                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14			                        movq 24(%rbp), %r14
+                        cmpq %r14, %r13				                        cmpq %r14, %r13
+			je eq_true							je eq_true
+                        movq $0, %r15				                        movq $0, %r15
+                        cmpq %r15, %r13				                        cmpq %r15, %r13
+			je eq_false							je eq_false
+                        cmpq %r15, %r14				                        cmpq %r15, %r14
+			je eq_false							je eq_false
+                        movq 0(%r13), %r13			                        movq 0(%r13), %r13
+                        movq 0(%r14), %r14			                        movq 0(%r14), %r14
+                        ## place the sum of the type tags in 	                        ## place the sum of the type tags in 
+                        addq %r14, %r13				                        addq %r14, %r13
+                        movq $0, %r14				                        movq $0, %r14
+                        cmpq %r14, %r13				                        cmpq %r14, %r13
+			je eq_bool							je eq_bool
+                        movq $2, %r14				                        movq $2, %r14
+                        cmpq %r14, %r13				                        cmpq %r14, %r13
+			je eq_int							je eq_int
+                        movq $6, %r14				                        movq $6, %r14
+                        cmpq %r14, %r13				                        cmpq %r14, %r13
+			je eq_string							je eq_string
+                        ## otherwise, use pointer comparison	                        ## otherwise, use pointer comparison
+                        movq 32(%rbp), %r13			                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14			                        movq 24(%rbp), %r14
+                        cmpq %r14, %r13				                        cmpq %r14, %r13
+			je eq_true							je eq_true
+.globl eq_false							.globl eq_false
+eq_false:               ## not equal				eq_false:               ## not equal
+                        ## new Bool				                        ## new Bool
+                        pushq %rbp				                        pushq %rbp
+                        pushq %r12				                        pushq %r12
+                        movq $Bool..new, %r14			                        movq $Bool..new, %r14
+                        call *%r14				                        call *%r14
+                        popq %r12				                        popq %r12
+                        popq %rbp				                        popq %rbp
+                        jmp eq_end				                        jmp eq_end
+.globl eq_true							.globl eq_true
+eq_true:                ## equal				eq_true:                ## equal
+                        ## new Bool				                        ## new Bool
+                        pushq %rbp				                        pushq %rbp
+                        pushq %r12				                        pushq %r12
+                        movq $Bool..new, %r14			                        movq $Bool..new, %r14
+                        call *%r14				                        call *%r14
+                        popq %r12				                        popq %r12
+                        popq %rbp				                        popq %rbp
+                        movq $1, %r14				                        movq $1, %r14
+                        movq %r14, 24(%r13)			                        movq %r14, 24(%r13)
+                        jmp eq_end				                        jmp eq_end
+.globl eq_bool							.globl eq_bool
+eq_bool:                ## two Bools				eq_bool:                ## two Bools
+.globl eq_int							.globl eq_int
+eq_int:                 ## two Ints				eq_int:                 ## two Ints
+                        movq 32(%rbp), %r13			                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14			                        movq 24(%rbp), %r14
+                        movq 24(%r13), %r13			                        movq 24(%r13), %r13
+                        movq 24(%r14), %r14			                        movq 24(%r14), %r14
+                        cmpq %r14, %r13				                        cmpq %r14, %r13
+			je eq_true							je eq_true
+                        jmp eq_false				                        jmp eq_false
+.globl eq_string						.globl eq_string
+eq_string:              ## two Strings				eq_string:              ## two Strings
+                        movq 32(%rbp), %r13			                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14			                        movq 24(%rbp), %r14
+                        movq 24(%r13), %r13			                        movq 24(%r13), %r13
+                        movq 24(%r14), %r14			                        movq 24(%r14), %r14
+                        					                        
+  movq %r13, %rdi						  movq %r13, %rdi
+  movq %r14, %rsi						  movq %r14, %rsi
+  call strcmp 							  call strcmp 
+  cmp $0, %eax							  cmp $0, %eax
+  je eq_true							  je eq_true
+                        jmp eq_false				                        jmp eq_false
+.globl eq_end							.globl eq_end
+eq_end:                 ## return address handling		eq_end:                 ## return address handling
+                        movq %rbp, %rsp				                        movq %rbp, %rsp
+                        popq %rbp				                        popq %rbp
+                        ret					                        ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl le_handler						.globl le_handler
+le_handler:             ## helper function for <=		le_handler:             ## helper function for <=
+                        pushq %rbp				                        pushq %rbp
+                        movq %rsp, %rbp				                        movq %rsp, %rbp
+                        movq 32(%rbp), %r12			                        movq 32(%rbp), %r12
+                        ## return address handling		                        ## return address handling
+                        movq 32(%rbp), %r13			                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14			                        movq 24(%rbp), %r14
+                        cmpq %r14, %r13				                        cmpq %r14, %r13
+			je le_true							je le_true
+                        movq $0, %r15				                        movq $0, %r15
+                        cmpq %r15, %r13				                        cmpq %r15, %r13
+			je le_false							je le_false
+                        cmpq %r15, %r14				                        cmpq %r15, %r14
+			je le_false							je le_false
+                        movq 0(%r13), %r13			                        movq 0(%r13), %r13
+                        movq 0(%r14), %r14			                        movq 0(%r14), %r14
+                        ## place the sum of the type tags in 	                        ## place the sum of the type tags in 
+                        addq %r14, %r13				                        addq %r14, %r13
+                        movq $0, %r14				                        movq $0, %r14
+                        cmpq %r14, %r13				                        cmpq %r14, %r13
+			je le_bool							je le_bool
+                        movq $2, %r14				                        movq $2, %r14
+                        cmpq %r14, %r13				                        cmpq %r14, %r13
+			je le_int							je le_int
+                        movq $6, %r14				                        movq $6, %r14
+                        cmpq %r14, %r13				                        cmpq %r14, %r13
+			je le_string							je le_string
+                        ## for non-primitives, equality is ou	                        ## for non-primitives, equality is ou
+                        movq 32(%rbp), %r13			                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14			                        movq 24(%rbp), %r14
+                        cmpq %r14, %r13				                        cmpq %r14, %r13
+			je le_true							je le_true
+.globl le_false							.globl le_false
+le_false:               ## not less-than-or-equal		le_false:               ## not less-than-or-equal
+                        ## new Bool				                        ## new Bool
+                        pushq %rbp				                        pushq %rbp
+                        pushq %r12				                        pushq %r12
+                        movq $Bool..new, %r14			                        movq $Bool..new, %r14
+                        call *%r14				                        call *%r14
+                        popq %r12				                        popq %r12
+                        popq %rbp				                        popq %rbp
+                        jmp le_end				                        jmp le_end
+.globl le_true							.globl le_true
+le_true:                ## less-than-or-equal			le_true:                ## less-than-or-equal
+                        ## new Bool				                        ## new Bool
+                        pushq %rbp				                        pushq %rbp
+                        pushq %r12				                        pushq %r12
+                        movq $Bool..new, %r14			                        movq $Bool..new, %r14
+                        call *%r14				                        call *%r14
+                        popq %r12				                        popq %r12
+                        popq %rbp				                        popq %rbp
+                        movq $1, %r14				                        movq $1, %r14
+                        movq %r14, 24(%r13)			                        movq %r14, 24(%r13)
+                        jmp le_end				                        jmp le_end
+.globl le_bool							.globl le_bool
+le_bool:                ## two Bools				le_bool:                ## two Bools
+.globl le_int							.globl le_int
+le_int:                 ## two Ints				le_int:                 ## two Ints
+                        movq 32(%rbp), %r13			                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14			                        movq 24(%rbp), %r14
+                        movq 24(%r13), %r13			                        movq 24(%r13), %r13
+                        movq 24(%r14), %r14			                        movq 24(%r14), %r14
+                        cmpl %r14d, %r13d			                        cmpl %r14d, %r13d
+			jle le_true							jle le_true
+                        jmp le_false				                        jmp le_false
+.globl le_string						.globl le_string
+le_string:              ## two Strings				le_string:              ## two Strings
+                        movq 32(%rbp), %r13			                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14			                        movq 24(%rbp), %r14
+                        movq 24(%r13), %r13			                        movq 24(%r13), %r13
+                        movq 24(%r14), %r14			                        movq 24(%r14), %r14
+                        					                        
+  movq %r13, %rdi						  movq %r13, %rdi
+  movq %r14, %rsi						  movq %r14, %rsi
+  call strcmp 							  call strcmp 
+  cmp $0, %eax							  cmp $0, %eax
+  jle le_true							  jle le_true
+                        jmp le_false				                        jmp le_false
+.globl le_end							.globl le_end
+le_end:                 ## return address handling		le_end:                 ## return address handling
+                        movq %rbp, %rsp				                        movq %rbp, %rsp
+                        popq %rbp				                        popq %rbp
+                        ret					                        ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl lt_handler						.globl lt_handler
+lt_handler:             ## helper function for <		lt_handler:             ## helper function for <
+                        pushq %rbp				                        pushq %rbp
+                        movq %rsp, %rbp				                        movq %rsp, %rbp
+                        movq 32(%rbp), %r12			                        movq 32(%rbp), %r12
+                        ## return address handling		                        ## return address handling
+                        movq 32(%rbp), %r13			                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14			                        movq 24(%rbp), %r14
+                        movq $0, %r15				                        movq $0, %r15
+                        cmpq %r15, %r13				                        cmpq %r15, %r13
+			je lt_false							je lt_false
+                        cmpq %r15, %r14				                        cmpq %r15, %r14
+			je lt_false							je lt_false
+                        movq 0(%r13), %r13			                        movq 0(%r13), %r13
+                        movq 0(%r14), %r14			                        movq 0(%r14), %r14
+                        ## place the sum of the type tags in 	                        ## place the sum of the type tags in 
+                        addq %r14, %r13				                        addq %r14, %r13
+                        movq $0, %r14				                        movq $0, %r14
+                        cmpq %r14, %r13				                        cmpq %r14, %r13
+			je lt_bool							je lt_bool
+                        movq $2, %r14				                        movq $2, %r14
+                        cmpq %r14, %r13				                        cmpq %r14, %r13
+			je lt_int							je lt_int
+                        movq $6, %r14				                        movq $6, %r14
+                        cmpq %r14, %r13				                        cmpq %r14, %r13
+			je lt_string							je lt_string
+                        ## for non-primitives, < is always fa	                        ## for non-primitives, < is always fa
+.globl lt_false							.globl lt_false
+lt_false:               ## not less than			lt_false:               ## not less than
+                        ## new Bool				                        ## new Bool
+                        pushq %rbp				                        pushq %rbp
+                        pushq %r12				                        pushq %r12
+                        movq $Bool..new, %r14			                        movq $Bool..new, %r14
+                        call *%r14				                        call *%r14
+                        popq %r12				                        popq %r12
+                        popq %rbp				                        popq %rbp
+                        jmp lt_end				                        jmp lt_end
+.globl lt_true							.globl lt_true
+lt_true:                ## less than				lt_true:                ## less than
+                        ## new Bool				                        ## new Bool
+                        pushq %rbp				                        pushq %rbp
+                        pushq %r12				                        pushq %r12
+                        movq $Bool..new, %r14			                        movq $Bool..new, %r14
+                        call *%r14				                        call *%r14
+                        popq %r12				                        popq %r12
+                        popq %rbp				                        popq %rbp
+                        movq $1, %r14				                        movq $1, %r14
+                        movq %r14, 24(%r13)			                        movq %r14, 24(%r13)
+                        jmp lt_end				                        jmp lt_end
+.globl lt_bool							.globl lt_bool
+lt_bool:                ## two Bools				lt_bool:                ## two Bools
+.globl lt_int							.globl lt_int
+lt_int:                 ## two Ints				lt_int:                 ## two Ints
+                        movq 32(%rbp), %r13			                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14			                        movq 24(%rbp), %r14
+                        movq 24(%r13), %r13			                        movq 24(%r13), %r13
+                        movq 24(%r14), %r14			                        movq 24(%r14), %r14
+                        cmpl %r14d, %r13d			                        cmpl %r14d, %r13d
+			jl lt_true							jl lt_true
+                        jmp lt_false				                        jmp lt_false
+.globl lt_string						.globl lt_string
+lt_string:              ## two Strings				lt_string:              ## two Strings
+                        movq 32(%rbp), %r13			                        movq 32(%rbp), %r13
+                        movq 24(%rbp), %r14			                        movq 24(%rbp), %r14
+                        movq 24(%r13), %r13			                        movq 24(%r13), %r13
+                        movq 24(%r14), %r14			                        movq 24(%r14), %r14
+                        					                        
+  movq %r13, %rdi						  movq %r13, %rdi
+  movq %r14, %rsi						  movq %r14, %rsi
+  call strcmp 							  call strcmp 
+  cmp $0, %eax							  cmp $0, %eax
+  jl lt_true							  jl lt_true
+                        jmp lt_false				                        jmp lt_false
+.globl lt_end							.globl lt_end
+lt_end:                 ## return address handling		lt_end:                 ## return address handling
+                        movq %rbp, %rsp				                        movq %rbp, %rsp
+                        popq %rbp				                        popq %rbp
+                        ret					                        ret
+                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;	                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+.globl start							.globl start
+start:                  ## program begins here			start:                  ## program begins here
+                        .globl main				                        .globl main
+			.type main, @function						.type main, @function
+main:								main:
+                        movq $Main..new, %r14			                        movq $Main..new, %r14
+                        pushq %rbp				                        pushq %rbp
+                        call *%r14				                        call *%r14
+                        pushq %rbp				                        pushq %rbp
+                        pushq %r13				                        pushq %r13
+                        movq $Main.main, %r14			                        movq $Main.main, %r14
+                        call *%r14				                        call *%r14
+                        movl $0, %edi				                        movl $0, %edi
+			call exit							call exit
+                        				      |	      
+.globl cooloutstr						.globl cooloutstr
+	.type	cooloutstr, @function					.type	cooloutstr, @function
+cooloutstr:							cooloutstr:
+.LFB0:								.LFB0:
+	.cfi_startproc							.cfi_startproc
+	pushq	%rbp							pushq	%rbp
+	.cfi_def_cfa_offset 16						.cfi_def_cfa_offset 16
+	.cfi_offset 6, -16						.cfi_offset 6, -16
+	movq	%rsp, %rbp						movq	%rsp, %rbp
+	.cfi_def_cfa_register 6						.cfi_def_cfa_register 6
+	subq	$32, %rsp						subq	$32, %rsp
+	movq	%rdi, -24(%rbp)						movq	%rdi, -24(%rbp)
+	movl	$0, -4(%rbp)						movl	$0, -4(%rbp)
+	jmp	.L2							jmp	.L2
+.L5:								.L5:
+	movl	-4(%rbp), %eax						movl	-4(%rbp), %eax
+	cltq								cltq
+	addq	-24(%rbp), %rax						addq	-24(%rbp), %rax
+	movzbl	(%rax), %eax						movzbl	(%rax), %eax
+	cmpb	$92, %al						cmpb	$92, %al
+	jne	.L3							jne	.L3
+	movl	-4(%rbp), %eax						movl	-4(%rbp), %eax
+	cltq								cltq
+	addq	$1, %rax						addq	$1, %rax
+	addq	-24(%rbp), %rax						addq	-24(%rbp), %rax
+	movzbl	(%rax), %eax						movzbl	(%rax), %eax
+	cmpb	$110, %al						cmpb	$110, %al
+	jne	.L3							jne	.L3
+	movq	stdout(%rip), %rax					movq	stdout(%rip), %rax
+	movq	%rax, %rsi						movq	%rax, %rsi
+	movl	$10, %edi						movl	$10, %edi
+	call	fputc							call	fputc
+	addl	$2, -4(%rbp)						addl	$2, -4(%rbp)
+	jmp	.L2							jmp	.L2
+.L3:								.L3:
+	movl	-4(%rbp), %eax						movl	-4(%rbp), %eax
+	cltq								cltq
+	addq	-24(%rbp), %rax						addq	-24(%rbp), %rax
+	movzbl	(%rax), %eax						movzbl	(%rax), %eax
+	cmpb	$92, %al						cmpb	$92, %al
+	jne	.L4							jne	.L4
+	movl	-4(%rbp), %eax						movl	-4(%rbp), %eax
+	cltq								cltq
+	addq	$1, %rax						addq	$1, %rax
+	addq	-24(%rbp), %rax						addq	-24(%rbp), %rax
+	movzbl	(%rax), %eax						movzbl	(%rax), %eax
+	cmpb	$116, %al						cmpb	$116, %al
+	jne	.L4							jne	.L4
+	movq	stdout(%rip), %rax					movq	stdout(%rip), %rax
+	movq	%rax, %rsi						movq	%rax, %rsi
+	movl	$9, %edi						movl	$9, %edi
+	call	fputc							call	fputc
+	addl	$2, -4(%rbp)						addl	$2, -4(%rbp)
+	jmp	.L2							jmp	.L2
+.L4:								.L4:
+	movq	stdout(%rip), %rdx					movq	stdout(%rip), %rdx
+	movl	-4(%rbp), %eax						movl	-4(%rbp), %eax
+	cltq								cltq
+	addq	-24(%rbp), %rax						addq	-24(%rbp), %rax
+	movzbl	(%rax), %eax						movzbl	(%rax), %eax
+	movsbl	%al, %eax						movsbl	%al, %eax
+	movq	%rdx, %rsi						movq	%rdx, %rsi
+	movl	%eax, %edi						movl	%eax, %edi
+	call	fputc							call	fputc
+	addl	$1, -4(%rbp)						addl	$1, -4(%rbp)
+.L2:								.L2:
+	movl	-4(%rbp), %eax						movl	-4(%rbp), %eax
+	cltq								cltq
+	addq	-24(%rbp), %rax						addq	-24(%rbp), %rax
+	movzbl	(%rax), %eax						movzbl	(%rax), %eax
+	testb	%al, %al						testb	%al, %al
+	jne	.L5							jne	.L5
+	movq	stdout(%rip), %rax					movq	stdout(%rip), %rax
+	movq	%rax, %rdi						movq	%rax, %rdi
+	call	fflush							call	fflush
+	leave								leave
+	.cfi_def_cfa 7, 8						.cfi_def_cfa 7, 8
+	ret								ret
+	.cfi_endproc							.cfi_endproc
+.LFE0:								.LFE0:
+	.size	cooloutstr, .-cooloutstr				.size	cooloutstr, .-cooloutstr
+.globl coolstrlen						.globl coolstrlen
+	.type	coolstrlen, @function					.type	coolstrlen, @function
+coolstrlen:							coolstrlen:
+.LFB1:								.LFB1:
+	.cfi_startproc							.cfi_startproc
+	pushq	%rbp							pushq	%rbp
+	.cfi_def_cfa_offset 16						.cfi_def_cfa_offset 16
+	.cfi_offset 6, -16						.cfi_offset 6, -16
+	movq	%rsp, %rbp						movq	%rsp, %rbp
+	.cfi_def_cfa_register 6						.cfi_def_cfa_register 6
+	movq	%rdi, -24(%rbp)						movq	%rdi, -24(%rbp)
+	movl	$0, -4(%rbp)						movl	$0, -4(%rbp)
+	jmp	.L7							jmp	.L7
+.L8:								.L8:
+	movl	-4(%rbp), %eax						movl	-4(%rbp), %eax
+	addl	$1, %eax						addl	$1, %eax
+	movl	%eax, -4(%rbp)						movl	%eax, -4(%rbp)
+.L7:								.L7:
+	movl	-4(%rbp), %eax						movl	-4(%rbp), %eax
+	mov	%eax, %eax						mov	%eax, %eax
+	addq	-24(%rbp), %rax						addq	-24(%rbp), %rax
+	movzbl	(%rax), %eax						movzbl	(%rax), %eax
+	testb	%al, %al						testb	%al, %al
+	jne	.L8							jne	.L8
+	movl	-4(%rbp), %eax						movl	-4(%rbp), %eax
+	leave								leave
+	.cfi_def_cfa 7, 8						.cfi_def_cfa 7, 8
+	ret								ret
+	.cfi_endproc							.cfi_endproc
+.LFE1:								.LFE1:
+	.size	coolstrlen, .-coolstrlen				.size	coolstrlen, .-coolstrlen
+	.section	.rodata						.section	.rodata
+.LC0:								.LC0:
+	.string	"%s%s"							.string	"%s%s"
+	.text								.text
+.globl coolstrcat						.globl coolstrcat
+	.type	coolstrcat, @function					.type	coolstrcat, @function
+coolstrcat:							coolstrcat:
+.LFB2:								.LFB2:
+	.cfi_startproc							.cfi_startproc
+	pushq	%rbp							pushq	%rbp
+	.cfi_def_cfa_offset 16						.cfi_def_cfa_offset 16
+	.cfi_offset 6, -16						.cfi_offset 6, -16
+	movq	%rsp, %rbp						movq	%rsp, %rbp
+	.cfi_def_cfa_register 6						.cfi_def_cfa_register 6
+	pushq	%rbx							pushq	%rbx
+	subq	$40, %rsp						subq	$40, %rsp
+	movq	%rdi, -40(%rbp)						movq	%rdi, -40(%rbp)
+	movq	%rsi, -48(%rbp)						movq	%rsi, -48(%rbp)
+	cmpq	$0, -40(%rbp)						cmpq	$0, -40(%rbp)
+	jne	.L10							jne	.L10
+	.cfi_offset 3, -24						.cfi_offset 3, -24
+	movq	-48(%rbp), %rax						movq	-48(%rbp), %rax
+	jmp	.L11							jmp	.L11
+.L10:								.L10:
+	cmpq	$0, -48(%rbp)						cmpq	$0, -48(%rbp)
+	jne	.L12							jne	.L12
+	movq	-40(%rbp), %rax						movq	-40(%rbp), %rax
+	jmp	.L11							jmp	.L11
+.L12:								.L12:
+	movq	-40(%rbp), %rax						movq	-40(%rbp), %rax
+	movq	%rax, %rdi						movq	%rax, %rdi
+	call	coolstrlen						call	coolstrlen
+	movl	%eax, %ebx						movl	%eax, %ebx
+	movq	-48(%rbp), %rax						movq	-48(%rbp), %rax
+	movq	%rax, %rdi						movq	%rax, %rdi
+	call	coolstrlen						call	coolstrlen
+	leal	(%rbx,%rax), %eax					leal	(%rbx,%rax), %eax
+	addl	$1, %eax						addl	$1, %eax
+	movl	%eax, -20(%rbp)						movl	%eax, -20(%rbp)
+	movl	-20(%rbp), %eax						movl	-20(%rbp), %eax
+	cltq								cltq
+	movl	$1, %esi						movl	$1, %esi
+	movq	%rax, %rdi						movq	%rax, %rdi
+	call	calloc							call	calloc
+	movq	%rax, -32(%rbp)						movq	%rax, -32(%rbp)
+	movl	$.LC0, %edx						movl	$.LC0, %edx
+	movl	-20(%rbp), %eax						movl	-20(%rbp), %eax
+	movslq	%eax, %rbx						movslq	%eax, %rbx
+	movq	-48(%rbp), %rsi						movq	-48(%rbp), %rsi
+	movq	-40(%rbp), %rcx						movq	-40(%rbp), %rcx
+	movq	-32(%rbp), %rax						movq	-32(%rbp), %rax
+	movq	%rsi, %r8						movq	%rsi, %r8
+	movq	%rbx, %rsi						movq	%rbx, %rsi
+	movq	%rax, %rdi						movq	%rax, %rdi
+	movl	$0, %eax						movl	$0, %eax
+	call	snprintf						call	snprintf
+	movq	-32(%rbp), %rax						movq	-32(%rbp), %rax
+.L11:								.L11:
+	addq	$40, %rsp						addq	$40, %rsp
+	popq	%rbx							popq	%rbx
+	leave								leave
+	.cfi_def_cfa 7, 8						.cfi_def_cfa 7, 8
+	ret								ret
+	.cfi_endproc							.cfi_endproc
+.LFE2:								.LFE2:
+	.size	coolstrcat, .-coolstrcat				.size	coolstrcat, .-coolstrcat
+	.section	.rodata						.section	.rodata
+.LC1:								.LC1:
+	.string	""							.string	""
+	.text								.text
+.globl coolgetstr						.globl coolgetstr
+	.type	coolgetstr, @function					.type	coolgetstr, @function
+coolgetstr:							coolgetstr:
+.LFB3:								.LFB3:
+	.cfi_startproc							.cfi_startproc
+	pushq	%rbp							pushq	%rbp
+	.cfi_def_cfa_offset 16						.cfi_def_cfa_offset 16
+	.cfi_offset 6, -16						.cfi_offset 6, -16
+	movq	%rsp, %rbp						movq	%rsp, %rbp
+	.cfi_def_cfa_register 6						.cfi_def_cfa_register 6
+	subq	$32, %rsp						subq	$32, %rsp
+	movl	$1, %esi						movl	$1, %esi
+	movl	$40960, %edi						movl	$40960, %edi
+	call	calloc							call	calloc
+	movq	%rax, -16(%rbp)						movq	%rax, -16(%rbp)
+	movl	$0, -4(%rbp)						movl	$0, -4(%rbp)
+.L20:								.L20:
+	movq	stdin(%rip), %rax					movq	stdin(%rip), %rax
+	movq	%rax, %rdi						movq	%rax, %rdi
+	call	fgetc							call	fgetc
+	movl	%eax, -20(%rbp)						movl	%eax, -20(%rbp)
+	cmpl	$-1, -20(%rbp)						cmpl	$-1, -20(%rbp)
+	je	.L14							je	.L14
+	cmpl	$10, -20(%rbp)						cmpl	$10, -20(%rbp)
+	jne	.L15							jne	.L15
+.L14:								.L14:
+	cmpl	$0, -4(%rbp)						cmpl	$0, -4(%rbp)
+	je	.L16							je	.L16
+	movl	$.LC1, %eax						movl	$.LC1, %eax
+	jmp	.L17							jmp	.L17
+.L16:								.L16:
+	movq	-16(%rbp), %rax						movq	-16(%rbp), %rax
+	jmp	.L17							jmp	.L17
+.L15:								.L15:
+	cmpl	$0, -20(%rbp)						cmpl	$0, -20(%rbp)
+	jne	.L18							jne	.L18
+	movl	$1, -4(%rbp)						movl	$1, -4(%rbp)
+	jmp	.L20							jmp	.L20
+.L18:								.L18:
+	movq	-16(%rbp), %rax						movq	-16(%rbp), %rax
+	movq	%rax, %rdi						movq	%rax, %rdi
+	call	coolstrlen						call	coolstrlen
+	mov	%eax, %eax						mov	%eax, %eax
+	addq	-16(%rbp), %rax						addq	-16(%rbp), %rax
+	movl	-20(%rbp), %edx						movl	-20(%rbp), %edx
+	movb	%dl, (%rax)						movb	%dl, (%rax)
+	jmp	.L20							jmp	.L20
+.L17:								.L17:
+	leave								leave
+	.cfi_def_cfa 7, 8						.cfi_def_cfa 7, 8
+	ret								ret
+	.cfi_endproc							.cfi_endproc
+.LFE3:								.LFE3:
+	.size	coolgetstr, .-coolgetstr				.size	coolgetstr, .-coolgetstr
+.globl coolsubstr						.globl coolsubstr
+	.type	coolsubstr, @function					.type	coolsubstr, @function
+coolsubstr:							coolsubstr:
+.LFB4:								.LFB4:
+	.cfi_startproc							.cfi_startproc
+	pushq	%rbp							pushq	%rbp
+	.cfi_def_cfa_offset 16						.cfi_def_cfa_offset 16
+	.cfi_offset 6, -16						.cfi_offset 6, -16
+	movq	%rsp, %rbp						movq	%rsp, %rbp
+	.cfi_def_cfa_register 6						.cfi_def_cfa_register 6
+	subq	$48, %rsp						subq	$48, %rsp
+	movq	%rdi, -24(%rbp)						movq	%rdi, -24(%rbp)
+	movq	%rsi, -32(%rbp)						movq	%rsi, -32(%rbp)
+	movq	%rdx, -40(%rbp)						movq	%rdx, -40(%rbp)
+	movq	-24(%rbp), %rax						movq	-24(%rbp), %rax
+	movq	%rax, %rdi						movq	%rax, %rdi
+	call	coolstrlen						call	coolstrlen
+	movl	%eax, -4(%rbp)						movl	%eax, -4(%rbp)
+	cmpq	$0, -32(%rbp)						cmpq	$0, -32(%rbp)
+	js	.L22							js	.L22
+	cmpq	$0, -40(%rbp)						cmpq	$0, -40(%rbp)
+	js	.L22							js	.L22
+	movq	-40(%rbp), %rax						movq	-40(%rbp), %rax
+	movq	-32(%rbp), %rdx						movq	-32(%rbp), %rdx
+	addq	%rax, %rdx						addq	%rax, %rdx
+	movl	-4(%rbp), %eax						movl	-4(%rbp), %eax
+	cltq								cltq
+	cmpq	%rax, %rdx						cmpq	%rax, %rdx
+	jle	.L23							jle	.L23
+.L22:								.L22:
+	movl	$0, %eax						movl	$0, %eax
+	jmp	.L24							jmp	.L24
+.L23:								.L23:
+	movq	-40(%rbp), %rdx						movq	-40(%rbp), %rdx
+	movq	-32(%rbp), %rax						movq	-32(%rbp), %rax
+	addq	-24(%rbp), %rax						addq	-24(%rbp), %rax
+	movq	%rdx, %rsi						movq	%rdx, %rsi
+	movq	%rax, %rdi						movq	%rax, %rdi
+	call	strndup							call	strndup
+.L24:								.L24:
+	leave								leave
+	.cfi_def_cfa 7, 8						.cfi_def_cfa 7, 8
+	ret								ret
+	.cfi_endproc							.cfi_endproc
+.LFE4:								.LFE4:
+	.size	coolsubstr, .-coolsubstr				.size	coolsubstr, .-coolsubstr
+

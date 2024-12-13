@@ -149,7 +149,7 @@ Int..new:				##constructor for Int
 						## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Main..new
 Main..new:				## constructor for Main
-						pushq %rbp
+						push %rbp
 						movq %rsp, %rbp
 						## stack room for temporaries: 1
 						subq $8, %rsp
@@ -162,10 +162,9 @@ Main..new:				## constructor for Main
 						movq $11, 0(%r12)
 						movq $3, 8(%r12)
 						movq $Main..vtable, 16(%r12)
-						movq %r12, %r13
 						## return address handling
 						movq %rbp, %rsp
-						popq %rbp
+						pop %rbp
 						ret
 						## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Object..new
@@ -452,6 +451,8 @@ Main.main:						## method definition
 			subq %r14, %rsp
 			## return address handling
 			## method body begins
+			pushq %r12
+			pushq %rbp
 			## new Int
 			pushq %rbp
 			pushq %r12
@@ -459,7 +460,7 @@ Main.main:						## method definition
 			call *%r14
 			popq %r12
 			popq %rbp
-			movq $3, %r14
+			movq 3, %r14
 			movq %r14, 24(%r13)
 			movq 24(%r13), %r13
 			movq %r13, -8(%rbp)
@@ -470,7 +471,7 @@ Main.main:						## method definition
 			call *%r14
 			popq %r12
 			popq %rbp
-			movq $5, %r14
+			movq 5, %r14
 			movq %r14, 24(%r13)
 			movq 24(%r13), %r13
 			movq %r13, -16(%rbp)
@@ -496,6 +497,8 @@ Main.main:						## method definition
 			movq 56(%r14), %r14
 			call *%r14
 			addq $16, %rsp
+			popq %rbp
+			popq %r12
 .globl Main.main.end
 Main.main.end:		## method body ends
 			## return address handling

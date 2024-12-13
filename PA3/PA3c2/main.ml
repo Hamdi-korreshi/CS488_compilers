@@ -16,8 +16,8 @@ let store_c_tag () = printf "## store class tag, object size and vtable pointer\
 let stack_temps number = printf "## stack room for temporaries: %s\n" number 
 let init_attrs () = printf "## initialize attributes\n" 
 let self_holds pos varname vartype = printf "## self[%s] holds field %s (%s)\n" pos varname vartype 
-let push_stack reg = printf "push %s\n" reg
-let pop_stack reg = printf "pop %s\n" reg
+let push_stack reg = printf "pushq %s\n" reg
+let pop_stack reg = printf "popq %s\n" reg
 let mov_op src dest = printf "movq %s, %s\n" src dest 
 let movl_op src dest = printf "movl %s, %s\n" src dest 
 let add_op src dest = printf "addq %s, %s\n" src dest
@@ -2037,12 +2037,14 @@ let main () = begin
           print_tab ();
           let vtbl = (myclass^"..vtable") in (* Dynamically set *)
           mov_op ("$" ^ vtbl) "16(%r12)";
-          if number_of_feats <> 0 then (
+          print_tab();
+          mov_op "%r12" "%r13";
+          (* if number_of_feats <> 0 then (
             print_tab ();
             init_attrs ();
             let selfcount = 3 in
             print_tab ();
-            custom_comment ("self["^(string_of_int selfcount) ^ "] holds field variable (type)");
+            custom_comment ("self["^(string_of_int selfcount) ^ "] holds field variable (type)"); *)
             (* 
                 Read through each feature in class in class_map
                 create the self comment with the info then either make an init or assign $0
@@ -2053,7 +2055,7 @@ let main () = begin
                   if none then keep going
                   else it is new type then create a new type
             *)
-          );
+          (* ); *)
           print_tab ();
           ret_addr_handling ();
           print_tab ();
