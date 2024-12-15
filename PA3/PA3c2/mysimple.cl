@@ -1,6 +1,6 @@
 class Main inherits IO {
 	main() : Object
 	{
-		out_int(3+4+5+6)
+		out_int(10+11+12+13+14+15)
 	};
 };

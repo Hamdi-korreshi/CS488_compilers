@@ -448,7 +448,7 @@ Main.main:						## method definition
 			movq %rsp, %rbp
 			movq 16(%rbp), %r12
 			##stack room for temporaries: 2
-			movq $16,%r14
+			movq $128,%r14
 			subq %r14, %rsp
 			## return address handling
 			## method body begins
@@ -459,7 +459,7 @@ Main.main:						## method definition
 			call *%r14
 			popq %r12
 			popq %rbp
-			movq $3, %r14
+			movq $10, %r14
 			movq %r14, 24(%r13)
 			movq 24(%r13), %r13
 			movq %r13, -8(%rbp)
@@ -470,7 +470,7 @@ Main.main:						## method definition
 			call *%r14
 			popq %r12
 			popq %rbp
-			movq $4, %r14
+			movq $11, %r14
 			movq %r14, 24(%r13)
 			movq 24(%r13), %r13
 			movq %r13, -16(%rbp)
@@ -495,7 +495,7 @@ Main.main:						## method definition
 			call *%r14
 			popq %r12
 			popq %rbp
-			movq $5, %r14
+			movq $12, %r14
 			movq %r14, 24(%r13)
 			movq 24(%r13), %r13
 			movq %r13, -24(%rbp)
@@ -520,7 +520,7 @@ Main.main:						## method definition
 			call *%r14
 			popq %r12
 			popq %rbp
-			movq $6, %r14
+			movq $13, %r14
 			movq %r14, 24(%r13)
 			movq 24(%r13), %r13
 			movq %r13, -32(%rbp)
@@ -538,6 +538,56 @@ Main.main:						## method definition
 			popq %rbp
 			movq -32(%rbp), %r14
 			movq %r14, 24(%r13)
+			## new Int
+			pushq %rbp
+			pushq %r12
+			movq $Int..new, %r14
+			call *%r14
+			popq %r12
+			popq %rbp
+			movq $14, %r14
+			movq %r14, 24(%r13)
+			movq 24(%r13), %r13
+			movq %r13, -40(%rbp)
+			movq -32(%rbp), %r14
+			movq -40(%rbp), %r13
+			addq %r14, %r13
+			movq %r13, -40(%rbp)
+			## offset: -32
+			## new Int
+			pushq %rbp
+			pushq %r12
+			movq $Int..new, %r14
+			call *%r14
+			popq %r12
+			popq %rbp
+			movq -40(%rbp), %r14
+			movq %r14, 24(%r13)
+			## new Int
+			pushq %rbp
+			pushq %r12
+			movq $Int..new, %r14
+			call *%r14
+			popq %r12
+			popq %rbp
+			movq $15, %r14
+			movq %r14, 24(%r13)
+			movq 24(%r13), %r13
+			movq %r13, -48(%rbp)
+			movq -40(%rbp), %r14
+			movq -48(%rbp), %r13
+			addq %r14, %r13
+			movq %r13, -48(%rbp)
+			## offset: -40
+			## new Int
+			pushq %rbp
+			pushq %r12
+			movq $Int..new, %r14
+			call *%r14
+			popq %r12
+			popq %rbp
+			movq -48(%rbp), %r14
+			movq %r14, 24(%r13)
 			## need to fix the self dispatch
 			pushq %r13
 			pushq %r12
@@ -546,7 +596,7 @@ Main.main:						## method definition
 			## look upt out_int at offest 7 in vtable
 			movq 56(%r14), %r14
 			call *%r14
-			addq $16, %rsp
+			addq $128, %rsp
 .globl Main.main.end
 Main.main.end:		## method body ends
 			## return address handling

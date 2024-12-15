@@ -449,9 +449,9 @@ IO.out_string.end:      ## method body ends
 Main.main:              ## method definition
                         pushq %rbp
                         movq %rsp, %rbp
-                        movq 16(%rbp), %r12
+                        movq 24(%rbp), %r12
                         ## stack room for temporaries: 2
-                        movq $48, %r14
+                        movq $24, %r14
                         subq %r14, %rsp
                         ## return address handling
                         ## method body begins
@@ -468,7 +468,7 @@ Main.main:              ## method definition
                         movq $3, %r14
                         movq %r14, 24(%r13)
                         movq 24(%r13), %r13
-                        movq %r13, -8(%rbp)
+                        movq %r13, 0(%rbp)
                         ## new Int
                         pushq %rbp
                         pushq %r12
@@ -479,34 +479,9 @@ Main.main:              ## method definition
                         movq $4, %r14
                         movq %r14, 24(%r13)
                         movq 24(%r13), %r13
-                        movq %r13, -16(%rbp)
-                        movq -8(%rbp), %r14
-                        addq -16(%rbp), %r13
-                        movq %r13, -16(%rbp)
-                        ## new Int
-                        pushq %rbp
-                        pushq %r12
-                        movq $Int..new, %r14
-                        call *%r14
-                        popq %r12
-                        popq %rbp
-                        movq -16(%rbp), %r14
-                        movq %r14, 24(%r13)
-                        movq 24(%r13), %r13
-                        movq %r13, -16(%rbp)
-                        ## new Int
-                        pushq %rbp
-                        pushq %r12
-                        movq $Int..new, %r14
-                        call *%r14
-                        popq %r12
-                        popq %rbp
-                        movq $5, %r14
-                        movq %r14, 24(%r13)
-                        movq -16(%rbp), %r13
-                        movq -24(%rbp), %r14
+                        movq 0(%rbp), %r14
                         addq %r14, %r13
-                        movq %r13, -24(%rbp)
+                        movq %r13, 0(%rbp)
                         ## new Int
                         pushq %rbp
                         pushq %r12
@@ -514,31 +489,7 @@ Main.main:              ## method definition
                         call *%r14
                         popq %r12
                         popq %rbp
-                        movq -24(%rbp), %r14
-                        movq %r14, 24(%r13)
-                        movq 24(%r13), %r13
-                        movq %r13, -24(%rbp)
-                        ## new Int
-                        pushq %rbp
-                        pushq %r12
-                        movq $Int..new, %r14
-                        call *%r14
-                        popq %r12
-                        popq %rbp
-                        movq $6, %r14
-                        movq %r14, 24(%r13)
-                        movq -24(%rbp), %r13
-                        movq -32(%rbp), %r14
-                        addq %r14, %r13
-                        movq %r13, -32(%rbp)
-                        ## new Int
-                        pushq %rbp
-                        pushq %r12
-                        movq $Int..new, %r14
-                        call *%r14
-                        popq %r12
-                        popq %rbp
-                        movq -32(%rbp), %r14
+                        movq 0(%rbp), %r14
                         movq %r14, 24(%r13)
                         pushq %r13
                         pushq %r12
@@ -547,7 +498,7 @@ Main.main:              ## method definition
                         ## look up out_int() at offset 7 in vtable
                         movq 56(%r14), %r14
                         call *%r14
-                        addq $48, %rsp
+                        addq $24, %rsp
                         popq %rbp
                         popq %r12
 .globl Main.main.end

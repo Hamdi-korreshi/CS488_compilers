@@ -2113,12 +2113,13 @@ let main () = begin
         let main_starting_labels  = [Comment(".globl "^classname^"."^classfunc^"\n");
           Comment(classname^"."^classfunc^":\t\t\t\t\t\t## method definition\n")]
         in
+        let temp_allocated = 128 in (* Dynamically set *)
         let setup = 
           [Push("\t\t\tpushq %rbp\n");
             Mov("\t\t\tmovq %rsp, %rbp\n");
             Mov("\t\t\tmovq 16(%rbp), %r12\n");
             Comment("\t\t\t##stack room for temporaries: 2\n");
-            Mov("\t\t\tmovq $16,%r14\n");
+            Mov("\t\t\tmovq $" ^ (string_of_int temp_allocated) ^ ",%r14\n");
             Sub("\t\t\tsubq %r14, %rsp\n");
             Comment("\t\t\t## return address handling\n");
             Comment("\t\t\t## method body begins\n")] in
@@ -2138,7 +2139,7 @@ let main () = begin
           Comment("\t\t\t## look upt out_int at offest 7 in vtable\n");
           Mov("\t\t\tmovq 56(%r14), %r14\n");
           Call("\t\t\tcall *%r14\n");
-          Add("\t\t\taddq $16, %rsp\n");          
+          Add("\t\t\taddq $"^(string_of_int temp_allocated)^", %rsp\n");          
           ]in 
         let main_end = 
           [End_label(".globl Main.main.end\n");
