@@ -449,9 +449,9 @@ IO.out_string.end:      ## method body ends
 Main.main:              ## method definition
                         pushq %rbp
                         movq %rsp, %rbp
-                        movq 24(%rbp), %r12
+                        movq 16(%rbp), %r12
                         ## stack room for temporaries: 2
-                        movq $24, %r14
+                        movq $16, %r14
                         subq %r14, %rsp
                         ## return address handling
                         ## method body begins
@@ -465,7 +465,7 @@ Main.main:              ## method definition
                         call *%r14
                         popq %r12
                         popq %rbp
-                        movq $3, %r14
+                        movq $20, %r14
                         movq %r14, 24(%r13)
                         movq 24(%r13), %r13
                         movq %r13, 0(%rbp)
@@ -476,11 +476,26 @@ Main.main:              ## method definition
                         call *%r14
                         popq %r12
                         popq %rbp
-                        movq $4, %r14
+                        movq $2, %r14
                         movq %r14, 24(%r13)
+                        movq 24(%r13), %r14
+                        cmpq $0, %r14
+			jne l3
+                        movq $string8, %r13
+                        movq %r13, %rdi
+			call cooloutstr
+                        movl $0, %edi
+			call exit
+.globl l3
+l3:                     ## division is OK
                         movq 24(%r13), %r13
                         movq 0(%rbp), %r14
-                        addq %r14, %r13
+                        
+movq $0, %rdx
+movq %r14, %rax
+cdq 
+idivl %r13d
+movq %rax, %r13
                         movq %r13, 0(%rbp)
                         ## new Int
                         pushq %rbp
@@ -498,7 +513,7 @@ Main.main:              ## method definition
                         ## look up out_int() at offset 7 in vtable
                         movq 56(%r14), %r14
                         call *%r14
-                        addq $24, %rsp
+                        addq $16, %rsp
                         popq %rbp
                         popq %r12
 .globl Main.main.end
@@ -606,14 +621,14 @@ String.substr:          ## method definition
 			call coolsubstr
 			movq %rax, %r13
                         cmpq $0, %r13
-			jne l3
-                        movq $string8, %r13
+			jne l4
+                        movq $string9, %r13
                         movq %r13, %rdi
 			call cooloutstr
                         movl $0, %edi
 			call exit
-.globl l3
-l3:                     movq %r13, 24(%r15)
+.globl l4
+l4:                     movq %r13, 24(%r15)
                         movq %r15, %r13
 .globl String.substr.end
 String.substr.end:      ## method body ends
@@ -701,9 +716,51 @@ string7:                # "abort\\n"
 .byte  92 # '\\'
 .byte 110 # 'n'
 .byte 0
-
 .globl string8
-string8:                # "ERROR: 0: Exception: String.substr out of range\\n"
+string8:                # "ERROR: 5: Exception: division by zero\\n"
+.byte  69 # 'E'
+.byte  82 # 'R'
+.byte  82 # 'R'
+.byte  79 # 'O'
+.byte  82 # 'R'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  53 # '5'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte  69 # 'E'
+.byte 120 # 'x'
+.byte  99 # 'c'
+.byte 101 # 'e'
+.byte 112 # 'p'
+.byte 116 # 't'
+.byte 105 # 'i'
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  58 # ':'
+.byte  32 # ' '
+.byte 100 # 'd'
+.byte 105 # 'i'
+.byte 118 # 'v'
+.byte 105 # 'i'
+.byte 115 # 's'
+.byte 105 # 'i'
+.byte 111 # 'o'
+.byte 110 # 'n'
+.byte  32 # ' '
+.byte  98 # 'b'
+.byte 121 # 'y'
+.byte  32 # ' '
+.byte 122 # 'z'
+.byte 101 # 'e'
+.byte 114 # 'r'
+.byte 111 # 'o'
+.byte  92 # '\\'
+.byte 110 # 'n'
+.byte 0
+
+.globl string9
+string9:                # "ERROR: 0: Exception: String.substr out of range\\n"
 .byte  69 # 'E'
 .byte  82 # 'R'
 .byte  82 # 'R'

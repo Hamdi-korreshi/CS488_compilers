@@ -459,7 +459,7 @@ Main.main:						## method definition
 			call *%r14
 			popq %r12
 			popq %rbp
-			movq $10, %r14
+			movq $20, %r14
 			movq %r14, 24(%r13)
 			movq 24(%r13), %r13
 			movq %r13, -8(%rbp)
@@ -470,15 +470,10 @@ Main.main:						## method definition
 			call *%r14
 			popq %r12
 			popq %rbp
-			movq $11, %r14
+			movq $5, %r14
 			movq %r14, 24(%r13)
 			movq 24(%r13), %r13
 			movq %r13, -16(%rbp)
-			movq -8(%rbp), %r14
-			movq -16(%rbp), %r13
-			addq %r14, %r13
-			movq %r13, -16(%rbp)
-			## offset: -8
 			## new Int
 			pushq %rbp
 			pushq %r12
@@ -486,23 +481,14 @@ Main.main:						## method definition
 			call *%r14
 			popq %r12
 			popq %rbp
-			movq -16(%rbp), %r14
-			movq %r14, 24(%r13)
-			## new Int
-			pushq %rbp
-			pushq %r12
-			movq $Int..new, %r14
-			call *%r14
-			popq %r12
-			popq %rbp
-			movq $12, %r14
+			movq $1, %r14
 			movq %r14, 24(%r13)
 			movq 24(%r13), %r13
 			movq %r13, -24(%rbp)
 			movq -16(%rbp), %r14
 			movq -24(%rbp), %r13
-			addq %r14, %r13
-			movq %r13, -24(%rbp)
+			subq %r13, %r14
+			movq %r14, -24(%rbp)
 			## offset: -16
 			## new Int
 			pushq %rbp
@@ -513,6 +499,24 @@ Main.main:						## method definition
 			popq %rbp
 			movq -24(%rbp), %r14
 			movq %r14, 24(%r13)
+			movq -16(%rbp), %r14
+			movq -24(%rbp), %r13
+			cmpq $0, %r13
+			jne l4
+			movq $string8, %r13
+			movq %r13, %rdi
+			call cooloutstr
+			movl $0, %edi
+			call exit
+.globl l4
+l4:			## division is OK
+			movq $0, %rdx
+			movq %r14, %rax
+			cdq
+			idivl %r13d
+			movq %rax, %r13
+			movq %r13, -24(%rbp)
+			## offset: -16
 			## new Int
 			pushq %rbp
 			pushq %r12
@@ -520,73 +524,7 @@ Main.main:						## method definition
 			call *%r14
 			popq %r12
 			popq %rbp
-			movq $13, %r14
-			movq %r14, 24(%r13)
-			movq 24(%r13), %r13
-			movq %r13, -32(%rbp)
 			movq -24(%rbp), %r14
-			movq -32(%rbp), %r13
-			addq %r14, %r13
-			movq %r13, -32(%rbp)
-			## offset: -24
-			## new Int
-			pushq %rbp
-			pushq %r12
-			movq $Int..new, %r14
-			call *%r14
-			popq %r12
-			popq %rbp
-			movq -32(%rbp), %r14
-			movq %r14, 24(%r13)
-			## new Int
-			pushq %rbp
-			pushq %r12
-			movq $Int..new, %r14
-			call *%r14
-			popq %r12
-			popq %rbp
-			movq $14, %r14
-			movq %r14, 24(%r13)
-			movq 24(%r13), %r13
-			movq %r13, -40(%rbp)
-			movq -32(%rbp), %r14
-			movq -40(%rbp), %r13
-			addq %r14, %r13
-			movq %r13, -40(%rbp)
-			## offset: -32
-			## new Int
-			pushq %rbp
-			pushq %r12
-			movq $Int..new, %r14
-			call *%r14
-			popq %r12
-			popq %rbp
-			movq -40(%rbp), %r14
-			movq %r14, 24(%r13)
-			## new Int
-			pushq %rbp
-			pushq %r12
-			movq $Int..new, %r14
-			call *%r14
-			popq %r12
-			popq %rbp
-			movq $15, %r14
-			movq %r14, 24(%r13)
-			movq 24(%r13), %r13
-			movq %r13, -48(%rbp)
-			movq -40(%rbp), %r14
-			movq -48(%rbp), %r13
-			addq %r14, %r13
-			movq %r13, -48(%rbp)
-			## offset: -40
-			## new Int
-			pushq %rbp
-			pushq %r12
-			movq $Int..new, %r14
-			call *%r14
-			popq %r12
-			popq %rbp
-			movq -48(%rbp), %r14
 			movq %r14, 24(%r13)
 			## need to fix the self dispatch
 			pushq %r13
