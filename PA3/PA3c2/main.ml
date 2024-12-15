@@ -1394,7 +1394,7 @@ let main () = begin
             printf ""
         in *)
         (* TODO: Print asm instead of tac code *)
-        let offset = ref 8 in
+        let offset = ref (-8) in
         let rec tac_to_asm instr =
         match instr with
         | TAC_Assign_String (var, value) ->
@@ -1419,8 +1419,8 @@ let main () = begin
             [Mov("\t\t\tmovq $"^string_of_int value^", %r14\n");
             Mov("\t\t\tmovq %r14, 24(%r13)\n");
             Mov("\t\t\tmovq 24(%r13), %r13\n");
-            Mov("\t\t\tmovq %r13, "^string_of_int(!offset*(-1))^"(%rbp)\n");] in
-          offset := !offset + 8; 
+            Mov("\t\t\tmovq %r13, "^string_of_int(!offset)^"(%rbp)\n");] in
+          offset := !offset - 8;
           class_inst @ stror_to_mem;
         | TAC_Assign_Bool (var, value) ->
           let class_inst = new_class_instance "Bool" var in
@@ -1431,15 +1431,19 @@ let main () = begin
         | TAC_Assign_Var (var, src_var) ->
           [Mov("\t\t\t## need to fix assign\n")]
         | TAC_Assign_Plus (var, e1, e2) ->
-          let assign_plus = [Mov("\t\t\tmovq "^string_of_int((!offset-8)*(-1))^"(%rbp), %r14\n");
-          Mov("\t\t\tmovq "^string_of_int((!offset-16)*(-1))^"(%rbp), %r13\n");
+          let assign_plus = [Mov("\t\t\tmovq "^string_of_int((!offset + 16))^"(%rbp), %r14\n");
+          Mov("\t\t\tmovq "^string_of_int((!offset + 8))^"(%rbp), %r13\n");
           Add("\t\t\taddq %r14, %r13\n");
-          Mov("\t\t\tmovq %r13, "^string_of_int((!offset-24)*(-1))^"(%rbp)\n");] in
-          offset := !offset - 24;
+          Mov("\t\t\tmovq %r13, "^string_of_int((!offset + 8))^"(%rbp)\n");
+          Comment("\t\t\t## offset: "^string_of_int(!offset + 16)^"\n");] in
           let class_inst = new_class_instance "Int" var in
-          let place_temp = [Mov("\t\t\tmovq 0(%rbp), %r14\n");
-          Mov("\t\t\tmovq %r14, 24(%r13)\n");] in
-          assign_plus @ class_inst @ place_temp
+          (* let place_temp = [Mov("\t\t\tmovq " ^ string_of_int(!offset) ^ "(%rbp), %r14\n"); *)
+          let place_temp = [Mov("\t\t\tmovq " ^(string_of_int(!offset + 8))^"(%rbp), %r14\n");
+          Mov("\t\t\tmovq %r14, 24(%r13)\n");
+          (* Mov("\t\t\tmovq 24(%r13), %r13\n");
+          Mov("\t\t\tmovq %r13, " ^ string_of_int(!offset + 8) ^ "(%rbp)\n"); *)
+          ] in
+          assign_plus  @ class_inst @ place_temp
         | TAC_Assign_Minus (var, e1, e2) ->
           [Mov("\t\t\tneed to fix times\n")]
         | TAC_Assign_Times (var, e1, e2) ->
@@ -2002,49 +2006,50 @@ let main () = begin
           printf "\t\t\t\t\t\tpopq %%rbp\n";
           printf "\t\t\t\t\t\tret\n"
         in
-        let initial_main_new () =
+        let initial_main_new () = (
+          (* TODO: initialize any init'd vars and not prim vars || use simple.s and a init'd var  *)
           (* PA3-full take this code, use parameter cname and replace every instance to be modular *)
-          let myclass = "Main" in
+          let classname = "Main" in
           let number_of_feats = 0 in (* Dynamically set *)
-          global_start_comment ();
-          global_setup (myclass^"..new");
-          custom_setup (myclass^"..new") ("constructor for "^myclass);
-          print_tab ();
-          push_stack "%rbp";
-          print_tab ();
-          mov_op "%rsp" "%rbp";
-          print_tab ();
-          stack_temps "1";
-          print_tab ();
-          sub_op "$8" "%rsp";
-          print_tab ();
-          ret_addr_handling ();
-          print_tab ();
-          mov_op ("$"^(string_of_int (3 + number_of_feats))) "%rdi" ;
-          print_tab ();
-          mov_op "$8" "%rsi";
-          print_tab ();
-          call_op "calloc";
-          print_tab ();
-          mov_op "%rax" "%r12";
-          print_tab ();
-          store_c_tag ();
-          let c_tag = 11 in (* Dynamically set || Have some sort of hashtbl that holds these tags *)
-          print_tab ();
-          mov_op ("$" ^ string_of_int c_tag) "0(%r12)"; 
-          print_tab ();
-          mov_op "$3" "8(%r12)";
-          print_tab ();
-          let vtbl = (myclass^"..vtable") in (* Dynamically set *)
-          mov_op ("$" ^ vtbl) "16(%r12)";
-          print_tab();
-          mov_op "%r12" "%r13";
-          (* if number_of_feats <> 0 then (
-            print_tab ();
-            init_attrs ();
+          let main_new_starting_labels = [
+          Comment("\t\t\t\t\t\t## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n");
+          Comment(".globl "^classname^"..new\n");
+          Comment(classname^"..new:\t\t\t\t## constructor for Main\n")
+          ]
+          in
+          let setup = 
+            [
+            Push("\t\t\t\t\t\tpushq %rbp\n");
+            Mov("\t\t\t\t\t\tmovq %rsp, %rbp\n");
+            Comment("\t\t\t\t\t\t## stack room for temporaries: 1\n"); (* Dynamically set? *)
+            Sub("\t\t\t\t\t\tsubq $8, %rsp\n"); (* Dynamically set? *)
+            Comment("\t\t\t\t\t\t## return address handling\n");
+            Mov("\t\t\t\t\t\tmovq " ^ ("$" ^ (string_of_int (3 + number_of_feats))) ^ ", %rdi\n");
+            Mov("\t\t\t\t\t\tmovq $8, %rsi\n");
+            Call("\t\t\t\t\t\tcall calloc\n");
+            Mov("\t\t\t\t\t\tmovq %rax, %r12\n");
+            Comment("\t\t\t\t\t\t## store class tag, object size and vtable pointer\n")
+            ] in
+          let c_tag = 11 in (* Dynamically set *)
+          let vtbl = (classname ^ "..vtable") in
+          let processing_main_new = 
+            [
+            Mov("\t\t\t\t\t\tmovq " ^ ("$" ^ (string_of_int c_tag)) ^ ", 0(%r12)\n");
+            Mov("\t\t\t\t\t\tmovq $3, 8(%r12)\n");
+            Mov("\t\t\t\t\t\tmovq " ^ ("$" ^ vtbl) ^ ", 16(%r12)\n");
+            Mov("\t\t\t\t\t\tmovq %r12, %r13\n")
+            ]
+          in
+          let inits_main_new =
+          if number_of_feats <> 0 then (
+            Comment("\t\t\t\t\t\t## initialize attributes\n");
             let selfcount = 3 in
-            print_tab ();
-            custom_comment ("self["^(string_of_int selfcount) ^ "] holds field variable (type)"); *)
+            Comment("\t\t\t\t\t\t" ^ ("self["^(string_of_int selfcount) ^ "] holds field variable (type)"));
+            (* TODO init the actual vars and non prims *)
+            ();
+          )
+        in  
+        (*  Dynamically set? *)
             (* 
                 Read through each feature in class in class_map
                 create the self comment with the info then either make an init or assign $0
@@ -2055,16 +2060,18 @@ let main () = begin
                   if none then keep going
                   else it is new type then create a new type
             *)
-          (* ); *)
-          print_tab ();
-          ret_addr_handling ();
-          print_tab ();
-          mov_op "%rbp" "%rsp";
-          print_tab ();
-          pop_stack "%rbp";
-          print_tab ();
-          return_op;
-      in
+        let main_new_end = 
+          [
+            Comment("\t\t\t\t\t\t## return address handling\n");
+            Mov("\t\t\t\t\t\tmovq %rbp, %rsp\n");
+            Pop("\t\t\t\t\t\tpopq %rbp\n");
+            Ret("\t\t\t\t\t\tret\n")
+          ] in
+        (* inits_main_new *)
+        let printing = main_new_starting_labels @ setup @ processing_main_new @ main_new_end in
+        printing
+        ) in
+
       let generate_tac_for_method class_dot_method ast () =
         (* Split class_dot_method into class_name and method_name *)
         let class_name, method_name =
@@ -2093,6 +2100,7 @@ let main () = begin
         !tac_instructions
       in
       let initial_Main_main check = (* Check the global table work *)(
+        (* TODO no seg fault but values are not what they claim to be (maybe replacing -n(%rbp) with wrong value or we have to allocate access via rsp for these extra values ) *)
       let rec process_instr_set instr_set =
         match instr_set with
         | [] -> [] (* Base case: an empty list returns an empty list *)
@@ -2130,7 +2138,8 @@ let main () = begin
           Comment("\t\t\t## look upt out_int at offest 7 in vtable\n");
           Mov("\t\t\tmovq 56(%r14), %r14\n");
           Call("\t\t\tcall *%r14\n");
-          Add("\t\t\taddq $16, %rsp\n");]in
+          Add("\t\t\taddq $16, %rsp\n");          
+          ]in 
         let main_end = 
           [End_label(".globl Main.main.end\n");
           End_label("Main.main.end:\t\t## method body ends\n");
@@ -2172,7 +2181,11 @@ let main () = begin
             printf "String..new:\t\t\t\t##constructor for String\n";
             print_string_new ();
           | x -> 
-            initial_main_new () ();
+            (* printf "\t\t\t\t\t\t## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
+            printf ".globl "String"..new\n";
+            printf "String..new:\t\t\t\t##constructor for String\n"; *)
+            let new_main_feats = initial_main_new () in 
+            List.iter (fun x -> printf "%s" (string_of_asm x) ) new_main_feats;
         in
         (*TODO for next PA3full, change the hard set string to a referenced 
         mutable type and increment it*)
