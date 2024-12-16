@@ -21,6 +21,9 @@ and asm =
   | Start_label of string
   | End_label of string 
   | Comment of string
+  | Shlq of string
+  | Shrq of string
+  | Cmp of string
 
 let string_of_asm asm =
   match asm with
@@ -37,6 +40,9 @@ let string_of_asm asm =
   | Start_label s -> s
   | End_label s ->  s
   | Comment s -> s
+  | Shlq s -> s
+  | Shrq s -> s
+  | Cmp s -> s
 let new_class_instance class_name stack_loc =
   let asm_converted = 
     (match class_name with 
@@ -1410,6 +1416,7 @@ let main () = begin
         in *)
         (* TODO: Print asm instead of tac code *)
         let offset = ref (-8) in
+        let jmplabel = ref 4 in
         let rec tac_to_asm instr =
         match instr with
         | TAC_Assign_String (var, value) ->
@@ -1458,13 +1465,71 @@ let main () = begin
           (* Mov("\t\t\tmovq 24(%r13), %r13\n");
           Mov("\t\t\tmovq %r13, " ^ string_of_int(!offset + 8) ^ "(%rbp)\n"); *)
           ] in
-          assign_plus  @ class_inst @ place_temp
+          assign_plus @ class_inst @ place_temp
         | TAC_Assign_Minus (var, e1, e2) ->
-          [Mov("\t\t\tneed to fix times\n")]
+          let assign_minus = [Mov("\t\t\tmovq "^string_of_int((!offset + 16))^"(%rbp), %r14\n");
+          Mov("\t\t\tmovq "^string_of_int((!offset + 8))^"(%rbp), %r13\n");
+          Add("\t\t\tsubq %r13, %r14\n");
+          Mov("\t\t\tmovq %r14, "^string_of_int((!offset + 8))^"(%rbp)\n");
+          Comment("\t\t\t## offset: "^string_of_int(!offset + 16)^"\n");] in
+          let class_inst = new_class_instance "Int" var in
+          (* let place_temp = [Mov("\t\t\tmovq " ^ string_of_int(!offset) ^ "(%rbp), %r14\n"); *)
+          let place_temp = [Mov("\t\t\tmovq " ^(string_of_int(!offset + 8))^"(%rbp), %r14\n");
+          Mov("\t\t\tmovq %r14, 24(%r13)\n");
+          (* Mov("\t\t\tmovq 24(%r13), %r13\n");
+          Mov("\t\t\tmovq %r13, " ^ string_of_int(!offset + 8) ^ "(%rbp)\n"); *)
+          ] in
+          assign_minus @ class_inst @ place_temp
         | TAC_Assign_Times (var, e1, e2) ->
-          [Mov("\t\t\tneed to fix times\n")]
+          let assign_times = [Mov("\t\t\tmovq "^string_of_int((!offset + 16))^"(%rbp), %r14\n");
+          Mov("\t\t\tmovq "^string_of_int((!offset + 8))^"(%rbp), %r13\n");
+          Mov("\t\t\tmovq %r14, %rax\n");
+          Mult("\t\t\timull %r13d, %eax\n");
+          Shlq("\t\t\tshlq $32, %rax\n");
+          Shrq("\t\t\tshrq $32, %rax\n");
+          Mov("\t\t\tmovl %eax, %r13d\n");
+          Mov("\t\t\tmovq %r13, "^string_of_int((!offset + 8))^"(%rbp)\n");
+          Comment("\t\t\t## offset: "^string_of_int(!offset + 16)^"\n");] in
+          let class_inst = new_class_instance "Int" var in
+          (* let place_temp = [Mov("\t\t\tmovq " ^ string_of_int(!offset) ^ "(%rbp), %r14\n"); *)
+          let place_temp = [Mov("\t\t\tmovq " ^(string_of_int(!offset + 8))^"(%rbp), %r14\n");
+          Mov("\t\t\tmovq %r14, 24(%r13)\n");
+          (* Mov("\t\t\tmovq 24(%r13), %r13\n");
+          Mov("\t\t\tmovq %r13, " ^ string_of_int(!offset + 8) ^ "(%rbp)\n"); *)
+          ] in
+          assign_times @ class_inst @ place_temp
         | TAC_Assign_Divide (var, e1, e2) ->
-          [Mov("\t\t\tneed to fix divide\n")]
+          let assign_divide = [Mov("\t\t\tmovq "^string_of_int((!offset + 16))^"(%rbp), %r14\n");
+          Mov("\t\t\tmovq "^string_of_int((!offset + 8))^"(%rbp), %r13\n");
+          Cmp("\t\t\tcmpq $0, %r13\n");  (* Checks division by 0 is going to occur *)
+          Jmp("\t\t\tjne l"^(string_of_int !jmplabel)^"\n");
+          Mov("\t\t\tmovq $string" ^(string_of_int 8) ^ ", %r13\n"); (* $string# dynamically set *)
+          Mov("\t\t\tmovq %r13, %rdi\n");
+          Call("\t\t\tcall cooloutstr\n");
+          Mov("\t\t\tmovl $0, %edi\n");
+          Call("\t\t\tcall exit\n");] in
+
+          let main_jmp_label_setup  = [Comment(".globl " ^ "l" ^ (string_of_int (!jmplabel)) ^ "\n");
+          Comment("l" ^ (string_of_int (!jmplabel)) ^ ":\t\t\t## division is OK\n")] in
+          let main_label_jmp_body = [
+            (* the r13 and r14 are setup for division *)
+          Mov("\t\t\tmovq $0, %rdx\n");
+          Mov("\t\t\tmovq %r14, %rax\n");
+          Mov("\t\t\tcdq\n");
+          Mult("\t\t\tidivl %r13d\n");
+          Mov("\t\t\tmovq %rax, %r13\n");
+          Mov("\t\t\tmovq %r13, "^string_of_int((!offset + 8))^"(%rbp)\n");
+          Comment("\t\t\t## offset: "^string_of_int(!offset + 16)^"\n");] in
+
+          
+          let class_inst = new_class_instance "Int" var in
+          (* let place_temp = [Mov("\t\t\tmovq " ^ string_of_int(!offset) ^ "(%rbp), %r14\n"); *)
+          let place_temp = [Mov("\t\t\tmovq " ^(string_of_int(!offset + 8))^"(%rbp), %r14\n");
+          Mov("\t\t\tmovq %r14, 24(%r13)\n");
+          (* Mov("\t\t\tmovq 24(%r13), %r13\n");
+          Mov("\t\t\tmovq %r13, " ^ string_of_int(!offset + 8) ^ "(%rbp)\n"); *)
+          ] in
+          assign_divide @ main_jmp_label_setup @ main_label_jmp_body @ class_inst @ place_temp
         | TAC_Cnd_LessThan (var, e1, e2) ->
           [Mov("\t\t\tneed to fix lees than\n")]
         | TAC_Cnd_LessEqual (var, e1, e2) ->
