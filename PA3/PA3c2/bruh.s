@@ -148,31 +148,26 @@ Int..new:				##constructor for Int
 						ret
 						## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Main..new
-Main..new:              ## constructor for Main
-                        pushq %rbp
-                        movq %rsp, %rbp
-                        ## stack room for temporaries: 1
-                        movq $8, %r14
-                        subq %r14, %rsp
-                        ## return address handling
-                        movq $3, %r12
-                        movq $8, %rsi
-			movq %r12, %rdi
-			call calloc
-			movq %rax, %r12
-                        ## store class tag, object size and vtable pointer
-                        movq $11, %r14
-                        movq %r14, 0(%r12)
-                        movq $3, %r14
-                        movq %r14, 8(%r12)
-                        movq $Main..vtable, %r14
-                        movq %r14, 16(%r12)
-                        movq %r12, %r13
-                        ## return address handling
-                        movq %rbp, %rsp
-                        popq %rbp
-                        ret
-                        ## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+Main..new:				## constructor for Main
+						pushq %rbp
+						movq %rsp, %rbp
+						## stack room for temporaries: 1
+						subq $8, %rsp
+						## return address handling
+						movq $3, %rdi
+						movq $8, %rsi
+						call calloc
+						movq %rax, %r12
+						## store class tag, object size and vtable pointer
+						movq $11, 0(%r12)
+						movq $3, 8(%r12)
+						movq $Main..vtable, 16(%r12)
+						movq %r12, %r13
+						## return address handling
+						movq %rbp, %rsp
+						popq %rbp
+						ret
+						## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
 .globl Object..new
 Object..new:				##constructor for Object
 						## constructor for Object
@@ -452,8 +447,8 @@ Main.main:						## method definition
 			pushq %rbp
 			movq %rsp, %rbp
 			movq 16(%rbp), %r12
-			##stack room for temporaries: 2
-			movq $16,%r14
+			##stack room for temporaries:4
+			movq $32,%r14
 			subq %r14, %rsp
 			## return address handling
 			## method body begins
@@ -479,10 +474,11 @@ Main.main:						## method definition
 			movq %r14, 24(%r13)
 			movq 24(%r13), %r13
 			movq %r13, -16(%rbp)
-			movq -16(%rbp), %r14
-			movq -8(%rbp), %r13
+			movq -8(%rbp), %r14
+			movq -16(%rbp), %r13
 			addq %r14, %r13
-			movq %r13, 0(%rbp)
+			movq %r13, -16(%rbp)
+			## offset: -8
 			## new Int
 			pushq %rbp
 			pushq %r12
@@ -490,7 +486,7 @@ Main.main:						## method definition
 			call *%r14
 			popq %r12
 			popq %rbp
-			movq 0(%rbp), %r14
+			movq -16(%rbp), %r14
 			movq %r14, 24(%r13)
 			## need to fix the self dispatch
 			pushq %r13
@@ -500,7 +496,7 @@ Main.main:						## method definition
 			## look upt out_int at offest 7 in vtable
 			movq 56(%r14), %r14
 			call *%r14
-			addq $16, %rsp
+			addq $32, %rsp
 .globl Main.main.end
 Main.main.end:		## method body ends
 			## return address handling

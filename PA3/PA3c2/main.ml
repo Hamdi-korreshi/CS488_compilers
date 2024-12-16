@@ -6,39 +6,6 @@ type static_type =  (*static type of cool expression*)
   | Class of string
   | SELF_TYPE of string
 
-let print_tab () = printf "\t\t\t\t\t\t"
-let global_start_comment () = printf "\t\t\t\t\t\t## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n"
-let global_setup classfunc = printf ".globl %s\n" classfunc 
-let constructor_setup classfunc classname = printf "%s\t\t## constructor for %s\n"  classfunc classname 
-let custom_setup classfunc msg = printf "%s:\t\t\t\t## %s\n" classfunc msg
-let ret_addr_handling () = printf "## return address handling\n" 
-let store_c_tag () = printf "## store class tag, object size and vtable pointer\n" 
-let stack_temps number = printf "## stack room for temporaries: %s\n" number 
-let init_attrs () = printf "## initialize attributes\n" 
-let self_holds pos varname vartype = printf "## self[%s] holds field %s (%s)\n" pos varname vartype 
-let push_stack reg = printf "pushq %s\n" reg
-let pop_stack reg = printf "popq %s\n" reg
-let mov_op src dest = printf "movq %s, %s\n" src dest 
-let movl_op src dest = printf "movl %s, %s\n" src dest 
-let add_op src dest = printf "addq %s, %s\n" src dest
-let sub_op src dest = printf "subq %s, %s\n" src dest 
-let multi_op src dest = printf "imull %s, %s\n" src dest
-let call_op op  = printf "call %s\n" op
-let return_op () = printf "ret\n"
-let custom_comment msg = printf "## %s\n" msg
-let actual_tbl classfunc = printf "%s:\t\t\t\t" classfunc
-let div_op src dest = printf "testing"
-let and_op src dest = printf "and %s, %s\n" src dest
-let or_op src dest = printf "or %s, %s\n" src dest
-let cmp_op src dest = printf "cmpq %s, %s\n" src dest
-let test_op src dest = printf "test %s, %s\n" src dest
-let jmp_op label = printf "jmp %s\n" label
-let je_op label = printf "je %s\n" label
-let jne_op label = printf "jne %s\n" label
-let jns_op label = printf "jns %s\n" label
-let jl_op label = printf "jl %s\n" label
-let jle_op label = printf "jle %s\n" label 
-
 type asm_tree = asm list
 and asm = 
   | Push of string
@@ -365,6 +332,54 @@ let fresh_variable =
     incr counter;
     var_name
 
+let find_temps class_name metho_name (hashmap: implementation_map) : int = 
+  let rec count_exps exp_to_count =
+    match exp_to_count.exp_kind with
+    | Integer _ -> 1
+    | Bool _ -> 1
+    | String _ -> 1
+    | Plus (e1, e2)
+    | Minus (e1, e2)
+    | Times (e1, e2)
+    | Divide (e1, e2)
+    | LT (e1, e2)
+    | LE (e1, e2)
+    | EQ (e1, e2) -> 1 + count_exps e1 + count_exps e2
+    | Let (bindings, e) ->
+        List.length bindings + count_exps e +
+        List.fold_left (fun acc (_, _, opt_e) ->
+          acc + (match opt_e with None -> 0 | Some e -> count_exps e)) 0 bindings
+    | New _ -> 1
+    | Block exps -> List.fold_left (fun acc e -> acc + count_exps e) 0 exps
+    | Identifier _ -> 1
+    | Case (e, cases) ->
+        count_exps e +
+        List.fold_left (fun acc (_, _, case_exp) -> acc + count_exps case_exp) 0 cases
+    | If (cond, then_branch, else_branch) ->
+        1 + count_exps cond + count_exps then_branch + count_exps else_branch
+    | While (cond, body) -> 1 + count_exps cond + count_exps body
+    | Isvoid e -> 1 + count_exps e
+    | Assign (_, e) -> 1 + count_exps e
+    | Dynamic_Dispatch (e, _, args) ->
+      1 + count_exps e + List.fold_left (fun acc arg -> acc + count_exps arg) 0 args
+    | Self_Dispatch (_, args) ->
+      1 + List.fold_left (fun acc arg -> acc + count_exps arg) 0 args
+    | Static_Dispatch (e, _, _, args) ->
+      1 + count_exps e + List.fold_left (fun acc arg -> acc + count_exps arg) 0 args
+    | Negate e -> 1 + count_exps e
+    | Not e -> 1 + count_exps e
+    | Internal (_, _, _) -> 1
+    in
+  let find_body_exp classname method_name hashmap =
+    try
+      let methods = Hashtbl.find hashmap classname in
+      match List.find_opt (fun (name, _, _, _) -> name = method_name) methods with
+      | Some (_, _, _, body_exp) -> body_exp
+      | None -> failwith ("Method not found: " ^ method_name)
+    with
+    | Not_found -> failwith ("Class not found in hashmap for: " ^ classname)
+  in
+  count_exps (find_body_exp class_name metho_name hashmap)
 
 let rec convert_id (loc,iname) =
   [], TAC_Variable iname
@@ -2178,13 +2193,13 @@ let main () = begin
         let main_starting_labels  = [Comment(".globl "^classname^"."^classfunc^"\n");
           Comment(classname^"."^classfunc^":\t\t\t\t\t\t## method definition\n")]
         in
-        let temp_allocated = 128 in (* Dynamically set *)
+        let temp_allocated = find_temps classname classfunc imp_map in (* Dynamically set *)
         let setup = 
           [Push("\t\t\tpushq %rbp\n");
             Mov("\t\t\tmovq %rsp, %rbp\n");
             Mov("\t\t\tmovq 16(%rbp), %r12\n");
-            Comment("\t\t\t##stack room for temporaries: 2\n");
-            Mov("\t\t\tmovq $" ^ (string_of_int temp_allocated) ^ ",%r14\n");
+            Comment("\t\t\t##stack room for temporaries:"^string_of_int(temp_allocated)^"\n");
+            Mov("\t\t\tmovq $" ^ (string_of_int (temp_allocated * 8)) ^ ",%r14\n");
             Sub("\t\t\tsubq %r14, %rsp\n");
             Comment("\t\t\t## return address handling\n");
             Comment("\t\t\t## method body begins\n")] in
@@ -2204,7 +2219,7 @@ let main () = begin
           Comment("\t\t\t## look upt out_int at offest 7 in vtable\n");
           Mov("\t\t\tmovq 56(%r14), %r14\n");
           Call("\t\t\tcall *%r14\n");
-          Add("\t\t\taddq $"^(string_of_int temp_allocated)^", %rsp\n");          
+          Add("\t\t\taddq $"^(string_of_int (temp_allocated*8))^", %rsp\n");          
           ]in 
         let main_end = 
           [End_label(".globl Main.main.end\n");
