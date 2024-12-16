@@ -77,7 +77,7 @@ type tac_expr =
   | TAC_String of string
   | TAC_Bool of bool
 
-let match_exp_to_string_T2A exp1 =
+let match_exp_to_string_T2A exp1 : string =
   (* Used in tac-to-asm *)
   let currexpr = 
     (match exp1 with
@@ -140,6 +140,7 @@ and exp_kind =
 type class_map = (string, (string * string * exp option) list option) Hashtbl.t
 type implementation_map = (loc, (loc * (loc) list * loc * exp) list) Hashtbl.t
 type parent_map = (loc,loc) Hashtbl.t
+type offset_var_map = (string, string) Hashtbl.t 
 
 let empty_map () = Hashtbl.create 128
 
@@ -1291,133 +1292,10 @@ let main () = begin
           | TAC_String str_val -> printf "\"%s\"" str_val
           | TAC_Bool bool_val -> printf "%b" bool_val
         in
-        (* Printing *)
-        (* let rec print_tac_instr instr =
-          match instr with
-          | TAC_Assign_String (var, value) ->
-            printf "%s <- string \n%s\n" var value
-          | TAC_Jump_If_Not (cond_expr, label) ->
-            printf "bt ";
-            print_tac_expr cond_expr;
-            printf " %s\n" label
-          | TAC_Default (varname, sometype) ->
-            print_tac_expr varname;
-            printf " <- default %s\n" sometype
-          | TAC_Jump label ->
-              printf "jmp %s\n" label
-          | TAC_Label label ->
-            printf "label %s\n" label
-          | TAC_Assign_Int (var, value) ->
-              printf "%s <- int %d\n" var value
-          | TAC_Assign_Bool (var, value) ->
-                if value = true then
-                  printf "%s <- bool true\n" var
-                else 
-                  printf "%s <- bool false\n" var
-          | TAC_Assign_Var (var, src_var) ->
-              printf "%s <- %s\n" var src_var
-          | TAC_Assign_Plus (var, e1, e2) ->
-              let e1_str = match_exp e1 in
-              let e2_str = match_exp e2 in
-              printf "%s <- + %s %s\n" var e1_str e2_str
-          | TAC_Assign_Minus (var, e1, e2) ->
-            let e1_str = match_exp e1 in
-            let e2_str = match_exp e2 in
-              printf "%s <- - %s %s\n" var e1_str e2_str
-          | TAC_Assign_Times (var, e1, e2) ->
-            let e1_str = match_exp e1 in
-            let e2_str = match_exp e2 in
-              printf "%s <- * %s %s\n" var e1_str e2_str
-          | TAC_Assign_Divide (var, e1, e2) ->
-            let e1_str = match_exp e1 in
-            let e2_str = match_exp e2 in
-              printf "%s <- / %s %s\n" var e1_str e2_str
-          | TAC_Cnd_LessThan (var, e1, e2) ->
-              let e1_val = match e1 with
-                          | TAC_Variable v -> v
-                          | TAC_String i -> "string" 
-                          | TAC_Int i -> "int"
-                          | TAC_Bool i -> "bool" ^ string_of_bool i in
-              let e2_val = match e2 with
-                          | TAC_Variable v -> v
-                          | TAC_String i -> "string" 
-                          | TAC_Int i -> "int" ^ string_of_int i
-                          | TAC_Bool i -> "bool" ^ string_of_bool i in
-              printf "%s <- < %s %s\n" var e1_val e2_val
-          | TAC_Cnd_LessEqual (var, e1, e2) ->
-              let e1_val = match e1 with
-                        | TAC_Variable v -> v
-                        | TAC_String i -> "string" 
-                        | TAC_Int i -> "int" ^ string_of_int i
-                        | TAC_Bool i -> "bool" ^ string_of_bool i in
-              let e2_val = match e2 with
-                        | TAC_Variable v -> v
-                        | TAC_String i -> "string" 
-                        | TAC_Int i -> "int" ^ string_of_int i
-                        | TAC_Bool i -> "bool" ^ string_of_bool i in
-              printf "%s <- <= %s  %s\n" var e1_val e2_val
-          | TAC_Cnd_Equal (var, e1, e2) ->
-            let e1_val = match e1 with
-                      | TAC_Variable v -> v
-                      | TAC_String i -> "string" 
-                      | TAC_Int i -> "int" ^ string_of_int i
-                      | TAC_Bool i -> "bool" ^ string_of_bool i in
-            let e2_val = match e2 with
-                      | TAC_Variable v -> v
-                      | TAC_String i -> "string" 
-                      | TAC_Int i -> "int" ^ string_of_int i
-                      | TAC_Bool i -> "bool" ^ string_of_bool i in
-            printf "%s <- = %s %s\n" var e1_val e2_val
-          | TAC_Cnd_Not (var, e1) ->
-            (* Just for Booleans *)
-            let e1_val = match e1 with
-                      | TAC_Variable v -> v
-                      | TAC_String i -> "string" 
-                      | TAC_Int i -> "int" ^ string_of_int i
-                      | TAC_Bool i -> "bool" ^ string_of_bool i in
-            printf "%s <- not %s\n" var e1_val
-          | TAC_Negate (var, e1) ->
-            (* Only for ints *)
-            let e1_val = match e1 with
-                      | TAC_Variable v -> v
-                      | TAC_String i -> "string"
-                      | TAC_Int i -> "int" ^ string_of_int i
-                      | TAC_Bool i -> "bool" ^ string_of_bool i in
-            printf "%s <- ~ %s\n" var e1_val
-          | TAC_New (var, e1) ->
-              let e1_val = match e1 with
-                      | TAC_Variable v -> v
-                      | TAC_String i -> "string"
-                      | TAC_Int i -> "int" ^ string_of_int i 
-                      | TAC_Bool i -> "bool" ^ string_of_bool i in
-                printf "%s <- new %s\n" var e1_val
-          | TAC_isvoid (var, e1) ->
-              let e1_val = match e1 with
-                      | TAC_Variable v -> v
-                      | TAC_String i -> "string"
-                      | TAC_Int i -> "int"
-                      | TAC_Bool i -> "bool" in
-                printf "%s <- isvoid %s\n" var e1_val
-          | TAC_call_out (var, e1, e2) ->
-                printf "%s <- call %s %s\n" var e1 e2
-          | TAC_call_in (var, e1) ->
-                printf "%s <- call %s\n" var e1
-          | TAC_Self_Dispatch (result_var, (loc, method_name), args) ->
-            printf "%s <- call %s " result_var method_name;
-            List.iteri (fun i arg ->
-              if i > 0 then printf " ";
-              print_tac_expr arg
-            ) args;
-            printf "\n"
-          | TAC_Return result_var ->
-            printf "return %s\n" result_var
-          | TAC_Let (bingings, let_body) ->
-            printf ""
-        in *)
         (* TODO: Print asm instead of tac code *)
         let offset = ref (-8) in
         let jmplabel = ref 4 in
-        let rec tac_to_asm instr =
+        let rec tac_to_asm instr (off_var_map:offset_var_map) =
         match instr with
         | TAC_Assign_String (var, value) ->
           let class_inst = new_class_instance "String" var in
@@ -1442,6 +1320,8 @@ let main () = begin
             Mov("\t\t\tmovq %r14, 24(%r13)\n");
             Mov("\t\t\tmovq 24(%r13), %r13\n");
             Mov("\t\t\tmovq %r13, "^string_of_int(!offset)^"(%rbp)\n");] in
+            (* Push to hashtbl *)
+            Hashtbl.add off_var_map var (string_of_int(!offset)^"(%rbp)");
           offset := !offset - 8;
           class_inst @ stror_to_mem;
         | TAC_Assign_Bool (var, value) ->
@@ -1453,18 +1333,30 @@ let main () = begin
         | TAC_Assign_Var (var, src_var) ->
           [Mov("\t\t\t## need to fix assign\n")]
         | TAC_Assign_Plus (var, e1, e2) ->
-          let assign_plus = [Mov("\t\t\tmovq "^string_of_int((!offset + 16))^"(%rbp), %r14\n");
-          Mov("\t\t\tmovq "^string_of_int((!offset + 8))^"(%rbp), %r13\n");
+          let find_safe hashmap exp_type = 
+            (* TODO if fails don't happen get rid of immediately *)
+            match Hashtbl.find_opt hashmap exp_type with 
+            | Some value -> value 
+            | None -> failwith "cannot find "^exp_type;
+          in
+          let first_param = find_safe off_var_map (match_exp_to_string_T2A e1) in
+          let second_param = find_safe off_var_map (match_exp_to_string_T2A e2) in
+          let third_param = string_of_int (!offset)^"(%rbp)" in
+          let assign_plus = [Mov("\t\t\tmovq "^first_param^", %r14\n");
+          Mov("\t\t\tmovq "^second_param^", %r13\n");
           Add("\t\t\taddq %r14, %r13\n");
-          Mov("\t\t\tmovq %r13, "^string_of_int((!offset + 8))^"(%rbp)\n");
-          Comment("\t\t\t## offset: "^string_of_int(!offset + 16)^"\n");] in
+          Mov("\t\t\tmovq %r13, "^third_param^"\n");
+          Comment("\t\t\t## offset: "^first_param^"\n");] in
+          (* Hashtbl.iter (fun x y -> Printf.printf "%s -> %s\n" x y) off_var_map;
+          printf "I AM PRINTING NOW!\n"; *)
+
           let class_inst = new_class_instance "Int" var in
           (* let place_temp = [Mov("\t\t\tmovq " ^ string_of_int(!offset) ^ "(%rbp), %r14\n"); *)
-          let place_temp = [Mov("\t\t\tmovq " ^(string_of_int(!offset + 8))^"(%rbp), %r14\n");
+          let place_temp = [Mov("\t\t\tmovq "^third_param^", %r14\n");
           Mov("\t\t\tmovq %r14, 24(%r13)\n");
-          (* Mov("\t\t\tmovq 24(%r13), %r13\n");
-          Mov("\t\t\tmovq %r13, " ^ string_of_int(!offset + 8) ^ "(%rbp)\n"); *)
           ] in
+          Hashtbl.add off_var_map var third_param;
+          offset := !offset - 8;
           assign_plus @ class_inst @ place_temp
         | TAC_Assign_Minus (var, e1, e2) ->
           let assign_minus = [Mov("\t\t\tmovq "^string_of_int((!offset + 16))^"(%rbp), %r14\n");
@@ -2180,12 +2072,12 @@ let main () = begin
         !tac_instructions
       in
       let initial_Main_main check = (* Check the global table work *)(
-        (* TODO no seg fault but values are not what they claim to be (maybe replacing -n(%rbp) with wrong value or we have to allocate access via rsp for these extra values ) *)
+      let offset_var_map: offset_var_map = Hashtbl.create 128 in
       let rec process_instr_set instr_set =
         match instr_set with
         | [] -> [] (* Base case: an empty list returns an empty list *)
         | instr :: rest -> 
-            let current_asm = tac_to_asm instr in
+            let current_asm = tac_to_asm instr offset_var_map in
             current_asm @ process_instr_set rest
         in
         let classname = "Main" in
