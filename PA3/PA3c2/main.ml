@@ -1333,25 +1333,21 @@ let main () = begin
         | TAC_Assign_Var (var, src_var) ->
           [Mov("\t\t\t## need to fix assign\n")]
         | TAC_Assign_Plus (var, e1, e2) ->
-          let find_safe hashmap exp_type = 
+          (* let find_safe hashmap exp_type = 
             (* TODO if fails don't happen get rid of immediately *)
             match Hashtbl.find_opt hashmap exp_type with 
             | Some value -> value 
             | None -> failwith "cannot find "^exp_type;
-          in
-          let first_param = find_safe off_var_map (match_exp_to_string_T2A e1) in
-          let second_param = find_safe off_var_map (match_exp_to_string_T2A e2) in
+          in *)
+          let first_param = Hashtbl.find off_var_map (match_exp_to_string_T2A e1) in (* offset + 16 *)
+          let second_param = Hashtbl.find off_var_map (match_exp_to_string_T2A e2) in (* offset + 8*)
           let third_param = string_of_int (!offset)^"(%rbp)" in
           let assign_plus = [Mov("\t\t\tmovq "^first_param^", %r14\n");
           Mov("\t\t\tmovq "^second_param^", %r13\n");
           Add("\t\t\taddq %r14, %r13\n");
           Mov("\t\t\tmovq %r13, "^third_param^"\n");
           Comment("\t\t\t## offset: "^first_param^"\n");] in
-          (* Hashtbl.iter (fun x y -> Printf.printf "%s -> %s\n" x y) off_var_map;
-          printf "I AM PRINTING NOW!\n"; *)
-
           let class_inst = new_class_instance "Int" var in
-          (* let place_temp = [Mov("\t\t\tmovq " ^ string_of_int(!offset) ^ "(%rbp), %r14\n"); *)
           let place_temp = [Mov("\t\t\tmovq "^third_param^", %r14\n");
           Mov("\t\t\tmovq %r14, 24(%r13)\n");
           ] in
@@ -1359,40 +1355,47 @@ let main () = begin
           offset := !offset - 8;
           assign_plus @ class_inst @ place_temp
         | TAC_Assign_Minus (var, e1, e2) ->
-          let assign_minus = [Mov("\t\t\tmovq "^string_of_int((!offset + 16))^"(%rbp), %r14\n");
-          Mov("\t\t\tmovq "^string_of_int((!offset + 8))^"(%rbp), %r13\n");
+          let first_param = Hashtbl.find off_var_map (match_exp_to_string_T2A e1) in
+          let second_param = Hashtbl.find off_var_map (match_exp_to_string_T2A e2) in
+          let third_param = string_of_int (!offset)^"(%rbp)" in
+          let assign_minus = [Mov("\t\t\tmovq "^first_param^", %r14\n");
+          Mov("\t\t\tmovq "^second_param^", %r13\n");
           Add("\t\t\tsubq %r13, %r14\n");
-          Mov("\t\t\tmovq %r14, "^string_of_int((!offset + 8))^"(%rbp)\n");
-          Comment("\t\t\t## offset: "^string_of_int(!offset + 16)^"\n");] in
+          Mov("\t\t\tmovq %r14, "^third_param^"\n");
+          Comment("\t\t\t## offset: "^first_param^"\n");] in
           let class_inst = new_class_instance "Int" var in
-          (* let place_temp = [Mov("\t\t\tmovq " ^ string_of_int(!offset) ^ "(%rbp), %r14\n"); *)
-          let place_temp = [Mov("\t\t\tmovq " ^(string_of_int(!offset + 8))^"(%rbp), %r14\n");
+          let place_temp = [Mov("\t\t\tmovq " ^third_param^", %r14\n");
           Mov("\t\t\tmovq %r14, 24(%r13)\n");
-          (* Mov("\t\t\tmovq 24(%r13), %r13\n");
-          Mov("\t\t\tmovq %r13, " ^ string_of_int(!offset + 8) ^ "(%rbp)\n"); *)
           ] in
+          Hashtbl.add off_var_map var third_param;
+          offset := !offset - 8;
           assign_minus @ class_inst @ place_temp
         | TAC_Assign_Times (var, e1, e2) ->
-          let assign_times = [Mov("\t\t\tmovq "^string_of_int((!offset + 16))^"(%rbp), %r14\n");
-          Mov("\t\t\tmovq "^string_of_int((!offset + 8))^"(%rbp), %r13\n");
+          let first_param = Hashtbl.find off_var_map (match_exp_to_string_T2A e1) in
+          let second_param = Hashtbl.find off_var_map (match_exp_to_string_T2A e2) in
+          let third_param = string_of_int (!offset)^"(%rbp)" in
+          let assign_times = [Mov("\t\t\tmovq "^first_param^", %r14\n");
+          Mov("\t\t\tmovq "^second_param^", %r13\n");
           Mov("\t\t\tmovq %r14, %rax\n");
           Mult("\t\t\timull %r13d, %eax\n");
           Shlq("\t\t\tshlq $32, %rax\n");
           Shrq("\t\t\tshrq $32, %rax\n");
           Mov("\t\t\tmovl %eax, %r13d\n");
-          Mov("\t\t\tmovq %r13, "^string_of_int((!offset + 8))^"(%rbp)\n");
+          Mov("\t\t\tmovq %r13, "^third_param^"\n");
           Comment("\t\t\t## offset: "^string_of_int(!offset + 16)^"\n");] in
           let class_inst = new_class_instance "Int" var in
-          (* let place_temp = [Mov("\t\t\tmovq " ^ string_of_int(!offset) ^ "(%rbp), %r14\n"); *)
-          let place_temp = [Mov("\t\t\tmovq " ^(string_of_int(!offset + 8))^"(%rbp), %r14\n");
+          let place_temp = [Mov("\t\t\tmovq " ^third_param^", %r14\n");
           Mov("\t\t\tmovq %r14, 24(%r13)\n");
-          (* Mov("\t\t\tmovq 24(%r13), %r13\n");
-          Mov("\t\t\tmovq %r13, " ^ string_of_int(!offset + 8) ^ "(%rbp)\n"); *)
           ] in
+          Hashtbl.add off_var_map var third_param;
+          offset := !offset - 8;
           assign_times @ class_inst @ place_temp
         | TAC_Assign_Divide (var, e1, e2) ->
-          let assign_divide = [Mov("\t\t\tmovq "^string_of_int((!offset + 16))^"(%rbp), %r14\n");
-          Mov("\t\t\tmovq "^string_of_int((!offset + 8))^"(%rbp), %r13\n");
+          let first_param = Hashtbl.find off_var_map (match_exp_to_string_T2A e1) in
+          let second_param = Hashtbl.find off_var_map (match_exp_to_string_T2A e2) in
+          let third_param = string_of_int (!offset)^"(%rbp)" in
+          let assign_divide = [Mov("\t\t\tmovq "^first_param^", %r14\n");
+          Mov("\t\t\tmovq "^second_param^", %r13\n");
           Cmp("\t\t\tcmpq $0, %r13\n");  (* Checks division by 0 is going to occur *)
           Jmp("\t\t\tjne l"^(string_of_int !jmplabel)^"\n");
           Mov("\t\t\tmovq $string" ^(string_of_int 8) ^ ", %r13\n"); (* $string# dynamically set *)
@@ -1410,17 +1413,14 @@ let main () = begin
           Mov("\t\t\tcdq\n");
           Mult("\t\t\tidivl %r13d\n");
           Mov("\t\t\tmovq %rax, %r13\n");
-          Mov("\t\t\tmovq %r13, "^string_of_int((!offset + 8))^"(%rbp)\n");
+          Mov("\t\t\tmovq %r13, "^third_param^"\n");
           Comment("\t\t\t## offset: "^string_of_int(!offset + 16)^"\n");] in
-
-          
           let class_inst = new_class_instance "Int" var in
-          (* let place_temp = [Mov("\t\t\tmovq " ^ string_of_int(!offset) ^ "(%rbp), %r14\n"); *)
-          let place_temp = [Mov("\t\t\tmovq " ^(string_of_int(!offset + 8))^"(%rbp), %r14\n");
+          let place_temp = [Mov("\t\t\tmovq " ^third_param^", %r14\n");
           Mov("\t\t\tmovq %r14, 24(%r13)\n");
-          (* Mov("\t\t\tmovq 24(%r13), %r13\n");
-          Mov("\t\t\tmovq %r13, " ^ string_of_int(!offset + 8) ^ "(%rbp)\n"); *)
           ] in
+          Hashtbl.add off_var_map var third_param;
+          offset := !offset - 8;
           assign_divide @ main_jmp_label_setup @ main_label_jmp_body @ class_inst @ place_temp
         | TAC_Cnd_LessThan (var, e1, e2) ->
           [Mov("\t\t\tneed to fix lees than\n")]
