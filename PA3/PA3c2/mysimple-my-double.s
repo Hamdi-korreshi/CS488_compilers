@@ -447,13 +447,47 @@ Main.main:						## method definition
 			pushq %rbp
 			movq %rsp, %rbp
 			movq 16(%rbp), %r12
-			##stack room for temporaries:2
-			movq $16,%r14
+			##stack room for temporaries:3
+			movq $24,%r14
 			subq %r14, %rsp
 			## return address handling
 			## method body begins
-			## need to fix new 
-			## need to fix assign
+			## new Int
+			pushq %rbp
+			pushq %r12
+			movq $Int..new, %r14
+			call *%r14
+			popq %r12
+			popq %rbp
+			movq $3, %r14
+			movq %r14, 24(%r13)
+			movq 24(%r13), %r13
+			movq %r13, -8(%rbp)
+			## new Int
+			pushq %rbp
+			pushq %r12
+			movq $Int..new, %r14
+			call *%r14
+			popq %r12
+			popq %rbp
+			movq $4, %r14
+			movq %r14, 24(%r13)
+			movq 24(%r13), %r13
+			movq %r13, -16(%rbp)
+			movq -8(%rbp), %r14
+			movq -16(%rbp), %r13
+			addq %r14, %r13
+			movq %r13, -24(%rbp)
+			## offset: -8(%rbp)
+			## new Int
+			pushq %rbp
+			pushq %r12
+			movq $Int..new, %r14
+			call *%r14
+			popq %r12
+			popq %rbp
+			movq -24(%rbp), %r14
+			movq %r14, 24(%r13)
 			pushq %r13
 			pushq %r12
 			## obtain vtable for self object of type Main
@@ -461,7 +495,7 @@ Main.main:						## method definition
 			## look upt out_int at offest 7 in vtable
 			movq 56(%r14), %r14
 			call *%r14
-			addq $16, %rsp
+			addq $24, %rsp
 .globl Main.main.end
 Main.main.end:		## method body ends
 			## return address handling

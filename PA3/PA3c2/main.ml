@@ -1305,14 +1305,19 @@ let main () = begin
             Mov("\t\t\tmovq %r13, 0(%rbp)\n")] in
           class_inst @ stror_to_mem;
         | TAC_Jump_If_Not (cond_expr, label) ->
-          [Mov("\t\t\tneed to fix jump if not\n")]
+          (* jne? *)
+          [Mov("\t\t\tjne " ^ label ^ "\n")]
         | TAC_Default (varname, sometype) ->
-          print_tac_expr varname;
-          [Mov("\t\t\tneed to fix defaultt\n")]
+          (* print_tac_expr varname; *)
+          [Comment("\t\t\t## default xxx" ^ sometype ^ "\n")]
+          (* [Mov("\t\t\t## need to fix defaultt\n")] *)
         | TAC_Jump label ->
-          [Jmp("\t\t\tneed to fix jump label\n")]
+          [Jmp("\t\t\tjmp " ^ (label)  ^"\n")]
         | TAC_Label label ->
-          [Comment(label^"\n")]
+          (* need to fix || split the label and work accordingly *)
+          [Comment(".globl " ^ label ^ "\n");
+          Comment((label) ^ ":");
+          ]
         | TAC_Assign_Int (var, value) ->
           let class_inst = new_class_instance "Int" var in
           let stror_to_mem = 
@@ -1423,31 +1428,89 @@ let main () = begin
           offset := !offset - 8;
           assign_divide @ main_jmp_label_setup @ main_label_jmp_body @ class_inst @ place_temp
         | TAC_Cnd_LessThan (var, e1, e2) ->
-          [Mov("\t\t\tneed to fix lees than\n")]
+          (* find e1 and e2 and push them to registers *)
+          (* if issues with conditions review *)
+          let first_param = Hashtbl.find off_var_map (match_exp_to_string_T2A e1) in
+          let second_param = Hashtbl.find off_var_map (match_exp_to_string_T2A e2) in
+          [Mov("\t\t\tmovq " ^ first_param ^ ", %r13\n");
+          Push("\t\t\tpushq %r13\n");
+          Mov("\t\t\tmovq " ^ second_param ^ ", %r13\n");
+          Push("\t\t\tpushq %r13\n");
+          Push("\t\t\tpushq %r12\n");
+          Call("\t\t\tcall lt_handler\n");
+          Add("\t\t\taddq $24, %rsp\n");
+          Pop("\t\t\tpopq %rbp\n");
+          Pop("\t\t\tpopq %r12\n");
+          Mov("\t\t\tmovq 24(%r13), %r13\n");
+          ]
+
         | TAC_Cnd_LessEqual (var, e1, e2) ->
-          [Mov("\t\t\tneed to fix lees eq\n")]
+          let first_param = Hashtbl.find off_var_map (match_exp_to_string_T2A e1) in
+          let second_param = Hashtbl.find off_var_map (match_exp_to_string_T2A e2) in
+          [Mov("\t\t\tmovq " ^ first_param ^ ", %r13\n");
+          Push("\t\t\tpushq %r13\n");
+          Mov("\t\t\tmovq " ^ second_param ^ ", %r13\n");
+          Push("\t\t\tpushq %r13\n");
+          Push("\t\t\tpushq %r12\n");
+          Call("\t\t\tcall le_handler\n");
+          Add("\t\t\taddq $24, %rsp\n");
+          Pop("\t\t\tpopq %rbp\n");
+          Pop("\t\t\tpopq %r12\n");
+          Mov("\t\t\tmovq 24(%r13), %r13\n");
+          ]
         | TAC_Cnd_Equal (var, e1, e2) ->
-          [Mov("\t\t\tneed to fix cnd eq\n")]
+          let first_param = Hashtbl.find off_var_map (match_exp_to_string_T2A e1) in
+          let second_param = Hashtbl.find off_var_map (match_exp_to_string_T2A e2) in
+          [Mov("\t\t\tmovq " ^ first_param ^ ", %r13\n");
+          Push("\t\t\tpushq %r13\n");
+          Mov("\t\t\tmovq " ^ second_param ^ ", %r13\n");
+          Push("\t\t\tpushq %r13\n");
+          Push("\t\t\tpushq %r12\n");
+          Call("\t\t\tcall eq_handler\n");
+          Add("\t\t\taddq $24, %rsp\n");
+          Pop("\t\t\tpopq %rbp\n");
+          Pop("\t\t\tpopq %r12\n");
+          Mov("\t\t\tmovq 24(%r13), %r13\n");
+          ]
         | TAC_Cnd_Not (var, e1) ->
-          (* Just for Booleans *)
-          [Mov("\t\t\tneed to fix cnd not\n")]
+          [Mov("\t\t\tcmpq $0, %r13\n")]
         | TAC_Negate (var, e1) ->
-          [Mov("\t\t\tneed to fix the negatation\n")]
+          let space_location = Hashtbl.find off_var_map (match_exp_to_string_T2A e1) in
+          Hashtbl.add off_var_map var space_location;
+          [
+          Mov("\t\t\tmovq $0, %r14\n");
+          Mov("\t\t\tmovq %r14, %rax\n");
+          Mov("\t\t\tmovq " ^ space_location ^ ", %r13\n");
+          Sub("\t\t\tsubq %r13, %rax\n");
+          Mov("\t\t\tmovq %rax, %r13\n");
+          Mov("\t\t\tmovq %r13, " ^ space_location ^ "\n")
+          ] 
           (* printf "%s <- ~ %s\n" var e1_val *)
         | TAC_New (var, e1) ->
-          [Mov("\t\t\tneed to fix the new\n")]
+          let new_type = match_exp_to_string_T2A e1 in
+          (* [
+          Comment("\t\t\t## new " ^ new_type ^ "\n");
+          Push("\t\t\tpushq %rbp\n");
+          Push("\t\t\tpushq %r12\n");
+          Push("\t\t\tmovq $" ^ new_type ^ "..new, %r14\n");
+          Call("\t\t\tcall *%r14\n");
+          Pop("\t\t\tpopq %r12\n");
+          Pop("\t\t\tpopq %rbp\n");
+          Mov("\t\t\tmovq %r13, 24(%r12)\n")
+          ] *)
+          [Mov("\t\t\t## need to fix new \n")]
         | TAC_isvoid (var, e1) ->
-          [Mov("\t\t\tneed to fix the isvoid \n")]
+          [Mov("\t\t\t## need to fix the isvoid \n")]
         | TAC_call_out (var, e1, e2) ->
-          [Mov("\t\t\tneed to fix the call out\n")]
+          [Mov("\t\t\t## need to fix the call out\n")]
         | TAC_call_in (var, e1) ->
-          [Mov("\t\t\tneed to fix the call in\n")]        
+          [Mov("\t\t\t## need to fix the call in\n")]        
         | TAC_Self_Dispatch (result_var, (method_name, loc), args) ->
           [Comment("\t\t\t## need to fix the self dispatch\n")]
         | TAC_Return result_var ->
-          [Mov("\t\t\tneed to fix the return\n")]
+          [Mov("\t\t\t## need to fix the return\n")]
         | TAC_Let (bingings, let_body) ->
-          [Mov("\t\t\tneed to fix let\n")]
+          [Mov("\t\t\t## need to fix let\n")]
 
       in
         (* Function to output the full list of TAC instructions for a method body *)

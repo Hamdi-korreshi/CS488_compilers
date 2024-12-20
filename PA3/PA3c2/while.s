@@ -97,7 +97,17 @@ A..new:                 ## constructor for A
                         popq %r12
                         popq %rbp
                         movq %r13, 24(%r12)
-                        ## self[3] b initializer -- none 
+                        ## self[3] b initializer <- 3
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $3, %r14
+                        movq %r14, 24(%r13)
+                        movq %r13, 24(%r12)
                         movq %r12, %r13
                         ## return address handling
                         movq %rbp, %rsp
@@ -594,6 +604,19 @@ l3:                     ## while conditional check
                         jmp l3
 .globl l4
 l4:                     ## end of while loop
+                        ## out_int(...)
+                        pushq %r12
+                        pushq %rbp
+                        ## y
+                        movq 24(%r12), %r13
+                        movq 24(%r13), %r13
+                        movq %r13, 0(%rbp)
+                        ## x
+                        movq 32(%r12), %r13
+                        movq 24(%r13), %r13
+                        movq 0(%rbp), %r14
+                        addq %r14, %r13
+                        movq %r13, 0(%rbp)
                         ## new Int
                         pushq %rbp
                         pushq %r12
@@ -601,8 +624,18 @@ l4:                     ## end of while loop
                         call *%r14
                         popq %r12
                         popq %rbp
-                        movq $3, %r14
+                        movq 0(%rbp), %r14
                         movq %r14, 24(%r13)
+                        pushq %r13
+                        pushq %r12
+                        ## obtain vtable for self object of type Main
+                        movq 16(%r12), %r14
+                        ## look up out_int() at offset 7 in vtable
+                        movq 56(%r14), %r14
+                        call *%r14
+                        addq $16, %rsp
+                        popq %rbp
+                        popq %r12
 .globl Main.main.end
 Main.main.end:          ## method body ends
                         ## return address handling

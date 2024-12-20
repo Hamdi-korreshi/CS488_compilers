@@ -1,8 +1,7 @@
 class Main inherits IO {
+	x : String;
 	main() : Object
 	{
-		{
-		out_int(20/(2+3)*4);
-		}
+			x <- new String
 	};
 };

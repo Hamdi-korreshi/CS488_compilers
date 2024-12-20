@@ -447,13 +447,22 @@ Main.main:						## method definition
 			pushq %rbp
 			movq %rsp, %rbp
 			movq 16(%rbp), %r12
-			##stack room for temporaries:2
-			movq $16,%r14
+			##stack room for temporaries:1
+			movq $16, %r14
 			subq %r14, %rsp
 			## return address handling
 			## method body begins
-			## need to fix new 
-			## need to fix assign
+			## new Int
+			pushq %rbp
+			pushq %r12
+			movq $Int..new, %r14
+			call *%r14
+			popq %r12
+			popq %rbp
+			movq $3, %r14
+			movq %r14, 24(%r13)
+			movq 24(%r13), %r13
+			movq %r13, -8(%rbp)
 			pushq %r13
 			pushq %r12
 			## obtain vtable for self object of type Main
