@@ -92,6 +92,12 @@ let safe_head lst =
   try Some (List.hd (List.rev lst))
   with Failure _ -> None
 
+let safe_search hashmap (key: string) : int =
+  if Hashtbl.mem hashmap key then
+    Hashtbl.find hashmap key
+  else
+    failwith ("cannot find "^key^"\n")
+
 type cool_prog = cool_class list
 and loc = string
 and id = loc * string
@@ -141,6 +147,8 @@ type class_map = (string, (string * string * exp option) list option) Hashtbl.t
 type implementation_map = (loc, (loc * (loc) list * loc * exp) list) Hashtbl.t
 type parent_map = (loc,loc) Hashtbl.t
 type offset_var_map = (string, string) Hashtbl.t 
+type vtable = (string, int) Hashtbl.t
+let offset_vtable: vtable = Hashtbl.create 128
 
 let empty_map () = Hashtbl.create 128
 
@@ -385,84 +393,6 @@ let find_temps class_name metho_name (hashmap: implementation_map) : int =
 let rec convert_id (loc,iname) =
   [], TAC_Variable iname
 
-
-(* let rec convert_expr (e : exp) : (tac_instr list * tac_expr) =
-  (* TODO: match method *)
-  match e.exp_kind with
-  | Integer value ->
-      let new_var = fresh_variable () in
-      let int_value = int_of_string value in
-      [TAC_Assign_Int (new_var, int_value)], TAC_Variable new_var
-
-  | Identifier (_, name) ->
-      [], TAC_Variable name
-
-  | Plus (e1, e2) ->
-      let instrs1, temp1 = convert_expr e1 in
-      let instrs2, temp2 = convert_expr e2 in
-      let new_var = fresh_variable () in
-      let to_output = TAC_Assign_Plus (new_var, temp1, temp2) in
-      instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
-
-  | Minus (e1, e2) ->
-      let instrs1, temp1 = convert_expr e1 in
-      let instrs2, temp2 = convert_expr e2 in
-      let new_var = fresh_variable () in
-      let to_output = TAC_Assign_Minus (new_var, temp1, temp2) in
-      instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
-
-  | Times (e1, e2) ->
-      let instrs1, temp1 = convert_expr e1 in
-      let instrs2, temp2 = convert_expr e2 in
-      let new_var = fresh_variable () in
-      let to_output = TAC_Assign_Times (new_var, temp1, temp2) in
-      instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
-
-  | Divide (e1, e2) ->
-      let instrs1, temp1 = convert_expr e1 in
-      let instrs2, temp2 = convert_expr e2 in
-      let new_var = fresh_variable () in
-      let to_output = TAC_Assign_Divide (new_var, temp1, temp2) in
-      instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
-  | LT (e1, e2) ->
-    let instrs1, temp1 = convert_expr e1 in
-    let instrs2, temp2 = convert_expr e2 in
-    let new_var = fresh_variable () in
-    let to_output = TAC_Cnd_LessThan (new_var, temp1, temp2) in
-    instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
-  | LE (e1, e2) ->
-    let instrs1, temp1 = convert_expr e1 in
-    let instrs2, temp2 = convert_expr e2 in
-    let new_var = fresh_variable () in
-    let to_output = TAC_Cnd_LessEqual (new_var, temp1, temp2) in
-    instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
-
-  | EQ (e1, e2) ->
-    let instrs1, temp1 = convert_expr e1 in
-    let instrs2, temp2 = convert_expr e2 in
-    let new_var = fresh_variable () in
-    let to_output = TAC_Cnd_Equal (new_var, temp1, temp2) in
-    instrs1 @ instrs2 @ [to_output], TAC_Variable new_var
-  | Not (e1) -> 
-    let instrs1, temp1 = convert_expr e1 in
-    let new_var = fresh_variable () in
-    let to_output = TAC_Cnd_Not (new_var, temp1) in
-    instrs1 @ [to_output], TAC_Variable new_var
-  
-  | Negate (e1) ->
-    let instrs1, temp1 = convert_expr e1 in
-    let new_var = fresh_variable () in
-    let to_output = TAC_Negate (new_var, temp1) in
-    instrs1 @ [to_output], TAC_Variable new_var
-
-  | New (e1) ->
-    (* TODO *)
-    let instrs1, temp1 = convert_id e1 in
-    let new_var = fresh_variable () in
-    let to_output = TAC_New (new_var, temp1) in
-    instrs1 @ [to_output], TAC_Variable new_var
-
-  | _ -> [], TAC_Variable "" *)
 type attr_table = (string, string) Hashtbl.t 
 (* let is_digit num = 
   let jack = Str.string_match (Str.regexp "123456789") num 0 in
@@ -976,53 +906,7 @@ let main () = begin
           let imp_map: implementation_map = read_implementation_map in
           let pmap: parent_map = read_parent_map in 
           let ast = read_cool_prog () in 
-          (* let rec output_id bruh_val = 
-            printf "%s\n%s\n" (fst bruh_val) (snd bruh_val) 
-          in
-          let rec output_ints sval = 
-            match sval with 
-            | Identifier(ival) ->
-              printf "%s\n" (snd ival)
-            | Integer(ival) -> printf "int %s\n" ival
-            | _ -> printf "unmatch case\n";
-          in
-          let counter = ref 0 in
-          let rec output_tac e =
-            match e.exp_kind with
-            | Identifier(ival) ->
-              printf "%s\n" (snd ival);
-              print_id ival;
-            | Integer(ival) -> printf "int %s\n" ival
-            | String(ival) -> printf "string\n%s\n" ival
-            | Plus(e1,e2) ->
-              let t3 = "t$" ^ string_of_int !counter in 
-              let () = counter <- !counter + 1  in
-              let t1 = "t$" ^ string_of_int !counter in 
-              printf "%s\n"  t1;
-              printf "%s <- " t1;
-              output_tac e1;
-              let () = counter <- !counter + 1  in
-              let t2 = "t$" ^ string_of_int !counter in 
-              printf "%s <- " t2;
-              output_tac e2;
-              printf "%s <- + %s %s\n" t3 t1 t2
-            | _ -> printf ""
-        in *)
-        (* let metho_count = ref 0 in
-        printf "comment start\n";
-        List.iter (fun ((cloc,cname),inherits, feats) ->
-          List.iter (fun feat ->
-          match feat with 
-          | Attribute((name_loc, name),(dt_loc,dt_type), (Some init_exp)) ->
-            printf "%s <- " name;
-            output_tac init_exp
-          | Method((metho_loc,metho_name), forms, (metho_type_loc,metho_type), metho_bod) ->
-            printf "label %s_%s_%d\n" cname metho_name !metho_count;
-            output_tac metho_bod
-          | Attribute((_, _),(_,_), None) ->
-            printf "bruh";
-          ) feats; 
-        ) ast; *)
+
         let rec convert_expr (e : exp) (target : string option) : (tac_instr list * tac_expr) =
           match e.exp_kind with
           | Integer value ->
@@ -1295,7 +1179,7 @@ let main () = begin
         (* TODO: Print asm instead of tac code *)
         let offset = ref (-8) in
         let jmplabel = ref 4 in
-        let rec tac_to_asm instr (off_var_map:offset_var_map) =
+        let rec tac_to_asm instr (off_var_map:offset_var_map) cname =
         match instr with
         | TAC_Assign_String (var, value) ->
           let class_inst = new_class_instance "String" var in
@@ -1443,56 +1327,28 @@ let main () = begin
         | TAC_call_in (var, e1) ->
           [Mov("\t\t\tneed to fix the call in\n")]        
         | TAC_Self_Dispatch (result_var, (method_name, loc), args) ->
-          [Comment("\t\t\t## need to fix the self dispatch\n")]
+          printf "not found: %s\n" method_name;
+          let off = safe_search offset_vtable (method_name) in
+          [Comment("\t\t\t## need to fix the self dispatch\n");
+          Push("\t\t\tpushq %r12\n");
+          Push("\t\t\tpushq %rbp\n");
+          Push("\t\t\tpushq %r13\n");
+          Push("\t\t\tpushq %r12\n");
+          Comment("\t\t\t## obtain vtable for self object of type "^cname^" always 16\n");
+          Mov("\t\t\tmovq 16(%r12), %r14\n");
+          Comment("\t\t\t## look up "^method_name^"() at offest "^string_of_int(off)^" in vtable\n");
+          Mov("\t\t\tmovq "^string_of_int(off*8)^"(%r14), %r14\n");
+          Call("\t\t\tcall *%r14\n");
+          Pop("\t\t\tpopq %r12\n");
+          Pop("\t\t\tpopq %rbp\n");
+          Pop("\t\t\tpopq %r13\n");
+          Pop("\t\t\tpopq %r12\n");]
         | TAC_Return result_var ->
           [Mov("\t\t\tneed to fix the return\n")]
         | TAC_Let (bingings, let_body) ->
           [Mov("\t\t\tneed to fix let\n")]
 
       in
-        (* Function to output the full list of TAC instructions for a method body *)
-        (* let output_tac target e =
-          let tac_instrs, _ = convert_expr e target in
-          List.iter (tac_to_asm) tac_instrs;
-          safe_head tac_instrs
-        in
-        (* Main program to iterate over the classes and features *)
-        printf "comment start\n";
-        List.iter (fun ((cloc, cname), inherits, feats) ->
-          curr_class := cname;
-          List.iter (fun feat ->
-            match feat with
-            | Attribute ((name_loc, name), (dt_loc, dt_type), Some init_exp) ->
-                let _ = output_tac (Some name) init_exp in 
-                printf ""
-            | Method ((metho_loc, metho_name), forms, (metho_type_loc, metho_type), metho_bod) ->
-                curr_method := metho_name ;
-                printf "label %s_%s_%d\n" !curr_class !curr_method !metho_count;
-                let last = output_tac None metho_bod in 
-                (match last with
-                | Some (TAC_Assign_Int (var, _)
-                      | TAC_Assign_Bool (var, _) 
-                      | TAC_Assign_Var (var, _)
-                      | TAC_Assign_Plus (var, _, _)
-                      | TAC_Assign_Minus (var, _, _)
-                      | TAC_Assign_Times (var, _, _)
-                      | TAC_Assign_Divide (var, _, _)
-                      | TAC_Cnd_LessThan (var, _, _)
-                      | TAC_Cnd_LessEqual (var, _, _)
-                      | TAC_Cnd_Equal (var, _, _)
-                      | TAC_Cnd_Not (var, _)
-                      | TAC_Negate (var, _)
-                      | TAC_New (var, _)
-                      | TAC_isvoid (var, _)
-                      | TAC_call_out (var, _, _)
-                      | TAC_call_in (var, _)
-                      | TAC_Self_Dispatch (var,_,_)) ->
-                    printf "return %s\n" var
-                 | _ -> printf "") 
-            | Attribute ((_, _), (_, _), None) ->
-                printf ""
-          ) feats;
-        ) ast; *)
         let sorted_keys ht =
           let keys = Hashtbl.fold (fun key _ acc -> key :: acc) ht [] in
           List.sort String.compare keys
@@ -2067,18 +1923,17 @@ let main () = begin
               | _ -> ()
             ) feats
         ) ast;
-      
         (* Return the collected TAC instructions *)
         !tac_instructions
       in
       let initial_Main_main check = (* Check the global table work *)(
       let offset_var_map: offset_var_map = Hashtbl.create 128 in
-      let rec process_instr_set instr_set =
+      let rec process_instr_set instr_set cname =
         match instr_set with
         | [] -> [] (* Base case: an empty list returns an empty list *)
         | instr :: rest -> 
-            let current_asm = tac_to_asm instr offset_var_map in
-            current_asm @ process_instr_set rest
+            let current_asm = tac_to_asm instr offset_var_map cname in
+            current_asm @ process_instr_set rest cname
         in
         let classname = "Main" in
         let classfunc = "main" in
@@ -2096,23 +1951,12 @@ let main () = begin
             Comment("\t\t\t## return address handling\n");
             Comment("\t\t\t## method body begins\n")] in
         let instr_set = generate_tac_for_method (classname^"."^classfunc) ast () in
-        let processed = process_instr_set instr_set in
+        let processed = process_instr_set instr_set classname in
         (* Read the AST and continue accordingly *)
         (* Do body work *)
         (* push new int, value and move to the stack *)
         (* when doing conditional or methods go to a l3 *)
         (* changed for the end label of every function *)
-        let offset_vtable =
-          [Push("\t\t\tpushq %r13\n");
-          Push("\t\t\tpushq %r12\n");
-          Comment("\t\t\t## obtain vtable for self object of type Main\n");
-          Mov("\t\t\tmovq 16(%r12), %r14\n");
-          (*has to be change for dynamic disptach*)
-          Comment("\t\t\t## look upt out_int at offest 7 in vtable\n");
-          Mov("\t\t\tmovq 56(%r14), %r14\n");
-          Call("\t\t\tcall *%r14\n");
-          Add("\t\t\taddq $"^(string_of_int (temp_allocated*8))^", %rsp\n");          
-          ]in 
         let main_end = 
           [End_label(".globl Main.main.end\n");
           End_label("Main.main.end:\t\t## method body ends\n");
@@ -2121,7 +1965,7 @@ let main () = begin
           Pop("\t\t\tpopq %rbp\n");
           Ret("\t\t\tret\n");
           ] in
-        let printing = main_starting_labels @ setup @ processed @ offset_vtable @ main_end in
+        let printing = main_starting_labels @ setup @ processed @ main_end in
         (* Treat comments differently *)
         printing
         ) in
@@ -2166,6 +2010,7 @@ let main () = begin
           printf "\t\t\t\t\t## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
           printf ".globl %s..vtable\n" class_name;
           printf "%s..vtable:\t\t ## virtual function table for %s\n" class_name class_name;
+          let metho_offset = ref 0 in
           (match class_name with 
           | "Bool" ->
             printf "\t\t\t\t\t.quad string1\n";
@@ -2184,9 +2029,12 @@ let main () = begin
           List.iter (fun (method_name,formals, return_type, body_exp) ->
             match body_exp.exp_kind with 
             | Internal (_, class_name, method_name) -> 
+              Hashtbl.add offset_vtable (method_name) !metho_offset;
               printf "\t\t\t\t\t.quad %s.%s\n" class_name method_name;
             | _ ->
+              Hashtbl.add offset_vtable (method_name) !metho_offset;
               printf "\t\t\t\t\t.quad %s.%s\n" class_name method_name;
+            metho_offset := !metho_offset + 1;
           ) metho_definition;
         in
         (* hard coded for now needs to be fixed later on*)

@@ -7,7 +7,7 @@ if [ -z "$1" ]; then
 fi
 
 # Input filename
-FILE=$1
+FILE="../cl-graveyard/"$1
 BASE_NAME=$(basename "$FILE" .cl)
 
 # Compile main.ml to an executable named main

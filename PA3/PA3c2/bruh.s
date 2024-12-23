@@ -442,13 +442,14 @@ IO.out_string.end:						## method body ends
 						popq %rbp
 						ret
 					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
+not found: out_int
 .globl Main.main
 Main.main:						## method definition
 			pushq %rbp
 			movq %rsp, %rbp
 			movq 16(%rbp), %r12
-			##stack room for temporaries:4
-			movq $32,%r14
+			##stack room for temporaries:2
+			movq $16,%r14
 			subq %r14, %rsp
 			## return address handling
 			## method body begins
@@ -463,40 +464,20 @@ Main.main:						## method definition
 			movq %r14, 24(%r13)
 			movq 24(%r13), %r13
 			movq %r13, -8(%rbp)
-			## new Int
-			pushq %rbp
-			pushq %r12
-			movq $Int..new, %r14
-			call *%r14
-			popq %r12
-			popq %rbp
-			movq $5, %r14
-			movq %r14, 24(%r13)
-			movq 24(%r13), %r13
-			movq %r13, -16(%rbp)
-			movq -8(%rbp), %r14
-			movq -16(%rbp), %r13
-			addq %r14, %r13
-			movq %r13, -16(%rbp)
-			## offset: -8
-			## new Int
-			pushq %rbp
-			pushq %r12
-			movq $Int..new, %r14
-			call *%r14
-			popq %r12
-			popq %rbp
-			movq -16(%rbp), %r14
-			movq %r14, 24(%r13)
 			## need to fix the self dispatch
+			pushq %r12
+			pushq %rbp
 			pushq %r13
 			pushq %r12
-			## obtain vtable for self object of type Main
+			## obtain vtable for self object of type Main always 16
 			movq 16(%r12), %r14
-			## look upt out_int at offest 7 in vtable
-			movq 56(%r14), %r14
+			## look up out_int() at offest 0 in vtable
+			movq 0(%r14), %r14
 			call *%r14
-			addq $32, %rsp
+			popq %r12
+			popq %rbp
+			popq %r13
+			popq %r12
 .globl Main.main.end
 Main.main.end:		## method body ends
 			## return address handling

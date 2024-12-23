@@ -965,11 +965,11 @@ let main () = begin
                       | TAC_Bool i -> "bool" in
                 printf "%s <- isvoid %s\n" var e1_val
           | TAC_call_out (var, e1, e2) ->
-                printf "%s <- call %s %s\n" var e1 e2
+                printf "%s <- call %s %s (this is callout)\n" var e1 e2
           | TAC_call_in (var, e1) ->
                 printf "%s <- call %s\n" var e1
           | TAC_Self_Dispatch (result_var, (loc, method_name), args) ->
-            printf "%s <- call %s " result_var method_name;
+            printf "%s <- call %s (this is self dispatch)" result_var method_name;
             List.iteri (fun i arg ->
               if i > 0 then printf " ";
               print_tac_expr arg
