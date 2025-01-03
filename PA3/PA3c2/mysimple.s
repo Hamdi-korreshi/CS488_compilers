@@ -155,7 +155,7 @@ Main..new:              ## constructor for Main
                         movq $8, %r14
                         subq %r14, %rsp
                         ## return address handling
-                        movq $4, %r12
+                        movq $3, %r12
                         movq $8, %rsi
 			movq %r12, %rdi
 			call calloc
@@ -163,21 +163,10 @@ Main..new:              ## constructor for Main
                         ## store class tag, object size and vtable pointer
                         movq $11, %r14
                         movq %r14, 0(%r12)
-                        movq $4, %r14
+                        movq $3, %r14
                         movq %r14, 8(%r12)
                         movq $Main..vtable, %r14
                         movq %r14, 16(%r12)
-                        ## initialize attributes
-                        ## self[3] holds field x (String)
-                        ## new String
-                        pushq %rbp
-                        pushq %r12
-                        movq $String..new, %r14
-                        call *%r14
-                        popq %r12
-                        popq %rbp
-                        movq %r13, 24(%r12)
-                        ## self[3] x initializer -- none 
                         movq %r12, %r13
                         ## return address handling
                         movq %rbp, %rsp
@@ -465,16 +454,25 @@ Main.main:              ## method definition
                         movq $8, %r14
                         subq %r14, %rsp
                         ## return address handling
-                        ## self[3] holds field x (String)
                         ## method body begins
-                        ## new String
+                        ## new Int
                         pushq %rbp
                         pushq %r12
-                        movq $String..new, %r14
+                        movq $Int..new, %r14
                         call *%r14
                         popq %r12
                         popq %rbp
-                        movq %r13, 24(%r12)
+                        movq $3, %r14
+                        movq %r14, 24(%r13)
+                        ## new Int
+                        pushq %rbp
+                        pushq %r12
+                        movq $Int..new, %r14
+                        call *%r14
+                        popq %r12
+                        popq %rbp
+                        movq $4, %r14
+                        movq %r14, 24(%r13)
 .globl Main.main.end
 Main.main.end:          ## method body ends
                         ## return address handling

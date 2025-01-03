@@ -1335,8 +1335,11 @@ let main () = begin
             [Mov("\t\t\tmovq $String8, %r14\n");
             Mov("\t\t\tmovq %r14, 24(%r13)\n");] in
           class_inst @ stror_to_mem;
-        | TAC_Assign_Var (var, src_var) ->
-          [Mov("\t\t\t## need to fix assign\n")]
+        | TAC_Assign_Var (var, raw_src_var) ->
+          let dst_var = Hashtbl.find off_var_map (var) in
+          let src_var = Hashtbl.find off_var_map (raw_src_var) in
+          [Mov("\t\t\tmovq " ^ src_var ^ ", %r14\n");
+          Mov("\t\t\tmovq %r14, " ^ dst_var ^ "\n")];
         | TAC_Assign_Plus (var, e1, e2) ->
           (* let find_safe hashmap exp_type = 
             (* TODO if fails don't happen get rid of immediately *)
