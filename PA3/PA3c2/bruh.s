@@ -442,14 +442,13 @@ IO.out_string.end:						## method body ends
 						popq %rbp
 						ret
 					## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;
-not found: out_int
 .globl Main.main
 Main.main:						## method definition
 			pushq %rbp
 			movq %rsp, %rbp
 			movq 16(%rbp), %r12
 			##stack room for temporaries:2
-			movq $16,%r14
+			movq $16, %r14
 			subq %r14, %rsp
 			## return address handling
 			## method body begins
@@ -467,17 +466,14 @@ Main.main:						## method definition
 			## need to fix the self dispatch
 			pushq %r12
 			pushq %rbp
-			pushq %r13
-			pushq %r12
 			## obtain vtable for self object of type Main always 16
 			movq 16(%r12), %r14
-			## look up out_int() at offest 0 in vtable
-			movq 0(%r14), %r14
+			## look up out_int() at offest 7 in vtable
+			movq 56(%r14), %r14
 			call *%r14
-			popq %r12
 			popq %rbp
-			popq %r13
 			popq %r12
+			addq $16, %rsp
 .globl Main.main.end
 Main.main.end:		## method body ends
 			## return address handling

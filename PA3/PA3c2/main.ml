@@ -379,14 +379,14 @@ let find_temps class_name metho_name (hashmap: implementation_map) : int =
     | Not e -> 1 + count_exps e
     | Internal (_, _, _) -> 1
     in
-  let find_body_exp classname method_name hashmap =
-    try
-      let methods = Hashtbl.find hashmap classname in
-      match List.find_opt (fun (name, _, _, _) -> name = method_name) methods with
-      | Some (_, _, _, body_exp) -> body_exp
-      | None -> failwith ("Method not found: " ^ method_name)
-    with
-    | Not_found -> failwith ("Class not found in hashmap for: " ^ classname)
+let find_body_exp classname method_name hashmap =
+  try
+    let methods = Hashtbl.find hashmap classname in
+    match List.find_opt (fun (name, _, _, _) -> name = method_name) methods with
+    | Some (_, _, _, body_exp) -> body_exp
+    | None -> failwith ("Method not found: " ^ method_name)
+  with
+  | Not_found -> failwith ("Class not found in hashmap for: " ^ classname)
   in
   count_exps (find_body_exp class_name metho_name hashmap)
 
@@ -1176,7 +1176,6 @@ let main () = begin
           | TAC_String str_val -> printf "\"%s\"" str_val
           | TAC_Bool bool_val -> printf "%b" bool_val
         in
-        (* TODO: Print asm instead of tac code *)
         let offset = ref (-8) in
         let jmplabel = ref 4 in
         let rec tac_to_asm instr (off_var_map:offset_var_map) cname =
@@ -1327,21 +1326,17 @@ let main () = begin
         | TAC_call_in (var, e1) ->
           [Mov("\t\t\tneed to fix the call in\n")]        
         | TAC_Self_Dispatch (result_var, (method_name, loc), args) ->
-          printf "not found: %s\n" method_name;
-          let off = safe_search offset_vtable (method_name) in
+          (* debugging now, change later*)
+          let off = safe_search offset_vtable (cname^"."^method_name) in
           [Comment("\t\t\t## need to fix the self dispatch\n");
           Push("\t\t\tpushq %r12\n");
           Push("\t\t\tpushq %rbp\n");
-          Push("\t\t\tpushq %r13\n");
-          Push("\t\t\tpushq %r12\n");
           Comment("\t\t\t## obtain vtable for self object of type "^cname^" always 16\n");
           Mov("\t\t\tmovq 16(%r12), %r14\n");
           Comment("\t\t\t## look up "^method_name^"() at offest "^string_of_int(off)^" in vtable\n");
           Mov("\t\t\tmovq "^string_of_int(off*8)^"(%r14), %r14\n");
           Call("\t\t\tcall *%r14\n");
-          Pop("\t\t\tpopq %r12\n");
           Pop("\t\t\tpopq %rbp\n");
-          Pop("\t\t\tpopq %r13\n");
           Pop("\t\t\tpopq %r12\n");]
         | TAC_Return result_var ->
           [Mov("\t\t\tneed to fix the return\n")]
@@ -1946,7 +1941,7 @@ let main () = begin
             Mov("\t\t\tmovq %rsp, %rbp\n");
             Mov("\t\t\tmovq 16(%rbp), %r12\n");
             Comment("\t\t\t##stack room for temporaries:"^string_of_int(temp_allocated)^"\n");
-            Mov("\t\t\tmovq $" ^ (string_of_int (temp_allocated * 8)) ^ ",%r14\n");
+            Mov("\t\t\tmovq $" ^ (string_of_int (temp_allocated * 8)) ^ ", %r14\n");
             Sub("\t\t\tsubq %r14, %rsp\n");
             Comment("\t\t\t## return address handling\n");
             Comment("\t\t\t## method body begins\n")] in
@@ -1958,7 +1953,9 @@ let main () = begin
         (* when doing conditional or methods go to a l3 *)
         (* changed for the end label of every function *)
         let main_end = 
-          [End_label(".globl Main.main.end\n");
+          [
+          Add("\t\t\taddq $" ^ (string_of_int (temp_allocated * 8)) ^ ", %rsp\n");
+          End_label(".globl Main.main.end\n");
           End_label("Main.main.end:\t\t## method body ends\n");
           Comment("\t\t\t## return address handling\n");
           Mov("\t\t\tmovq %rbp, %rsp\n");
@@ -2010,7 +2007,7 @@ let main () = begin
           printf "\t\t\t\t\t## ;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;\n";
           printf ".globl %s..vtable\n" class_name;
           printf "%s..vtable:\t\t ## virtual function table for %s\n" class_name class_name;
-          let metho_offset = ref 0 in
+          let metho_offset = ref 2 in
           (match class_name with 
           | "Bool" ->
             printf "\t\t\t\t\t.quad string1\n";
@@ -2028,14 +2025,16 @@ let main () = begin
           printf "\t\t\t\t\t.quad %s..new\n" class_name;
           List.iter (fun (method_name,formals, return_type, body_exp) ->
             match body_exp.exp_kind with 
-            | Internal (_, class_name, method_name) -> 
-              Hashtbl.add offset_vtable (method_name) !metho_offset;
-              printf "\t\t\t\t\t.quad %s.%s\n" class_name method_name;
+            | Internal (_, cname, method_name) -> 
+              Hashtbl.add offset_vtable (class_name^"."^method_name) !metho_offset;
+              printf "\t\t\t\t\t.quad %s.%s\n" cname method_name;
+              metho_offset := !metho_offset + 1;
             | _ ->
-              Hashtbl.add offset_vtable (method_name) !metho_offset;
+              Hashtbl.add offset_vtable (class_name^"."^method_name) !metho_offset;
               printf "\t\t\t\t\t.quad %s.%s\n" class_name method_name;
-            metho_offset := !metho_offset + 1;
+              metho_offset := !metho_offset + 1;
           ) metho_definition;
+
         in
         (* hard coded for now needs to be fixed later on*)
         let build_methods class_dot_method = 
