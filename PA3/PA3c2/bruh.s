@@ -463,17 +463,23 @@ Main.main:						## method definition
 			movq %r14, 24(%r13)
 			movq 24(%r13), %r13
 			movq %r13, -8(%rbp)
+			movq -8(%rbp), %r13
 			## need to fix the self dispatch
+			## needs to be misalgined by 8 for out_int
+			pushq %r8
 			pushq %r12
 			pushq %rbp
+			## needs the last r12 and r13 for any single excuetion			
+			pushq %r13
+			pushq %r12
 			## obtain vtable for self object of type Main always 16
 			movq 16(%r12), %r14
 			## look up out_int() at offest 7 in vtable
 			movq 56(%r14), %r14
 			call *%r14
+			addq $16, %rsp
 			popq %rbp
 			popq %r12
-			addq $16, %rsp
 .globl Main.main.end
 Main.main.end:		## method body ends
 			## return address handling

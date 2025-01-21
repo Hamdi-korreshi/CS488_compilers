@@ -1329,13 +1329,19 @@ let main () = begin
           (* debugging now, change later*)
           let off = safe_search offset_vtable (cname^"."^method_name) in
           [Comment("\t\t\t## need to fix the self dispatch\n");
+          Comment("\t\t\t## needs to be misalgined by 8 for out_int\n");
+          Push("\t\t\tpushq %r8\n");
           Push("\t\t\tpushq %r12\n");
           Push("\t\t\tpushq %rbp\n");
+          Comment("\t\t\t## needs the last r12 and r13 for any single excuetion");
+          Push("\t\t\tpushq %r13\n");
+          Push("\t\t\tpushq %r12\n");
           Comment("\t\t\t## obtain vtable for self object of type "^cname^" always 16\n");
           Mov("\t\t\tmovq 16(%r12), %r14\n");
           Comment("\t\t\t## look up "^method_name^"() at offest "^string_of_int(off)^" in vtable\n");
           Mov("\t\t\tmovq "^string_of_int(off*8)^"(%r14), %r14\n");
           Call("\t\t\tcall *%r14\n");
+          Add("\t\t\taddq $16, %rsp\n");
           Pop("\t\t\tpopq %rbp\n");
           Pop("\t\t\tpopq %r12\n");]
         | TAC_Return result_var ->
@@ -1954,7 +1960,6 @@ let main () = begin
         (* changed for the end label of every function *)
         let main_end = 
           [
-          Add("\t\t\taddq $" ^ (string_of_int (temp_allocated * 8)) ^ ", %rsp\n");
           End_label(".globl Main.main.end\n");
           End_label("Main.main.end:\t\t## method body ends\n");
           Comment("\t\t\t## return address handling\n");
